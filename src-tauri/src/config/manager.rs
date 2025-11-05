@@ -91,23 +91,13 @@ impl ConfigManager {
             )",
             [],
         )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to ensure app_config table: {}",
-                e
-            ))
-        })?;
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to ensure app_config table: {e}")))?;
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_app_config_category ON app_config(category)",
             [],
         )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to ensure app_config index: {}",
-                e
-            ))
-        })?;
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to ensure app_config index: {e}")))?;
 
         Ok(())
     }
@@ -124,22 +114,12 @@ impl ConfigManager {
     fn load_config_by_key(conn: &Connection, key: &str) -> AppResult<Option<AppConfig>> {
         let mut stmt = conn
             .prepare("SELECT value FROM app_config WHERE key = ?1 LIMIT 1")
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to prepare config load statement: {}",
-                    e
-                ))
-            })?;
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to prepare config load statement: {e}")))?;
 
         let value: Option<String> = stmt
             .query_row(params![key], |row| row.get(0))
             .optional()
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to load configuration from database: {}",
-                    e
-                ))
-            })?;
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to load configuration from database: {e}")))?;
 
         match value {
             Some(json) => {
@@ -154,12 +134,9 @@ impl ConfigManager {
     fn persist_to_database(conn: &mut Connection, config: &AppConfig) -> AppResult<()> {
         let serialized = serde_json::to_string_pretty(config)?;
 
-        let transaction = conn.transaction().map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to open transaction for config save: {}",
-                e
-            ))
-        })?;
+        let transaction = conn
+            .transaction()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to open transaction for config save: {e}")))?;
 
         let existing: Option<String> = transaction
             .prepare("SELECT value FROM app_config WHERE key = ?1 LIMIT 1")
@@ -167,12 +144,7 @@ impl ConfigManager {
                 stmt.query_row(params![CONFIG_PRIMARY_KEY], |row| row.get(0))
                     .optional()
             })
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to read existing configuration: {}",
-                    e
-                ))
-            })?;
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to read existing configuration: {e}")))?;
 
         if let Some(previous_json) = existing {
             Self::upsert_config_row(
@@ -192,12 +164,9 @@ impl ConfigManager {
             &serialized,
         )?;
 
-        transaction.commit().map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to commit configuration transaction: {}",
-                e
-            ))
-        })?;
+        transaction
+            .commit()
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to commit configuration transaction: {e}")))?;
 
         Ok(())
     }
@@ -219,12 +188,7 @@ impl ConfigManager {
                 updated_at = CURRENT_TIMESTAMP",
             params![key, value, category, description],
         )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to upsert configuration row '{}': {}",
-                key, e
-            ))
-        })?;
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to upsert configuration row '{key}': {e}")))?;
         Ok(())
     }
 
@@ -242,22 +206,14 @@ impl ConfigManager {
             let new_extension = if extension.is_empty() {
                 "legacy"
             } else {
-                &format!("{}.legacy", extension)
+                &format!("{extension}.legacy")
             };
             archived.set_extension(new_extension);
 
             if let Err(err) = fs::rename(path, &archived) {
-                warn!(
-                    "Failed to archive legacy config file {:?}: {}",
-                    path,
-                    err
-                );
+                warn!("Failed to archive legacy config file {path:?}: {err}");
             } else {
-                info!(
-                    "Archived legacy configuration file {:?} -> {:?}",
-                    path,
-                    archived
-                );
+                info!("Archived legacy configuration file {path:?} -> {archived:?}");
             }
         }
     }

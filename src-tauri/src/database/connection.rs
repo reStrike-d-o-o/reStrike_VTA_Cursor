@@ -38,7 +38,7 @@ impl DatabaseConnectionPool {
             // Try to get an existing connection
             if let Some(conn) = connections.pop_front() {
                 // Check if connection is still valid
-                if let Ok(_) = conn.execute("SELECT 1", []) {
+                if conn.execute("SELECT 1", []).is_ok() {
                     return Ok(PooledConnection {
                         connection: Some(conn),
                         pool: self.connections.clone(),
@@ -75,33 +75,33 @@ impl DatabaseConnectionPool {
     /// Configure a connection with performance optimizations
     fn configure_connection(&self, conn: &rusqlite::Connection) -> SqliteResult<()> {
         // Phase 1 optimizations (already implemented)
-        conn.pragma_update(None, "journal_mode", &"WAL")?;
-        conn.pragma_update(None, "synchronous", &"NORMAL")?;
-        conn.pragma_update(None, "cache_size", &(-65536))?; // 64MB cache
-        conn.pragma_update(None, "temp_store", &"MEMORY")?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.pragma_update(None, "synchronous", "NORMAL")?;
+        conn.pragma_update(None, "cache_size", -65536)?; // 64MB cache
+        conn.pragma_update(None, "temp_store", "MEMORY")?;
 
         // Optional mmap size setting (may not be supported in all SQLite builds)
-        if let Err(e) = conn.pragma_update(None, "mmap_size", &134217728i64) {
+        if let Err(e) = conn.pragma_update(None, "mmap_size", 134217728i64) {
             // 128MB mmap
-            log::warn!("Failed to set mmap size (this is optional): {}", e);
+            log::warn!("Failed to set mmap size (this is optional): {e}");
         }
 
-        conn.pragma_update(None, "recursive_triggers", &1i64)?;
+        conn.pragma_update(None, "recursive_triggers", 1i64)?;
         conn.busy_timeout(Duration::from_secs(30))?;
         conn.execute("PRAGMA optimize", [])?;
-        conn.pragma_update(None, "page_size", &4096i64)?;
+        conn.pragma_update(None, "page_size", 4096i64)?;
 
         // Phase 2 optimizations
-        conn.pragma_update(None, "auto_vacuum", &"INCREMENTAL")?; // Better space management
+        conn.pragma_update(None, "auto_vacuum", "INCREMENTAL")?; // Better space management
 
         // Optional WAL autocheckpoint setting
-        if let Err(e) = conn.pragma_update(None, "wal_autocheckpoint", &1000i64) {
+        if let Err(e) = conn.pragma_update(None, "wal_autocheckpoint", 1000i64) {
             // Checkpoint every 1000 pages
-            log::warn!("Failed to set WAL autocheckpoint (this is optional): {}", e);
+            log::warn!("Failed to set WAL autocheckpoint (this is optional): {e}");
         }
 
-        conn.pragma_update(None, "checkpoint_fullfsync", &0i64)?; // Faster checkpoints
-        conn.pragma_update(None, "locking_mode", &"NORMAL")?; // Balance between concurrency and safety
+        conn.pragma_update(None, "checkpoint_fullfsync", 0i64)?; // Faster checkpoints
+        conn.pragma_update(None, "locking_mode", "NORMAL")?; // Balance between concurrency and safety
 
         Ok(())
     }
@@ -209,13 +209,12 @@ impl DatabaseConnection {
 
         // Ensure the directory exists
         if let Some(parent) = db_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to create database directory: {}", e))
-            })?;
+            fs::create_dir_all(parent)
+                .map_err(|e| DatabaseError::Initialization(format!("Failed to create database directory: {e}")))?;
         }
 
         let connection = Connection::open(&db_path)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to open database: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to open database: {e}")))?;
 
         // Apply comprehensive safety and performance settings
         Self::configure_connection(&connection)?;
@@ -243,75 +242,56 @@ impl DatabaseConnection {
     /// Configure SQLite connection with safety and performance optimizations
     fn configure_connection(conn: &Connection) -> DatabaseResult<()> {
         // Enable foreign keys for referential integrity
-        conn.pragma_update(None, "foreign_keys", &1i64)
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to enable foreign keys: {}", e))
-            })?;
+        conn.pragma_update(None, "foreign_keys", 1i64)
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to enable foreign keys: {e}")))?;
 
         // Set UTF-8 encoding for international text support
-        conn.pragma_update(None, "encoding", &"UTF-8")
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to set UTF-8 encoding: {}", e))
-            })?;
+        conn.pragma_update(None, "encoding", "UTF-8")
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set UTF-8 encoding: {e}")))?;
 
         // Enable WAL mode for better concurrency and crash recovery
         let _: String = conn
             .query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to enable WAL mode: {}", e))
-            })?;
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to enable WAL mode: {e}")))?;
 
         // Set synchronous mode to FULL for maximum durability (slower but safer)
-        conn.pragma_update(None, "synchronous", &"FULL")
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to set synchronous mode: {}", e))
-            })?;
+        conn.pragma_update(None, "synchronous", "FULL")
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set synchronous mode: {e}")))?;
 
         // Phase 1 Optimization: Enhanced cache size to 64MB for high-volume performance
-        conn.pragma_update(None, "cache_size", &(-65536)) // Negative value means KB, so -65536 = 64MB
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to set cache size: {}", e))
-            })?;
+        conn.pragma_update(None, "cache_size", -65536) // Negative value means KB, so -65536 = 64MB
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set cache size: {e}")))?;
 
         // Set temp store to memory for better performance
-        conn.pragma_update(None, "temp_store", &"MEMORY")
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to set temp store: {}", e))
-            })?;
+        conn.pragma_update(None, "temp_store", "MEMORY")
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set temp store: {e}")))?;
 
         // Phase 1 Optimization: Enhanced mmap size to 128MB for high-volume performance (optional)
-        if let Err(e) = conn.pragma_update(None, "mmap_size", &134217728i64) {
+        if let Err(e) = conn.pragma_update(None, "mmap_size", 134217728i64) {
             // 128MB in bytes
-            log::warn!("Failed to set mmap size (this is optional): {}", e);
+            log::warn!("Failed to set mmap size (this is optional): {e}");
         }
 
         // Enable recursive triggers
-        conn.pragma_update(None, "recursive_triggers", &1i64)
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to enable recursive triggers: {}", e))
-            })?;
+        conn.pragma_update(None, "recursive_triggers", 1i64)
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to enable recursive triggers: {e}")))?;
 
         // Set busy timeout to 30 seconds to handle concurrent access
         conn.busy_timeout(std::time::Duration::from_secs(30))
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to set busy timeout: {}", e))
-            })?;
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set busy timeout: {e}")))?;
 
         // Phase 1 Optimization: Additional performance settings for high-volume processing
         // Optimize for bulk operations
-        conn.execute("PRAGMA optimize", []).map_err(|e| {
-            DatabaseError::Initialization(format!("Failed to optimize database: {}", e))
-        })?;
+        conn.execute("PRAGMA optimize", [])
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to optimize database: {e}")))?;
 
         // Set page size to 4KB for better performance
-        conn.pragma_update(None, "page_size", &4096i64)
-            .map_err(|e| {
-                DatabaseError::Initialization(format!("Failed to set page size: {}", e))
-            })?;
+        conn.pragma_update(None, "page_size", 4096i64)
+            .map_err(|e| DatabaseError::Initialization(format!("Failed to set page size: {e}")))?;
 
         // Set WAL auto-checkpoint to 1000 pages for better performance (optional)
-        if let Err(e) = conn.pragma_update(None, "wal_autocheckpoint", &1000i64) {
-            log::warn!("Failed to set WAL autocheckpoint (this is optional): {}", e);
+        if let Err(e) = conn.pragma_update(None, "wal_autocheckpoint", 1000i64) {
+            log::warn!("Failed to set WAL autocheckpoint (this is optional): {e}");
         }
 
         Ok(())
@@ -349,8 +329,7 @@ impl DatabaseConnection {
             if let Some(parent) = fallback.parent() {
                 fs::create_dir_all(parent).map_err(|e| {
                     DatabaseError::Initialization(format!(
-                        "Failed to create database directory {:?}: {}",
-                        parent, e
+                        "Failed to create database directory {parent:?}: {e}"
                     ))
                 })?;
             }
@@ -379,9 +358,9 @@ impl DatabaseConnection {
         // If we have a connection pool, get a connection from it
         if let Some(pool) = &self.connection_pool {
             // Get a connection from the pool
-            let pooled_conn = pool.get_connection().map_err(|e| {
-                DatabaseError::Connection(format!("Failed to get connection from pool: {}", e))
-            })?;
+            let pooled_conn = pool
+                .get_connection()
+                .map_err(|e| DatabaseError::Connection(format!("Failed to get connection from pool: {e}")))?;
 
             // Replace our internal connection with the pooled one
             // This is a bit hacky but allows backward compatibility
@@ -409,22 +388,22 @@ impl DatabaseConnection {
         F: FnOnce(&rusqlite::Transaction) -> DatabaseResult<T>,
     {
         let mut conn = self.get_connection().await?;
-        let transaction = conn.transaction().map_err(|e| {
-            DatabaseError::Transaction(format!("Failed to start transaction: {}", e))
-        })?;
+        let transaction = conn
+            .transaction()
+            .map_err(|e| DatabaseError::Transaction(format!("Failed to start transaction: {e}")))?;
 
         let result = f(&transaction);
 
         match result {
             Ok(value) => {
-                transaction.commit().map_err(|e| {
-                    DatabaseError::Transaction(format!("Failed to commit transaction: {}", e))
-                })?;
+                transaction
+                    .commit()
+                    .map_err(|e| DatabaseError::Transaction(format!("Failed to commit transaction: {e}")))?;
                 Ok(value)
             }
             Err(e) => {
                 // Transaction will be automatically rolled back when dropped
-                log::warn!("Transaction failed, rolling back: {}", e);
+                log::warn!("Transaction failed, rolling back: {e}");
                 Err(e)
             }
         }
@@ -436,15 +415,15 @@ impl DatabaseConnection {
         F: FnOnce(&rusqlite::Transaction) -> DatabaseResult<T>,
     {
         let mut conn = self.get_connection().await?;
-        let transaction = conn.transaction().map_err(|e| {
-            DatabaseError::Transaction(format!("Failed to start read transaction: {}", e))
-        })?;
+        let transaction = conn
+            .transaction()
+            .map_err(|e| DatabaseError::Transaction(format!("Failed to start read transaction: {e}")))?;
 
         let result = f(&transaction)?;
 
-        transaction.commit().map_err(|e| {
-            DatabaseError::Transaction(format!("Failed to commit read transaction: {}", e))
-        })?;
+        transaction
+            .commit()
+            .map_err(|e| DatabaseError::Transaction(format!("Failed to commit read transaction: {e}")))?;
 
         Ok(result)
     }
@@ -471,10 +450,9 @@ impl DatabaseConnection {
                         let delay = std::time::Duration::from_millis(100 * (1 << attempt));
                         tokio::time::sleep(delay).await;
                         log::warn!(
-                            "Transaction attempt {} failed, retrying in {:?}: {}",
+                            "Transaction attempt {} failed, retrying in {:?}: {error_msg}",
                             attempt + 1,
-                            delay,
-                            error_msg
+                            delay
                         );
                     }
                 }
@@ -490,25 +468,21 @@ impl DatabaseConnection {
         // Verify backup file exists and is accessible
         if !backup_path.exists() {
             return Err(DatabaseError::Connection(format!(
-                "Backup file does not exist: {:?}",
-                backup_path
+                "Backup file does not exist: {backup_path:?}"
             )));
         }
 
         // Check backup file integrity
         let backup_conn = Connection::open(backup_path)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to open backup file: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to open backup file: {e}")))?;
 
         let integrity: String = backup_conn
             .query_row("PRAGMA integrity_check", [], |row| row.get(0))
-            .map_err(|e| {
-                DatabaseError::Connection(format!("Failed to check backup integrity: {}", e))
-            })?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to check backup integrity: {e}")))?;
 
         if integrity != "ok" {
             return Err(DatabaseError::Connection(format!(
-                "Backup file integrity check failed: {}",
-                integrity
+                "Backup file integrity check failed: {integrity}"
             )));
         }
 
@@ -521,16 +495,15 @@ impl DatabaseConnection {
         // Replace current database with backup
         let db_path = Self::get_database_path()?;
         fs::copy(backup_path, &db_path)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to restore database: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to restore database: {e}")))?;
 
         // Remove old WAL/SHM files so SQLite rebuilds them for the restored database
         let wal_path = db_path.with_extension("db-wal");
         if wal_path.exists() {
             if let Err(e) = fs::remove_file(&wal_path) {
                 log::warn!(
-                    "Failed to remove WAL file during restore ({}): {}",
-                    wal_path.display(),
-                    e
+                    "Failed to remove WAL file during restore ({}): {e}",
+                    wal_path.display()
                 );
             }
         }
@@ -539,15 +512,14 @@ impl DatabaseConnection {
         if shm_path.exists() {
             if let Err(e) = fs::remove_file(&shm_path) {
                 log::warn!(
-                    "Failed to remove SHM file during restore ({}): {}",
-                    shm_path.display(),
-                    e
+                    "Failed to remove SHM file during restore ({}): {e}",
+                    shm_path.display()
                 );
             }
         }
 
-        log::info!("Database restored from backup: {:?}", backup_path);
-        log::info!("Previous database backed up to: {:?}", current_backup);
+        log::info!("Database restored from backup: {backup_path:?}");
+        log::info!("Previous database backed up to: {current_backup:?}");
 
         Ok(())
     }
@@ -560,9 +532,8 @@ impl DatabaseConnection {
     /// Get database file size
     pub fn get_file_size(&self) -> DatabaseResult<u64> {
         let path = Self::get_database_path()?;
-        let metadata = fs::metadata(&path).map_err(|e| {
-            DatabaseError::Connection(format!("Failed to get database metadata: {}", e))
-        })?;
+        let metadata = fs::metadata(&path)
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get database metadata: {e}")))?;
         Ok(metadata.len())
     }
 
@@ -571,9 +542,7 @@ impl DatabaseConnection {
         let conn = self.get_connection().await?;
         let encoding: String = conn
             .query_row("PRAGMA encoding", [], |row| row.get(0))
-            .map_err(|e| {
-                DatabaseError::Connection(format!("Failed to get database encoding: {}", e))
-            })?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get database encoding: {e}")))?;
         Ok(encoding)
     }
 
@@ -582,7 +551,7 @@ impl DatabaseConnection {
         let conn = self.get_connection().await?;
         let result: String = conn
             .query_row("PRAGMA integrity_check", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to check integrity: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to check integrity: {e}")))?;
 
         Ok(result == "ok")
     }
@@ -592,19 +561,18 @@ impl DatabaseConnection {
         let backup_dir = Self::get_backup_directory()?;
 
         // Ensure backup directory exists
-        fs::create_dir_all(&backup_dir).map_err(|e| {
-            DatabaseError::Connection(format!("Failed to create backup directory: {}", e))
-        })?;
+        fs::create_dir_all(&backup_dir)
+            .map_err(|e| DatabaseError::Connection(format!("Failed to create backup directory: {e}")))?;
 
         // Generate backup filename with timestamp
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get timestamp: {}", e)))?
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get timestamp: {e}")))?
             .as_secs();
 
         let backup_filename = match backup_name {
-            Some(name) => format!("{}_{}.db", name, timestamp),
-            None => format!("backup_{}.db", timestamp),
+            Some(name) => format!("{name}_{timestamp}.db"),
+            None => format!("backup_{timestamp}.db"),
         };
 
         let backup_path = backup_dir.join(backup_filename);
@@ -612,24 +580,19 @@ impl DatabaseConnection {
 
         // Use SQLite backup API to capture a consistent snapshot (includes WAL contents)
         let source = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
-            .map_err(|e| {
-                DatabaseError::Connection(format!("Failed to open database for backup: {}", e))
-            })?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to open database for backup: {e}")))?;
         source
             .backup(DatabaseName::Main, &backup_path, None)
-            .map_err(|e| DatabaseError::Connection(format!("SQLite backup failed: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("SQLite backup failed: {e}")))?;
 
         // Ensure destination is flushed and uses WAL mode to mirror source settings
-        let destination = Connection::open(&backup_path).map_err(|e| {
-            DatabaseError::Connection(format!("Failed to reopen backup file: {}", e))
-        })?;
+        let destination = Connection::open(&backup_path)
+            .map_err(|e| DatabaseError::Connection(format!("Failed to reopen backup file: {e}")))?;
         destination
-            .pragma_update(None, "journal_mode", &"WAL")
-            .map_err(|e| {
-                DatabaseError::Connection(format!("Failed to enable WAL on backup: {}", e))
-            })?;
+            .pragma_update(None, "journal_mode", "WAL")
+            .map_err(|e| DatabaseError::Connection(format!("Failed to enable WAL on backup: {e}")))?;
 
-        log::info!("Database backup created: {:?}", backup_path);
+        log::info!("Database backup created: {backup_path:?}");
         Ok(backup_path)
     }
 
@@ -642,12 +605,10 @@ impl DatabaseConnection {
         }
 
         let mut backups = Vec::new();
-        for entry in fs::read_dir(backup_dir).map_err(|e| {
-            DatabaseError::Connection(format!("Failed to read backup directory: {}", e))
-        })? {
-            let entry = entry.map_err(|e| {
-                DatabaseError::Connection(format!("Failed to read backup entry: {}", e))
-            })?;
+        for entry in fs::read_dir(backup_dir)
+            .map_err(|e| DatabaseError::Connection(format!("Failed to read backup directory: {e}")))? {
+            let entry =
+                entry.map_err(|e| DatabaseError::Connection(format!("Failed to read backup entry: {e}")))?;
 
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("db") {
@@ -682,10 +643,10 @@ impl DatabaseConnection {
 
         for backup_path in to_delete {
             if let Err(e) = fs::remove_file(backup_path) {
-                log::warn!("Failed to delete old backup {:?}: {}", backup_path, e);
+                log::warn!("Failed to delete old backup {backup_path:?}: {e}");
             } else {
                 deleted_count += 1;
-                log::info!("Deleted old backup: {:?}", backup_path);
+                log::info!("Deleted old backup: {backup_path:?}");
             }
         }
 
@@ -698,25 +659,23 @@ impl DatabaseConnection {
 
         let page_count: i64 = conn
             .query_row("PRAGMA page_count", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get page count: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get page count: {e}")))?;
 
         let page_size: i64 = conn
             .query_row("PRAGMA page_size", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get page size: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get page size: {e}")))?;
 
         let cache_size: i64 = conn
             .query_row("PRAGMA cache_size", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get cache size: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get cache size: {e}")))?;
 
         let journal_mode: String = conn
             .query_row("PRAGMA journal_mode", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get journal mode: {}", e)))?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get journal mode: {e}")))?;
 
         let synchronous: String = conn
             .query_row("PRAGMA synchronous", [], |row| row.get(0))
-            .map_err(|e| {
-                DatabaseError::Connection(format!("Failed to get synchronous mode: {}", e))
-            })?;
+            .map_err(|e| DatabaseError::Connection(format!("Failed to get synchronous mode: {e}")))?;
 
         Ok(DatabaseStatistics {
             page_count,

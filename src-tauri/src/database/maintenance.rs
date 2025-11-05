@@ -28,7 +28,7 @@ impl Default for MaintenanceConfig {
 }
 
 /// Database maintenance statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MaintenanceStatistics {
     pub last_vacuum: Option<String>,
     pub last_integrity_check: Option<String>,
@@ -39,22 +39,6 @@ pub struct MaintenanceStatistics {
     pub analyze_count: u64,
     pub optimize_count: u64,
     pub total_maintenance_time_secs: u64,
-}
-
-impl Default for MaintenanceStatistics {
-    fn default() -> Self {
-        Self {
-            last_vacuum: None,
-            last_integrity_check: None,
-            last_analyze: None,
-            last_optimize: None,
-            vacuum_count: 0,
-            integrity_check_count: 0,
-            analyze_count: 0,
-            optimize_count: 0,
-            total_maintenance_time_secs: 0,
-        }
-    }
 }
 
 /// Database maintenance manager

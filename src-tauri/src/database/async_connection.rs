@@ -2,7 +2,7 @@ use crate::database::{DatabaseError, DatabaseResult, DATABASE_FILE};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 use sqlx::{Sqlite, SqlitePool};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -16,7 +16,7 @@ pub struct AsyncDatabaseConnection {
 
 impl AsyncDatabaseConnection {
     /// Create a new async database connection
-    pub async fn new(data_dir: &PathBuf) -> DatabaseResult<Self> {
+    pub async fn new(data_dir: &Path) -> DatabaseResult<Self> {
         let db_path = data_dir.join(DATABASE_FILE);
 
         // Ensure the directory exists

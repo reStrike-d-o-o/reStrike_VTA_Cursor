@@ -778,7 +778,7 @@ impl WebSocketServer {
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!("pt{}", point_type),
-                    description: description,
+                    description,
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete": *athlete,

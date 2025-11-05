@@ -114,12 +114,9 @@ impl App {
 
         // Initialize configuration manager
         let config_dir = PathBuf::from("config");
-        let config_manager = ConfigManager::new(&config_dir).await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to initialize config manager: {}",
-                e
-            ))
-        })?;
+        let config_manager = ConfigManager::new(&config_dir)
+            .await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize config manager: {e}")))?;
         log::info!("Configuration manager initialized");
 
         let openapi_dir = config_dir.join("openapi");
@@ -127,12 +124,9 @@ impl App {
         let openapi_document = openapi_manager.current_document().await;
         let openapi_addr = std::env::var("RE_STRIKE_OPENAPI_ADDR")
             .unwrap_or_else(|_| "127.0.0.1:8787".to_string());
-        let openapi_socket: SocketAddr = openapi_addr.parse().map_err(|e| {
-            crate::types::AppError::OpenApiError(format!(
-                "Invalid OpenAPI server address '{}': {}",
-                openapi_addr, e
-            ))
-        })?;
+        let openapi_socket: SocketAddr = openapi_addr
+            .parse()
+            .map_err(|e| crate::types::AppError::OpenApiError(format!("Invalid OpenAPI server address '{openapi_addr}': {e}")))?;
         let openapi_runtime =
             Arc::new(OpenApiRuntime::start(openapi_document, openapi_socket).await?);
         log::info!(
@@ -145,12 +139,14 @@ impl App {
         let (udp_event_tx, udp_event_rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Initialize logging manager with external log directory to prevent rebuild loops
-        let mut log_config = crate::logging::LogConfig::default();
-        // Use a directory outside the project to prevent Tauri file watching from triggering rebuilds
-        log_config.log_dir = "logs".to_string();
-        log_config.archive_dir = "logs/archives".to_string();
+        let log_config = crate::logging::LogConfig {
+            // Use a directory outside the project to prevent Tauri file watching from triggering rebuilds
+            log_dir: "logs".to_string(),
+            archive_dir: "logs/archives".to_string(),
+            ..Default::default()
+        };
         let log_manager = Arc::new(Mutex::new(LogManager::new(log_config).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to initialize logging: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to initialize logging: {e}"))
         })?));
 
         // Initialize plugins
@@ -188,17 +184,14 @@ impl App {
 
         let protocol_manager = ProtocolManager::new()?;
         if let Err(e) = protocol_manager.init().await {
-            log::warn!("Warning: Failed to initialize protocol manager: {}", e);
+            log::warn!("Warning: Failed to initialize protocol manager: {e}");
         }
         log::info!("Protocol manager plugin initialized");
 
         // Initialize database plugin first (needed for UDP plugin and trigger plugin)
-        let database_plugin = DatabasePlugin::new().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to initialize database plugin: {}",
-                e
-            ))
-        })?;
+        let database_plugin = DatabasePlugin::new()
+            .await
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {e}")))?;
         log::info!("Database plugin initialized");
 
         // Initialize trigger plugin (after database plugin)
@@ -207,7 +200,7 @@ impl App {
             obs_obws_manager.clone(),
         ));
         if let Err(e) = trigger_plugin.initialize().await {
-            log::warn!("Warning: Failed to initialize trigger plugin: {}", e);
+            log::warn!("Warning: Failed to initialize trigger plugin: {e}");
         }
         log::info!("Trigger plugin initialized");
 
@@ -225,44 +218,44 @@ impl App {
             // Load persisted automatic recording config from DB into handler so it works after restart
             use crate::database::operations::UiSettingsOperations as UIOps;
             if let Ok(conn) = database_plugin.get_pooled_connection() {
-                let enabled = UIOps::get_ui_setting(&*conn, "obs.auto.enabled")
+                let enabled = UIOps::get_ui_setting(&conn, "obs.auto.enabled")
                     .ok()
                     .flatten()
                     .map(|v| v == "true")
                     .unwrap_or(false);
-                let obs_name = UIOps::get_ui_setting(&*conn, "obs.auto.connection")
+                let obs_name = UIOps::get_ui_setting(&conn, "obs.auto.connection")
                     .ok()
                     .flatten()
                     .filter(|s| !s.is_empty())
                     .unwrap_or_else(|| "OBS_REC".to_string());
-                let stop_on_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end")
+                let stop_on_end = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_match_end")
                     .ok()
                     .flatten()
                     .map(|v| v == "true")
                     .unwrap_or(true);
-                let stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner")
+                let stop_on_winner = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_winner")
                     .ok()
                     .flatten()
                     .map(|v| v == "true")
                     .unwrap_or(true);
-                let stop_delay = UIOps::get_ui_setting(&*conn, "obs.auto.stop_delay_seconds")
+                let stop_delay = UIOps::get_ui_setting(&conn, "obs.auto.stop_delay_seconds")
                     .ok()
                     .flatten()
                     .and_then(|s| s.parse::<u32>().ok())
                     .unwrap_or(30);
-                let include_rb = UIOps::get_ui_setting(&*conn, "obs.auto.include_replay_buffer")
+                let include_rb = UIOps::get_ui_setting(&conn, "obs.auto.include_replay_buffer")
                     .ok()
                     .flatten()
                     .map(|v| v == "true")
                     .unwrap_or(true);
                 let auto_start_rec =
-                    UIOps::get_ui_setting(&*conn, "obs.auto.start_recording_on_match_begin")
+                    UIOps::get_ui_setting(&conn, "obs.auto.start_recording_on_match_begin")
                         .ok()
                         .flatten()
                         .map(|v| v == "true")
                         .unwrap_or(true);
                 let auto_start_rb =
-                    UIOps::get_ui_setting(&*conn, "obs.auto.start_replay_on_match_begin")
+                    UIOps::get_ui_setting(&conn, "obs.auto.start_replay_on_match_begin")
                         .ok()
                         .flatten()
                         .map(|v| v == "true")
@@ -278,10 +271,7 @@ impl App {
                     auto_start_replay_on_match_begin: auto_start_rb,
                 };
                 if let Err(e) = recording_event_handler.update_config(cfg) {
-                    log::warn!(
-                        "Failed to load automatic recording config into handler: {}",
-                        e
-                    );
+                    log::warn!("Failed to load automatic recording config into handler: {e}");
                 } else {
                     log::info!("Automatic recording config loaded into handler");
                 }
@@ -327,7 +317,7 @@ impl App {
                     .add_connection(crate::plugins::obs_obws::types::ObsConnectionConfig {
                         name: cfg.name.clone(),
                         host: cfg.host.clone(),
-                        port: cfg.port as u16,
+                        port: cfg.port,
                         password: cfg.password.clone(),
                         timeout_seconds: 30,
                         role: crate::plugins::obs_obws::ObsConnectionRole::None,
@@ -399,7 +389,7 @@ impl App {
         {
             let websocket_plugin = self.websocket_plugin().lock().await;
             if let Err(e) = websocket_plugin.start(3001).await {
-                log::warn!("Failed to start WebSocket server: {}", e);
+                log::warn!("Failed to start WebSocket server: {e}");
             } else {
                 log::info!("WebSocket server started successfully");
                 websocket_started = true;
@@ -422,7 +412,7 @@ impl App {
         if config.app.startup.auto_start_udp {
             log::info!("Auto-starting UDP server...");
             if let Err(e) = self.udp_plugin().start(&config).await {
-                log::warn!("Failed to auto-start UDP server: {}", e);
+                log::warn!("Failed to auto-start UDP server: {e}");
             } else {
                 log::info!("UDP server auto-started successfully");
 
@@ -452,7 +442,7 @@ impl App {
             let app = Arc::clone(self);
             *guard = Some(tokio::spawn(async move {
                 if let Err(err) = app.run_obs_health_dispatcher().await {
-                    log::warn!("OBS health dispatcher terminated: {}", err);
+                    log::warn!("OBS health dispatcher terminated: {err}");
                 }
             }));
         }
@@ -471,7 +461,7 @@ impl App {
             loop {
                 ticker.tick().await;
                 if let Err(err) = app.emit_pss_stats_snapshot().await {
-                    log::warn!("Failed to emit PSS stats snapshot: {}", err);
+                    log::warn!("Failed to emit PSS stats snapshot: {err}");
                 }
             }
         }));
@@ -483,7 +473,7 @@ impl App {
     async fn run_obs_health_dispatcher(self: Arc<Self>) -> AppResult<()> {
         let manager = self.obs_obws_manager.clone();
         if let Err(err) = manager.ensure_health_watchers().await {
-            log::debug!("Failed to ensure OBS health watchers: {}", err);
+            log::debug!("Failed to ensure OBS health watchers: {err}");
         }
 
         let mut receiver = manager.subscribe_health();
@@ -498,7 +488,7 @@ impl App {
                             snapshots.insert(snapshot.connection.clone(), snapshot);
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                            log::warn!("OBS health channel lagged; skipped {} updates", skipped);
+                            log::warn!("OBS health channel lagged; skipped {skipped} updates");
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                             log::info!("OBS health channel closed; stopping dispatcher");
@@ -514,7 +504,7 @@ impl App {
                             "obs_health",
                             serde_json::json!({ "connections": connections }),
                         ) {
-                            log::error!("Failed to emit obs_health event: {}", err);
+                            log::error!("Failed to emit obs_health event: {err}");
                         }
 
                         match manager.get_status(None).await {
@@ -529,18 +519,18 @@ impl App {
                                     "stats": status.stats,
                                 });
                                 if let Err(err) = app_handle.emit("obs_status", status_payload) {
-                                    log::error!("Failed to emit obs_status event: {}", err);
+                                    log::error!("Failed to emit obs_status event: {err}");
                                 }
                             }
                             Err(err) => {
-                                log::trace!("Unable to fetch OBS status: {}", err);
+                                log::trace!("Unable to fetch OBS status: {err}");
                             }
                         }
                     }
 
                     // Ensure newly-added connections also have watchers
                     if let Err(err) = manager.ensure_health_watchers().await {
-                        log::trace!("Failed to refresh OBS health watchers: {}", err);
+                        log::trace!("Failed to refresh OBS health watchers: {err}");
                     }
                 }
             }
@@ -561,7 +551,7 @@ impl App {
 
         if let Some(app_handle) = TAURI_APP_HANDLE.get() {
             if let Err(err) = app_handle.emit("pss_stats", serde_json::json!({ "stats": snapshot })) {
-                log::error!("Failed to emit pss_stats event: {}", err);
+                log::error!("Failed to emit pss_stats event: {err}");
             }
         }
 
@@ -603,7 +593,7 @@ impl App {
         {
             let websocket_plugin = self.websocket_plugin.lock().await;
             if let Err(err) = websocket_plugin.stop().await {
-                log::warn!("Failed to stop WebSocket server cleanly: {}", err);
+                log::warn!("Failed to stop WebSocket server cleanly: {err}");
             }
         }
 
@@ -635,7 +625,7 @@ impl App {
             crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting".to_string(),
             crate::plugins::plugin_udp::UdpServerStatus::Running => "Running".to_string(),
             crate::plugins::plugin_udp::UdpServerStatus::Error(err) => {
-                format!("Error: {}", err)
+                format!("Error: {err}")
             }
         };
 
@@ -686,11 +676,7 @@ impl App {
                 }
                 Ok(None) => {}
                 Err(err) => {
-                    log::warn!(
-                        "Failed to load match {} for shutdown context: {}",
-                        match_id,
-                        err
-                    );
+                    log::warn!("Failed to load match {match_id} for shutdown context: {err}");
                 }
             }
         }
@@ -704,7 +690,7 @@ impl App {
             use crate::plugins::obs_obws::types::ObsRecordingStatus;
             match self.obs_obws_manager.get_recording_status(None).await {
                 Ok(status) => {
-                    recording_state = Some(format!("{:?}", status));
+                    recording_state = Some(format!("{status:?}"));
                     recording_active = matches!(
                         status,
                         ObsRecordingStatus::Recording
@@ -713,10 +699,7 @@ impl App {
                     );
                 }
                 Err(err) => {
-                    log::warn!(
-                        "Failed to query OBS recording status during shutdown: {}",
-                        err
-                    );
+                    log::warn!("Failed to query OBS recording status during shutdown: {err}");
                 }
             }
         }
@@ -867,10 +850,7 @@ impl App {
     /// Trigger instant round replay: save replay buffer, resolve last file within configured wait, launch mpv
     pub async fn replay_round_now(&self, connection_name: Option<&str>) -> AppResult<()> {
         let conn_dbg = connection_name.unwrap_or("OBS_REC");
-        log::debug!(
-            "replay_round_now: invoked for OBS connection='{}'",
-            conn_dbg
-        );
+        log::debug!("replay_round_now: invoked for OBS connection='{conn_dbg}'");
         // Simple debounce to avoid repeated triggers
         static LAST_REPLAY_MS: std::sync::OnceLock<std::sync::Mutex<i64>> =
             std::sync::OnceLock::new();
@@ -888,31 +868,28 @@ impl App {
         // Read IVR settings
         use crate::database::operations::UiSettingsOperations as UIOps;
         let conn = self.database_plugin().get_pooled_connection()?;
-        let mpv_path = UIOps::get_ui_setting(&*conn, "ivr.replay.mpv_path")
+        let mpv_path = UIOps::get_ui_setting(&conn, "ivr.replay.mpv_path")
             .ok()
             .flatten()
             .unwrap_or_else(|| "C:/Program Files/mpv/mpv.exe".to_string());
-        let seconds_from_end: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.seconds_from_end")
+        let seconds_from_end: u32 = UIOps::get_ui_setting(&conn, "ivr.replay.seconds_from_end")
             .ok()
             .flatten()
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(10)
             .min(20);
-        let max_wait_ms: u32 = UIOps::get_ui_setting(&*conn, "ivr.replay.max_wait_ms")
+        let max_wait_ms: u32 = UIOps::get_ui_setting(&conn, "ivr.replay.max_wait_ms")
             .ok()
             .flatten()
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(500)
             .clamp(50, 500);
         log::debug!(
-            "replay_round_now settings: mpv='{}', seconds_from_end={}, max_wait_ms={}",
-            mpv_path,
-            seconds_from_end,
-            max_wait_ms
+            "replay_round_now settings: mpv='{mpv_path}', seconds_from_end={seconds_from_end}, max_wait_ms={max_wait_ms}"
         );
 
         // Ensure RB is enabled+active: start if not active, then save
-        log::debug!("Checking replay buffer status (conn='{}')", conn_dbg);
+        log::debug!("Checking replay buffer status (conn='{conn_dbg}')");
         match self
             .obs_obws_plugin()
             .get_replay_buffer_status(connection_name)
@@ -921,7 +898,7 @@ impl App {
             Ok(status) => {
                 use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
                 if status != ObsReplayBufferStatus::Active {
-                    log::debug!("Replay buffer inactive → starting (conn='{}')", conn_dbg);
+                    log::debug!("Replay buffer inactive → starting (conn='{conn_dbg}')");
                     let _ = self
                         .obs_obws_plugin()
                         .start_replay_buffer(connection_name)
@@ -929,10 +906,7 @@ impl App {
                 }
             }
             Err(_) => {
-                log::debug!(
-                    "Unable to query RB status → attempting start (conn='{}')",
-                    conn_dbg
-                );
+                log::debug!("Unable to query RB status → attempting start (conn='{conn_dbg}')");
                 let _ = self
                     .obs_obws_plugin()
                     .start_replay_buffer(connection_name)
@@ -940,7 +914,7 @@ impl App {
             }
         }
         // Save replay buffer via obws (creates clip)
-        log::debug!("Saving replay buffer (conn='{}')", conn_dbg);
+        log::debug!("Saving replay buffer (conn='{conn_dbg}')");
         self.obs_obws_plugin()
             .save_replay_buffer(connection_name)
             .await?;
@@ -951,7 +925,7 @@ impl App {
         let mut elapsed: u32 = 0;
         let step: u32 = 150;
         while elapsed <= max_wait_ms {
-            log::debug!("Polling last replay filename: attempt at {} ms", elapsed);
+            log::debug!("Polling last replay filename: attempt at {elapsed} ms");
             match self
                 .obs_obws_plugin()
                 .get_last_replay_filename(connection_name)
@@ -971,9 +945,9 @@ impl App {
             elapsed += sleep_ms;
         }
         if let Some(ref name) = filename {
-            log::debug!("Last replay filename detected='{}'", name);
+            log::debug!("Last replay filename detected='{name}'");
         } else {
-            log::debug!("No replay filename detected within {} ms", max_wait_ms);
+            log::debug!("No replay filename detected within {max_wait_ms} ms");
         }
 
         // Build full path using OBS recording directory if available, else Videos root
@@ -1001,21 +975,14 @@ impl App {
                 "Replay file not found within time window".to_string(),
             ));
         }
-        let start_arg = format!("--start=-{}", seconds_from_end);
+        let start_arg = format!("--start=-{seconds_from_end}");
         let file_arg = file_path.to_string_lossy().to_string();
-        log::debug!(
-            "Launching mpv: '{}' '{}' '{}'",
-            mpv_path,
-            start_arg,
-            file_arg
-        );
+        log::debug!("Launching mpv: '{mpv_path}' '{start_arg}' '{file_arg}'");
         let child = std::process::Command::new(&mpv_path)
             .arg(&start_arg)
             .arg(&file_arg)
             .spawn()
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e))
-            })?;
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}")))?;
         // Track mpv process so it can be closed later
         {
             let mut slot = self.mpv_child.lock().await;
@@ -1041,9 +1008,9 @@ impl App {
                 match self.database_plugin().get_pooled_connection() {
                     Ok(conn2) => {
                         use crate::database::operations::TournamentOperations as TOps;
-                        let t = TOps::get_active_tournament(&*conn2).ok().flatten();
+                        let t = TOps::get_active_tournament(&conn2).ok().flatten();
                         let d = t.as_ref().and_then(|tt| {
-                            TOps::get_active_tournament_day(&*conn2, tt.id.unwrap())
+                            TOps::get_active_tournament_day(&conn2, tt.id.unwrap())
                                 .ok()
                                 .flatten()
                         });
@@ -1068,7 +1035,7 @@ impl App {
                 .to_string();
             // Acquire a fresh short-lived connection only for DB writes to avoid holding across await
             if let Ok(conn2) = self.database_plugin().get_pooled_connection() {
-                let conn_ref2 = &*conn2;
+                let conn_ref2 = &conn2;
                 let inserted_rows = if let Some(dbid) = match_id_db {
                     conn_ref2.execute(
                         "INSERT INTO recorded_videos (match_id, event_id, tournament_id, video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, created_at, created) VALUES (?, NULL, (SELECT uuid FROM tournaments WHERE id = ?), 'replay', ?, ?, NULL, ?, ?, ?, strftime('%s','now'))",
@@ -1134,7 +1101,7 @@ impl App {
             }
             log::debug!("Attempting to close mpv (killing process)");
             if let Err(e) = child.kill() {
-                log::debug!("Failed to kill mpv: {}", e);
+                log::debug!("Failed to kill mpv: {e}");
             } else {
                 log::debug!("mpv closed");
             }
@@ -1150,7 +1117,7 @@ impl App {
                 .database_plugin()
                 .get_pooled_connection()
                 .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-            let conn_ref = &*conn_guard;
+            let conn_ref = &conn_guard;
             let row: (i64, String) = conn_ref
                 .query_row(
                     "SELECT match_id, timestamp FROM pss_events WHERE id = ?",
@@ -1164,10 +1131,7 @@ impl App {
         let event_time = match chrono::DateTime::parse_from_rfc3339(&event_time_str) {
             Ok(dt) => dt.with_timezone(&chrono::Utc),
             Err(e) => {
-                return Err(crate::types::AppError::ConfigError(format!(
-                    "Invalid event time: {}",
-                    e
-                )))
+                return Err(crate::types::AppError::ConfigError(format!("Invalid event time: {e}")))
             }
         };
 
@@ -1177,7 +1141,7 @@ impl App {
                 .database_plugin()
                 .get_pooled_connection()
                 .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-            let conn_ref = &*conn_guard;
+            let conn_ref = &conn_guard;
             let before: Option<(Option<String>, Option<String>, Option<String>)> = conn_ref
                 .query_row(
                     "SELECT file_path, record_directory, start_time FROM recorded_videos
@@ -1205,14 +1169,14 @@ impl App {
         // Resolve a concrete file path. Prefer the recording row with a valid file_path; else try replay rows near the event time.
         let mut file_path: Option<std::path::PathBuf> =
             record_path_opt.clone().map(std::path::PathBuf::from);
-        if file_path.as_ref().map(|p| p.is_file()).unwrap_or(false) == false {
+        if !file_path.as_ref().map(|p| p.is_file()).unwrap_or(false) {
             // Try to find a replay near the event time
             let (rp_opt, _rd_opt): (Option<String>, Option<String>) = {
                 let conn_guard = self
                     .database_plugin()
                     .get_pooled_connection()
                     .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-                let conn_ref = &*conn_guard;
+                let conn_ref = &conn_guard;
                 // Prefer replay started before event
                 let before: Option<(Option<String>, Option<String>)> = conn_ref
                     .query_row(
@@ -1265,7 +1229,7 @@ impl App {
                 .database_plugin()
                 .get_pooled_connection()
                 .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-            let conn_ref = &*conn_guard;
+            let conn_ref = &conn_guard;
             UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
                 .ok()
                 .flatten()
@@ -1277,7 +1241,8 @@ impl App {
         let _ = self.close_mpv_if_running().await;
 
         // Launch mpv with positive offset from recording start
-        let start_arg = format!("--start=+{}", offset_secs.max(0));
+        let start_offset = offset_secs.max(0);
+        let start_arg = format!("--start=+{start_offset}");
         log::debug!(
             " Opening event video: '{}' '{}'",
             start_arg,
@@ -1287,9 +1252,7 @@ impl App {
             .arg(&start_arg)
             .arg(file_path.to_string_lossy().to_string())
             .spawn()
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e))
-            })?;
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}")))?;
         {
             let mut slot = self.mpv_child.lock().await;
             *slot = Some(child);
@@ -1325,7 +1288,7 @@ impl App {
     pub fn emit_to_frontend(&self, event_json: serde_json::Value) {
         if let Some(app_handle) = &self.app_handle {
             if let Err(e) = app_handle.emit("pss_event", event_json) {
-                log::warn!("Failed to emit PSS event to Tauri frontend: {}", e);
+                log::warn!("Failed to emit PSS event to Tauri frontend: {e}");
             }
         }
     }
@@ -1339,7 +1302,7 @@ impl App {
                 .database_plugin()
                 .get_pooled_connection()
                 .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-            let conn_ref = &*conn_guard;
+            let conn_ref = &conn_guard;
             UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
                 .ok()
                 .flatten()
@@ -1351,15 +1314,14 @@ impl App {
         let _ = self.close_mpv_if_running().await;
 
         // Launch mpv
-        let start_arg = format!("--start=+{}", std::cmp::max(0, offset_seconds));
-        log::debug!("Opening video: '{}' '{}'", start_arg, &file_path);
+        let start_offset = std::cmp::max(0, offset_seconds);
+        let start_arg = format!("--start=+{start_offset}");
+        log::debug!("Opening video: '{start_arg}' '{file_path}'");
         let child = std::process::Command::new(&mpv_path)
             .arg(&start_arg)
             .arg(file_path)
             .spawn()
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to launch mpv: {}", e))
-            })?;
+            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}")))?;
         {
             let mut slot = self.mpv_child.lock().await;
             *slot = Some(child);
@@ -1381,7 +1343,7 @@ impl App {
 
     /// Set the global Tauri app handle for frontend event emission
     pub fn set_global_app_handle(app_handle: tauri::AppHandle) {
-        if let Err(_) = TAURI_APP_HANDLE.set(app_handle) {
+        if TAURI_APP_HANDLE.set(app_handle).is_err() {
             log::warn!("Global app handle already set");
         } else {
             log::info!("Global Tauri app handle set for frontend event emission");
@@ -1393,14 +1355,14 @@ impl App {
         // Emit to frontend via Tauri events
         if let Some(app_handle) = TAURI_APP_HANDLE.get() {
             if let Err(e) = app_handle.emit("pss_event", event_json.clone()) {
-                log::warn!("Failed to emit PSS event to frontend: {}", e);
+                log::warn!("Failed to emit PSS event to frontend: {e}");
             }
         }
 
         // Broadcast to WebSocket overlays
         if let Some(broadcaster) = PSS_EVENT_BROADCASTER.get() {
             if let Err(e) = broadcaster.send(event_json) {
-                log::warn!("Failed to broadcast PSS event to WebSocket overlays: {}", e);
+                log::warn!("Failed to broadcast PSS event to WebSocket overlays: {e}");
             }
         }
     }
@@ -1409,7 +1371,7 @@ impl App {
     pub fn emit_custom_event(event_name: &str, event_json: serde_json::Value) {
         if let Some(app_handle) = TAURI_APP_HANDLE.get() {
             if let Err(e) = app_handle.emit(event_name, event_json) {
-                log::warn!("Failed to emit custom event '{}': {}", event_name, e);
+                log::warn!("Failed to emit custom event '{event_name}': {e}");
             }
         }
     }
@@ -1425,7 +1387,7 @@ impl App {
             });
 
             if let Err(e) = app_handle.emit("log_event", log_event) {
-                log::warn!("Failed to emit log event to frontend: {}", e);
+                log::warn!("Failed to emit log event to frontend: {e}");
             }
         }
     }
@@ -1447,7 +1409,7 @@ impl App {
         while let Ok(event) = pss_receiver.recv().await {
             let websocket_plugin_guard = websocket_plugin.lock().await;
             if let Err(e) = websocket_plugin_guard.broadcast_json_event(&event) {
-                log::error!("Failed to broadcast PSS event to WebSocket clients: {}", e);
+                log::error!("Failed to broadcast PSS event to WebSocket clients: {e}");
             }
         }
 
@@ -1463,8 +1425,8 @@ impl App {
 
         while let Some(event) = event_rx.recv().await {
             // Log the event
-            let event_log = format!(" UDP Event: {:?}", event);
-            log::info!("{}", event_log);
+            let event_log = format!(" UDP Event: {event:?}");
+            log::info!("{event_log}");
 
             // Emit to frontend via Tauri events
             let event_json =
@@ -1477,17 +1439,11 @@ impl App {
                 if let Some(app_handle) = TAURI_APP_HANDLE.get() {
                     if let Some(app) = app_handle.try_state::<Arc<App>>() {
                         let recording_handler = app.recording_event_handler();
-                        log::info!(
-                            "Forwarding PSS event to auto-recording handler: {:?}",
-                            event
-                        );
-                        log::debug!(
-                            "Forwarding PSS event to auto-recording handler: {:?}",
-                            event
-                        );
+                        log::info!("Forwarding PSS event to auto-recording handler: {event:?}");
+                        log::debug!("Forwarding PSS event to auto-recording handler: {event:?}");
                         // Handle PSS event for automatic recording
                         if let Err(e) = recording_handler.handle_pss_event(&event).await {
-                            log::warn!("Failed to handle PSS event for recording: {}", e);
+                            log::warn!("Failed to handle PSS event for recording: {e}");
                         }
 
                         // Close mpv if match resumes or challenge resolved
@@ -1498,7 +1454,7 @@ impl App {
                             } if a == "start" => {
                                 log::debug!("Closing mpv on clock start (resume)");
                                 if let Err(e) = app.close_mpv_if_running().await {
-                                    log::debug!("close_mpv_if_running error: {}", e);
+                                    log::debug!("close_mpv_if_running error: {e}");
                                 }
                             }
                             crate::plugins::plugin_udp::PssEvent::Challenge {
@@ -1509,7 +1465,7 @@ impl App {
                                         "Closing mpv on challenge resolution (accepted/rejected)"
                                     );
                                     if let Err(e) = app.close_mpv_if_running().await {
-                                        log::debug!("close_mpv_if_running error: {}", e);
+                                        log::debug!("close_mpv_if_running error: {e}");
                                     }
                                 }
                             }
@@ -1522,7 +1478,7 @@ impl App {
                             match app.database_plugin().get_pooled_connection() {
                                 Ok(conn) => {
                                     let enabled = UIOps::get_ui_setting(
-                                        &*conn,
+                                        &conn,
                                         "ivr.replay.auto_on_challenge",
                                     )
                                     .ok()
@@ -1532,7 +1488,7 @@ impl App {
                                     if enabled {
                                         if let Err(e) = app.replay_round_now(Some("OBS_REC")).await
                                         {
-                                            log::warn!("Auto IVR replay failed: {}", e);
+                                            log::warn!("Auto IVR replay failed: {e}");
                                         } else {
                                             log::info!(
                                                 "Auto IVR replay triggered by challenge event"
@@ -1540,7 +1496,7 @@ impl App {
                                         }
                                     }
                                 }
-                                Err(e) => log::warn!("Failed to read IVR settings: {}", e),
+                                Err(e) => log::warn!("Failed to read IVR settings: {e}"),
                             }
                         }
                     }
@@ -1550,7 +1506,7 @@ impl App {
             // Log to file
             let log_manager_guard = log_manager.lock().await;
             if let Err(e) = log_manager_guard.log("udp", "INFO", &event_log) {
-                log::warn!("Failed to log UDP event: {}", e);
+                log::warn!("Failed to log UDP event: {e}");
             }
         }
 
