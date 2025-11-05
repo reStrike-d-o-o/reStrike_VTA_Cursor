@@ -263,9 +263,7 @@ impl HybridSettingsProvider {
             match self.get_from_database(key).await {
                 Ok(value) => Ok(value),
                 Err(e) => {
-                    log::warn!(
-                        "Database lookup failed for '{key}', falling back to JSON: {e}"
-                    );
+                    log::warn!("Database lookup failed for '{key}', falling back to JSON: {e}");
                     self.get_from_json(key).await
                 }
             }

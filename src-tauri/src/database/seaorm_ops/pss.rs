@@ -10,7 +10,10 @@ use sea_orm::{
 };
 
 /// Insert a PSS event into the canonical `event` table using SeaORM.
-pub async fn insert_event(conn: &DatabaseConnection, event_model: &PssEventV2) -> Result<i64, DbErr> {
+pub async fn insert_event(
+    conn: &DatabaseConnection,
+    event_model: &PssEventV2,
+) -> Result<i64, DbErr> {
     let session_id = to_i32(event_model.session_id, "session_id")?;
     let match_id = opt_i64_to_i32(event_model.match_id, "match_id")?;
     let round_id = opt_i64_to_i32(event_model.round_id, "round_id")?;
@@ -100,9 +103,7 @@ pub async fn insert_event_details(
         .await?
         .is_none()
     {
-        warn!(
-            "Skipping event detail insert because event {event_id} does not exist"
-        );
+        warn!("Skipping event detail insert because event {event_id} does not exist");
         return Ok(());
     }
 
@@ -199,10 +200,7 @@ pub async fn get_current_scores_for_match(
 }
 
 /// Insert a warning entry for a match.
-pub async fn insert_warning(
-    conn: &DatabaseConnection,
-    warning: &PssWarning,
-) -> Result<i64, DbErr> {
+pub async fn insert_warning(conn: &DatabaseConnection, warning: &PssWarning) -> Result<i64, DbErr> {
     let match_id = resolve_match_identifier(conn, &warning.match_id).await?;
     let side = position_to_side(warning.athlete_position)?;
     let round_id = opt_i64_to_i32(warning.round_id, "round_id")?;
@@ -284,10 +282,7 @@ fn map_event_detail(model: event_detail::Model) -> PssEventDetail {
     }
 }
 
-fn map_score(
-    model: score::Model,
-    match_model: Option<matches::Model>,
-) -> Result<PssScore, DbErr> {
+fn map_score(model: score::Model, match_model: Option<matches::Model>) -> Result<PssScore, DbErr> {
     let timestamp = model
         .timestamp
         .as_deref()
@@ -350,7 +345,11 @@ async fn resolve_match_identifier(
 ) -> Result<i32, DbErr> {
     if let Ok(parsed) = identifier.parse::<i64>() {
         if let Ok(value) = to_i32(parsed, "match_id") {
-            if matches::Entity::find_by_id(value).one(conn).await?.is_some() {
+            if matches::Entity::find_by_id(value)
+                .one(conn)
+                .await?
+                .is_some()
+            {
                 return Ok(value);
             }
         }
@@ -386,9 +385,7 @@ pub(crate) fn to_i32(value: i64, field: &str) -> Result<i32, DbErr> {
 }
 
 pub(crate) fn opt_i64_to_i32(value: Option<i64>, field: &str) -> Result<Option<i32>, DbErr> {
-    value
-        .map(|inner| to_i32(inner, field))
-        .transpose()
+    value.map(|inner| to_i32(inner, field)).transpose()
 }
 
 pub(crate) fn parse_rfc3339(value: &str, field: &str) -> Result<ChronoDateTime<Utc>, DbErr> {

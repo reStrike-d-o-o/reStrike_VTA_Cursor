@@ -525,9 +525,7 @@ impl UdpServer {
             match UdpSocket::bind(&candidate_addr) {
                 Ok(s) => {
                     if let Err(e) = s.set_nonblocking(true) {
-                        log::warn!(
-                            "Failed to configure UDP socket for {candidate_addr}: {e}"
-                        );
+                        log::warn!("Failed to configure UDP socket for {candidate_addr}: {e}");
                         last_error = Some(e);
                         continue;
                     }
@@ -546,9 +544,7 @@ impl UdpServer {
             socket
         } else {
             let error_msg = if let Some(e) = last_error {
-                format!(
-                    "Failed to bind UDP socket after trying all candidates: {e}"
-                )
+                format!("Failed to bind UDP socket after trying all candidates: {e}")
             } else {
                 "Failed to bind UDP socket: no candidates available".to_string()
             };
@@ -742,9 +738,7 @@ impl UdpServer {
                 Ok(())
             }
             Err(e) => {
-                log::warn!(
-                    "Failed to initialize event type cache: {e}. Continuing without cache."
-                );
+                log::warn!("Failed to initialize event type cache: {e}. Continuing without cache.");
                 // Don't fail the entire UDP server startup if event type cache fails
                 Ok(())
             }
@@ -797,8 +791,9 @@ impl UdpServer {
                             *guard
                         };
                         if let Some(tid) = tournament_id_snapshot {
-                            if let Err(err) =
-                                database.set_pss_match_tournament_context(new_id, Some(tid)).await
+                            if let Err(err) = database
+                                .set_pss_match_tournament_context(new_id, Some(tid))
+                                .await
                             {
                                 log::warn!(
                                     "Failed to apply tournament context to match {new_id}: {err}"
@@ -850,9 +845,9 @@ impl UdpServer {
                         }
                     }
                     Ok(_) => {}
-                    Err(e) => log::warn!(
-                        "FightLoaded: failed to insert match {auto_match_key}: {e}"
-                    ),
+                    Err(e) => {
+                        log::warn!("FightLoaded: failed to insert match {auto_match_key}: {e}")
+                    }
                 }
             }
             PssEvent::MatchConfig {
@@ -910,12 +905,8 @@ impl UdpServer {
                 if let Err(e) = database.update_pss_match(db_match_id, &pss_match).await {
                     log::warn!("Failed to update PSS match {effective_match_id}: {e}");
                 } else {
-                    log::info!(
-                        "Current match set: {effective_match_id} (db id {db_match_id})"
-                    );
-                    log::info!(
-                        "Current match set: {effective_match_id} (db id {db_match_id})"
-                    );
+                    log::info!("Current match set: {effective_match_id} (db id {db_match_id})");
+                    log::info!("Current match set: {effective_match_id} (db id {db_match_id})");
 
                     let tournament_id_snapshot = {
                         let guard = current_tournament_id.lock().unwrap();
@@ -999,9 +990,9 @@ impl UdpServer {
                                 }
                             }
                         }
-                        Err(e) => log::warn!(
-                            "Failed to fetch match athletes for {db_match_id}: {e}"
-                        ),
+                        Err(e) => {
+                            log::warn!("Failed to fetch match athletes for {db_match_id}: {e}")
+                        }
                     }
                 }
             }
@@ -1144,9 +1135,7 @@ impl UdpServer {
 
         if let Some(details) = Self::extract_event_details(event, recent_hit_levels) {
             if let Err(e) = database.store_pss_event_details(event_id, &details).await {
-                log::warn!(
-                    "Skipping event details for event {event_id} due to error: {e}"
-                );
+                log::warn!("Skipping event details for event {event_id} due to error: {e}");
             }
         }
 
@@ -1274,7 +1263,7 @@ impl UdpServer {
             event_type_id,
             Utc::now(),
             format!("{event:?}"), // Raw data representation
-            0,                      // Event sequence will be set by database
+            0,                    // Event sequence will be set by database
         );
 
         // Set match, round, and tournament IDs
@@ -2288,9 +2277,7 @@ impl UdpServer {
             })?;
 
             let parsed = value.parse::<u8>().map_err(|_| {
-                AppError::ConfigError(format!(
-                    "Invalid {field_name}: '{value}' (not a valid u8)"
-                ))
+                AppError::ConfigError(format!("Invalid {field_name}: '{value}' (not a valid u8)"))
             })?;
 
             if parsed < min || parsed > max {
@@ -2309,9 +2296,7 @@ impl UdpServer {
             })?;
 
             let parsed = value.parse::<u32>().map_err(|_| {
-                AppError::ConfigError(format!(
-                    "Invalid {field_name}: '{value}' (not a valid u32)"
-                ))
+                AppError::ConfigError(format!("Invalid {field_name}: '{value}' (not a valid u32)"))
             })?;
 
             if parsed < min || parsed > max {
@@ -2369,9 +2354,7 @@ impl UdpServer {
             match result {
                 Ok(event) => Ok(event),
                 Err(e) => {
-                    log::warn!(
-                        "Parsing failed for '{message}': {e}. Returning as Raw event."
-                    );
+                    log::warn!("Parsing failed for '{message}': {e}. Returning as Raw event.");
                     Ok(PssEvent::Raw(message.to_string()))
                 }
             }
@@ -2603,9 +2586,7 @@ impl UdpServer {
                     None
                 };
 
-                log::debug!(
-                    "Parsed Winner event: name={name}, classification={classification:?}"
-                );
+                log::debug!("Parsed Winner event: name={name}, classification={classification:?}");
                 Ok(PssEvent::Winner {
                     name,
                     classification,
@@ -2773,9 +2754,7 @@ impl UdpServer {
                     }
                 }
 
-                log::debug!(
-                    "Parsed CurrentScores event: a1={athlete1_score}, a2={athlete2_score}"
-                );
+                log::debug!("Parsed CurrentScores event: a1={athlete1_score}, a2={athlete2_score}");
                 Ok(PssEvent::CurrentScores {
                     athlete1_score,
                     athlete2_score,
@@ -2894,9 +2873,7 @@ impl UdpServer {
 
             // Handle any other unknown event types gracefully
             unknown_event => {
-                log::info!(
-                    "Unknown PSS event type: '{unknown_event}' in message: '{message}'"
-                );
+                log::info!("Unknown PSS event type: '{unknown_event}' in message: '{message}'");
                 Ok(PssEvent::Raw(message.to_string()))
             }
         };
@@ -2949,12 +2926,7 @@ impl UdpServer {
     pub fn current_match_db_id(&self) -> Option<i64> {
         self.websocket_server
             .get_current_match_db_id()
-            .or_else(|| {
-                self.current_match_id
-                    .lock()
-                    .ok()
-                    .and_then(|guard| *guard)
-            })
+            .or_else(|| self.current_match_id.lock().ok().and_then(|guard| *guard))
     }
 
     pub fn status_snapshot(&self) -> UdpServerStatus {

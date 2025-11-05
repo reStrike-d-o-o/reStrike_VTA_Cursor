@@ -1329,9 +1329,7 @@ impl PssUdpOperations {
 
     pub fn get_pss_matches(conn: &Connection, limit: Option<i64>) -> DatabaseResult<Vec<PssMatch>> {
         let limit_clause = limit.map(|l| format!(" LIMIT {l}")).unwrap_or_default();
-        let query = format!(
-            "SELECT * FROM pss_matches ORDER BY created DESC{limit_clause}"
-        );
+        let query = format!("SELECT * FROM pss_matches ORDER BY created DESC{limit_clause}");
 
         let mut stmt = conn.prepare(&query)?;
         let matches = stmt
@@ -3596,9 +3594,7 @@ impl DatabaseConnection {
         let conn = self.get_connection().await?;
         let mut stmt = conn.prepare("SELECT * FROM obs_connections WHERE name = ?")?;
 
-        let connection = stmt
-            .query_row([name], ObsConnection::from_row)
-            .optional()?;
+        let connection = stmt.query_row([name], ObsConnection::from_row).optional()?;
 
         Ok(connection)
     }

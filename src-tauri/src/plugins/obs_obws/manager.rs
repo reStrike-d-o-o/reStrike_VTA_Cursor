@@ -62,9 +62,10 @@ impl ObsManager {
 
         let client_arc = {
             let clients = self.clients.lock().await;
-            clients.get(name).cloned().ok_or_else(|| {
-                AppError::ConfigError(format!("Connection '{name}' not found"))
-            })?
+            clients
+                .get(name)
+                .cloned()
+                .ok_or_else(|| AppError::ConfigError(format!("Connection '{name}' not found")))?
         };
 
         let mut tasks = self.health_tasks.lock().await;
@@ -117,9 +118,7 @@ impl ObsManager {
                                 Some(snapshot)
                             }
                             Err(err) => {
-                                log::trace!(
-                                    "OBS stats unavailable for {task_name}: {err}"
-                                );
+                                log::trace!("OBS stats unavailable for {task_name}: {err}");
                                 None
                             }
                         }
@@ -202,11 +201,9 @@ impl ObsManager {
 
         let existing_client_arc = {
             let mut clients = self.clients.lock().await;
-            clients
-                .remove(old_name)
-                .ok_or_else(|| {
-                    AppError::ConfigError(format!("Connection '{old_name}' not found"))
-                })?
+            clients.remove(old_name).ok_or_else(|| {
+                AppError::ConfigError(format!("Connection '{old_name}' not found"))
+            })?
         };
 
         let was_connected = {
@@ -298,9 +295,7 @@ impl ObsManager {
             let clients = self.clients.lock().await;
             clients.get(name).cloned()
         }
-        .ok_or_else(|| {
-            AppError::ConfigError(format!("Connection '{name}' not found"))
-        })?;
+        .ok_or_else(|| AppError::ConfigError(format!("Connection '{name}' not found")))?;
 
         {
             let mut client = client_arc.lock().await;
@@ -755,9 +750,7 @@ impl ObsManager {
         for (name, client_arc) in clients.iter() {
             let client = client_arc.lock().await;
             if let Err(e) = client.setup_status_listener().await {
-                log::warn!(
-                    "Warning: Failed to set up status listener for '{name}': {e}"
-                );
+                log::warn!("Warning: Failed to set up status listener for '{name}': {e}");
             }
         }
         Ok(())

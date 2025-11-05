@@ -296,9 +296,7 @@ impl DrivePlugin {
             operation(drive)
         })
         .await
-        .map_err(|e| {
-            AppError::ConfigError(format!("{context} worker join error: {e}"))
-        })?
+        .map_err(|e| AppError::ConfigError(format!("{context} worker join error: {e}")))?
     }
 
     async fn download_file(&self, file_id: &str) -> AppResult<PathBuf> {

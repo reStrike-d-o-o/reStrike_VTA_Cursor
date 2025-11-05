@@ -64,8 +64,8 @@ fn cmd_gen() {
     let public_key = keypair.public_key().as_ref().to_vec();
     let sk_b64 = general_purpose::STANDARD.encode(pkcs8_bytes.as_ref());
     let pk_b64 = general_purpose::STANDARD.encode(&public_key);
-    println!("Private key (PKCS8, base64):\n{}", sk_b64);
-    println!("Public key (base64, embed into app):\n{}", pk_b64);
+    println!("Private key (PKCS8, base64):\n{sk_b64}");
+    println!("Public key (base64, embed into app):\n{pk_b64}");
     if let Some(out) = read_arg("out") {
         save_to(&out, &sk_b64);
     }
@@ -76,7 +76,7 @@ fn cmd_pub() {
     let sk = general_purpose::STANDARD.decode(sk_b64).expect("decode sk");
     let keypair = signature::Ed25519KeyPair::from_pkcs8(&sk).expect("from pkcs8");
     let pk_b64 = general_purpose::STANDARD.encode(keypair.public_key().as_ref());
-    println!("Public key (base64):\n{}", pk_b64);
+    println!("Public key (base64):\n{pk_b64}");
 }
 
 fn cmd_issue() {
@@ -118,7 +118,7 @@ fn cmd_issue() {
         signature: general_purpose::STANDARD.encode(sig.as_ref()),
     };
     let token_str = serde_json::to_string_pretty(&token).unwrap();
-    println!("{}", token_str);
+    println!("{token_str}");
     if let Some(out) = read_arg("out") {
         save_to(&out, &token_str);
     }
@@ -131,7 +131,7 @@ fn cmd_fingerprint() {
     hasher.update(uid.as_bytes());
     hasher.update(b"rst_vta_license_v1");
     let mh = hex::encode(hasher.finalize());
-    println!("{}", mh);
+    println!("{mh}");
 }
 
 fn main() {

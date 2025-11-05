@@ -1,18 +1,18 @@
 use crate::{
     database::models::{
-        PssEventRecognitionHistory, PssEventStatistics, PssEventValidationResult,
-        PssEventValidationRule, PssEventV2, PssUnknownEvent,
+        PssEventRecognitionHistory, PssEventStatistics, PssEventV2, PssEventValidationResult,
+        PssEventValidationRule, PssUnknownEvent,
     },
     entity::{
-        event, event_recognition_history, event_statistic, event_unknown,
-        event_validation_result, event_validation_rule,
+        event, event_recognition_history, event_statistic, event_unknown, event_validation_result,
+        event_validation_rule,
     },
 };
 use chrono::{TimeZone, Utc};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, ConnectionTrait, DatabaseConnection,
-    DbBackend, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Statement,
-    TransactionTrait,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, ConnectionTrait,
+    DatabaseConnection, DbBackend, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+    Statement, TransactionTrait,
 };
 use serde_json::json;
 
@@ -38,10 +38,7 @@ pub async fn update_event_recognition_status(
     let txn = conn.begin().await?;
     let event_id_i32 = pss::to_i32(event_id, "event_id")?;
 
-    let Some(model) = event::Entity::find_by_id(event_id_i32)
-        .one(&txn)
-        .await?
-    else {
+    let Some(model) = event::Entity::find_by_id(event_id_i32).one(&txn).await? else {
         txn.rollback().await?;
         return Err(DbErr::Custom(format!("Event {event_id} not found")));
     };
@@ -304,10 +301,8 @@ pub async fn get_unknown_events(
         .limit(limit);
 
     if let Some(session_id) = session_id {
-        query = query.filter(event_unknown::Column::SessionId.eq(pss::to_i32(
-            session_id,
-            "session_id",
-        )?));
+        query = query
+            .filter(event_unknown::Column::SessionId.eq(pss::to_i32(session_id, "session_id")?));
     }
 
     let records = query.all(conn).await?;
@@ -561,9 +556,7 @@ fn map_unknown_event(model: event_unknown::Model) -> Result<PssUnknownEvent, DbE
     })
 }
 
-fn map_recognition_history(
-    model: event_recognition_history::Model,
-) -> PssEventRecognitionHistory {
+fn map_recognition_history(model: event_recognition_history::Model) -> PssEventRecognitionHistory {
     PssEventRecognitionHistory {
         id: Some(model.id as i64),
         event_id: model.event_id as i64,

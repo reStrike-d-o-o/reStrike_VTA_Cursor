@@ -4,15 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// OBS connection role
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum ObsConnectionRole {
     Recording,
     Streaming,
     #[default]
     None,
 }
-
 
 /// OBS connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

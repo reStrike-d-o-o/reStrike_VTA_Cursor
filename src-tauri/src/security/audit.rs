@@ -65,27 +65,8 @@ impl AuditAction {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "session_create" => Some(Self::SessionCreate),
-            "session_destroy" => Some(Self::SessionDestroy),
-            "auth_success" => Some(Self::AuthenticationSuccess),
-            "auth_failure" => Some(Self::AuthenticationFailure),
-            "config_read" => Some(Self::ConfigRead),
-            "config_create" => Some(Self::ConfigCreate),
-            "config_update" => Some(Self::ConfigUpdate),
-            "config_delete" => Some(Self::ConfigDelete),
-            "key_rotation" => Some(Self::EncryptionKeyRotation),
-            "db_migration" => Some(Self::DatabaseMigration),
-            "security_change" => Some(Self::SecuritySettingsChange),
-            "access_granted" => Some(Self::AccessGranted),
-            "access_denied" => Some(Self::AccessDenied),
-            "privilege_escalation" => Some(Self::PrivilegeEscalation),
-            "suspicious_activity" => Some(Self::SuspiciousActivity),
-            "security_violation" => Some(Self::SecurityViolation),
-            "intrusion_attempt" => Some(Self::IntrusionAttempt),
-            _ => None,
-        }
+    pub fn from_key(s: &str) -> Option<Self> {
+        s.parse().ok()
     }
 
     pub fn severity_level(&self) -> SeverityLevel {
@@ -105,6 +86,33 @@ impl AuditAction {
                 SeverityLevel::High
             }
             Self::SecurityViolation | Self::IntrusionAttempt => SeverityLevel::Critical,
+        }
+    }
+}
+
+impl std::str::FromStr for AuditAction {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "session_create" => Ok(Self::SessionCreate),
+            "session_destroy" => Ok(Self::SessionDestroy),
+            "auth_success" => Ok(Self::AuthenticationSuccess),
+            "auth_failure" => Ok(Self::AuthenticationFailure),
+            "config_read" => Ok(Self::ConfigRead),
+            "config_create" => Ok(Self::ConfigCreate),
+            "config_update" => Ok(Self::ConfigUpdate),
+            "config_delete" => Ok(Self::ConfigDelete),
+            "key_rotation" => Ok(Self::EncryptionKeyRotation),
+            "db_migration" => Ok(Self::DatabaseMigration),
+            "security_change" => Ok(Self::SecuritySettingsChange),
+            "access_granted" => Ok(Self::AccessGranted),
+            "access_denied" => Ok(Self::AccessDenied),
+            "privilege_escalation" => Ok(Self::PrivilegeEscalation),
+            "suspicious_activity" => Ok(Self::SuspiciousActivity),
+            "security_violation" => Ok(Self::SecurityViolation),
+            "intrusion_attempt" => Ok(Self::IntrusionAttempt),
+            _ => Err(()),
         }
     }
 }
@@ -130,14 +138,22 @@ impl SeverityLevel {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_key(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl std::str::FromStr for SeverityLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "info" => Some(Self::Info),
-            "low" => Some(Self::Low),
-            "medium" => Some(Self::Medium),
-            "high" => Some(Self::High),
-            "critical" => Some(Self::Critical),
-            _ => None,
+            "info" => Ok(Self::Info),
+            "low" => Ok(Self::Low),
+            "medium" => Ok(Self::Medium),
+            "high" => Ok(Self::High),
+            "critical" => Ok(Self::Critical),
+            _ => Err(()),
         }
     }
 }
@@ -449,9 +465,7 @@ impl SecurityAudit {
 
         // Unique users
         let unique_users: i64 = conn.query_row(
-            &format!(
-                "SELECT COUNT(DISTINCT user_context) FROM config_audit {where_clause}"
-            ),
+            &format!("SELECT COUNT(DISTINCT user_context) FROM config_audit {where_clause}"),
             rusqlite::params_from_iter(&params),
             |row| row.get(0),
         )?;
@@ -481,16 +495,14 @@ impl SecurityAudit {
             params![cutoff.to_rfc3339()],
         )?;
 
-        log::info!(
-            "Cleaned up {deleted} old audit entries older than {retention_days} days"
-        );
+        log::info!("Cleaned up {deleted} old audit entries older than {retention_days} days");
         Ok(deleted as u64)
     }
 
     /// Helper function to create AuditEntry from database row
     fn audit_entry_from_row(row: &rusqlite::Row) -> rusqlite::Result<AuditEntry> {
         let action_str: String = row.get(2)?;
-        let action = AuditAction::from_str(&action_str).ok_or_else(|| {
+        let action = action_str.parse::<AuditAction>().map_err(|_| {
             rusqlite::Error::InvalidColumnType(2, "action".to_string(), rusqlite::types::Type::Text)
         })?;
 

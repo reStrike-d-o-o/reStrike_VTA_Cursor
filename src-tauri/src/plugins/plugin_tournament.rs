@@ -212,9 +212,8 @@ impl TournamentPlugin {
             AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
 
-        TournamentOperations::get_active_tournament_day(&conn, tournament_id).map_err(|e| {
-            AppError::ConfigError(format!("Failed to get active tournament day: {e}"))
-        })
+        TournamentOperations::get_active_tournament_day(&conn, tournament_id)
+            .map_err(|e| AppError::ConfigError(format!("Failed to get active tournament day: {e}")))
     }
 
     /// Update tournament logo
@@ -241,9 +240,7 @@ impl TournamentPlugin {
             let client = reqwest::blocking::Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
-                .map_err(|e| {
-                    AppError::ConfigError(format!("Failed to create HTTP client: {e}"))
-                })?;
+                .map_err(|e| AppError::ConfigError(format!("Failed to create HTTP client: {e}")))?;
 
             let query = format!("{city}, {country}");
             let encoded_query = urlencoding::encode(&query);
@@ -380,9 +377,7 @@ impl TournamentPlugin {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| {
-                AppError::ConfigError(format!("Failed to resolve male gender id: {e}"))
-            })?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to resolve male gender id: {e}")))?;
 
         let tournament_days = TournamentOperations::get_tournament_days(&conn, tournament_id)?;
         let mut day_stats: Vec<TournamentDayStats> = Vec::new();
@@ -462,9 +457,7 @@ impl TournamentPlugin {
                 ORDER BY COALESCE(category, ''), medal_rank ASC, match_id ASC
                 "#,
             )
-            .map_err(|e| {
-                AppError::ConfigError(format!("Failed to prepare medalist query: {e}"))
-            })?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to prepare medalist query: {e}")))?;
         let medal_rows = medal_stmt
             .query_map(params![tournament_uuid.clone()], |row| {
                 let winner_color: String = row.get(3)?;
@@ -482,13 +475,13 @@ impl TournamentPlugin {
                     medal_rank: row.get(9)?,
                 })
             })
-            .map_err(|e| {
-                AppError::ConfigError(format!("Failed to iterate medalist rows: {e}"))
-            })?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to iterate medalist rows: {e}")))?;
         for row in medal_rows {
-            champions.push(row.map_err(|e| {
-                AppError::ConfigError(format!("Failed to read medalist row: {e}"))
-            })?);
+            champions.push(
+                row.map_err(|e| {
+                    AppError::ConfigError(format!("Failed to read medalist row: {e}"))
+                })?,
+            );
         }
 
         if champions.is_empty() {
@@ -506,9 +499,7 @@ impl TournamentPlugin {
                     WHERE m.tournament_id = ? AND m.category IS NOT NULL"#,
                 )
                 .map_err(|e| {
-                    AppError::ConfigError(format!(
-                        "Failed to prepare champion fallback query: {e}"
-                    ))
+                    AppError::ConfigError(format!("Failed to prepare champion fallback query: {e}"))
                 })?;
 
             let mut score_stmt = conn

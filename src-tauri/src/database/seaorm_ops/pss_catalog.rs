@@ -5,17 +5,14 @@ use crate::{
 use chrono::{TimeZone, Utc};
 use sea_orm::{
     sea_query::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait,
-    DatabaseBackend, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    QueryResult, Statement, Value,
+    DatabaseBackend, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder, QueryResult,
+    QuerySelect, Statement, Value,
 };
 use uuid::Uuid;
 
 use super::pss;
 
-fn map_match(
-    model: matches::Model,
-    related_tournament: Option<tournament::Model>,
-) -> PssMatch {
+fn map_match(model: matches::Model, related_tournament: Option<tournament::Model>) -> PssMatch {
     PssMatch {
         id: Some(model.id as i64),
         uuid: Some(model.uuid.clone()),
@@ -47,10 +44,7 @@ fn map_athlete(model: athlete::Model) -> PssAthlete {
         .clone()
         .or_else(|| model.display_name.clone())
         .unwrap_or_else(|| "Unknown".to_string());
-    let athlete_code = model
-        .pss_code
-        .clone()
-        .unwrap_or_else(|| model.uuid.clone());
+    let athlete_code = model.pss_code.clone().unwrap_or_else(|| model.uuid.clone());
 
     PssAthlete {
         id: Some(model.id as i64),
@@ -212,16 +206,12 @@ pub async fn get_matches(
     Ok(records.into_iter().map(|(m, t)| map_match(m, t)).collect())
 }
 
-pub async fn insert_match(
-    conn: &DatabaseConnection,
-    match_data: &PssMatch,
-) -> Result<i64, DbErr> {
+pub async fn insert_match(conn: &DatabaseConnection, match_data: &PssMatch) -> Result<i64, DbErr> {
     let uuid = match_data
         .uuid
         .clone()
         .unwrap_or_else(|| Uuid::new_v4().to_string());
-    let tournament_id =
-        resolve_tournament_id(conn, match_data.tournament_id.clone()).await?;
+    let tournament_id = resolve_tournament_id(conn, match_data.tournament_id.clone()).await?;
 
     let active = matches::ActiveModel {
         uuid: Set(uuid),
@@ -406,10 +396,7 @@ pub async fn get_match_history_with_videos(
             })
             .collect();
 
-        entries.push(MatchHistoryEntry {
-            match_row,
-            videos,
-        });
+        entries.push(MatchHistoryEntry { match_row, videos });
     }
 
     Ok(entries)

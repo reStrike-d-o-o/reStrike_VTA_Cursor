@@ -46,19 +46,8 @@ impl ConfigCategory {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "obs_credentials" => Some(Self::ObsCredentials),
-            "api_keys" => Some(Self::ApiKeys),
-            "database_config" => Some(Self::DatabaseConfig),
-            "network_secrets" => Some(Self::NetworkSecrets),
-            "license_info" => Some(Self::LicenseInfo),
-            "user_preferences" => Some(Self::UserPreferences),
-            "system_config" => Some(Self::SystemConfig),
-            "encryption_keys" => Some(Self::EncryptionKeys),
-            "control_room" => Some(Self::ControlRoom),
-            _ => None,
-        }
+    pub fn from_key(s: &str) -> Option<Self> {
+        s.parse().ok()
     }
 
     pub fn display_name(&self) -> &'static str {
@@ -90,6 +79,25 @@ impl ConfigCategory {
     }
 }
 
+impl std::str::FromStr for ConfigCategory {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "obs_credentials" => Ok(Self::ObsCredentials),
+            "api_keys" => Ok(Self::ApiKeys),
+            "database_config" => Ok(Self::DatabaseConfig),
+            "network_secrets" => Ok(Self::NetworkSecrets),
+            "license_info" => Ok(Self::LicenseInfo),
+            "user_preferences" => Ok(Self::UserPreferences),
+            "system_config" => Ok(Self::SystemConfig),
+            "encryption_keys" => Ok(Self::EncryptionKeys),
+            "control_room" => Ok(Self::ControlRoom),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Access levels for configuration operations
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AccessLevel {
@@ -107,12 +115,20 @@ impl AccessLevel {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_key(s: &str) -> Option<Self> {
+        s.parse().ok()
+    }
+}
+
+impl std::str::FromStr for AccessLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "read_only" => Some(Self::ReadOnly),
-            "configuration" => Some(Self::Configuration),
-            "administrator" => Some(Self::Administrator),
-            _ => None,
+            "read_only" => Ok(Self::ReadOnly),
+            "configuration" => Ok(Self::Configuration),
+            "administrator" => Ok(Self::Administrator),
+            _ => Err(()),
         }
     }
 }
@@ -269,7 +285,7 @@ impl SecureConfigManager {
 
         let session_result = stmt.query_row(params![session_id], |row| {
             let access_level_str: String = row.get(2)?;
-            let access_level = AccessLevel::from_str(&access_level_str).ok_or_else(|| {
+            let access_level = access_level_str.parse::<AccessLevel>().map_err(|_| {
                 rusqlite::Error::InvalidColumnType(
                     2,
                     "access_level".to_string(),
@@ -487,7 +503,7 @@ impl SecureConfigManager {
                 let encrypted_data: EncryptedData = serde_json::from_str(&encrypted_json)?;
 
                 // Check access level for category
-                if let Some(category) = ConfigCategory::from_str(&category_str) {
+                if let Ok(category) = category_str.parse::<ConfigCategory>() {
                     if !session.can_access(&category.required_access_level()) {
                         return Err(SecurityError::Authentication(
                             "Insufficient access level".to_string(),
@@ -553,7 +569,7 @@ impl SecureConfigManager {
 
         match category_result {
             Ok(category_str) => {
-                if let Some(category) = ConfigCategory::from_str(&category_str) {
+                if let Ok(category) = category_str.parse::<ConfigCategory>() {
                     if !session.can_access(&category.required_access_level()) {
                         return Err(SecurityError::Authentication(
                             "Insufficient access level".to_string(),

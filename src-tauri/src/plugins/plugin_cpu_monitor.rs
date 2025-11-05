@@ -220,9 +220,7 @@ impl CpuMonitorPlugin {
                 })
                 .unwrap_or(0.0);
 
-            log::info!(
-                "[CPU_SYSTEM] Parsed CPU percentage: {total_cpu_percent:.1}%"
-            );
+            log::info!("[CPU_SYSTEM] Parsed CPU percentage: {total_cpu_percent:.1}%");
 
             // Get actual number of CPU cores (not logical processors)
             // Use num_cpus::get() for physical cores, not sysinfo which might return logical processors

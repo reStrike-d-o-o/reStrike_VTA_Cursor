@@ -1,17 +1,18 @@
 use std::path::{Path, PathBuf};
 
-use crate::importers::daedo::{import_tournament, ImportRequest};
 use crate::entity::{athlete, match_participant, matches, tournament};
+use crate::importers::daedo::{import_tournament, ImportRequest};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
 #[tauri::command]
 pub async fn validate_tournament_pss_integrity(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    let conn =
-        app.database_plugin().get_connection().await.map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}")))
-        })?;
+    let conn = app
+        .database_plugin()
+        .get_connection()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}"))))?;
     let conn_ref = &*conn;
     // Counts
     let counts = |sql: &str| -> i64 {
@@ -48,10 +49,11 @@ pub async fn validate_tournament_pss_integrity(
 pub async fn db_purge_all_tournament_pss_data(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    let mut conn =
-        app.database_plugin().get_connection().await.map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}")))
-        })?;
+    let mut conn = app
+        .database_plugin()
+        .get_connection()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}"))))?;
     use crate::database::operations::PssUdpOperations as Ops;
     Ops::purge_all_tournament_pss_data(&mut conn)
         .map_err(|e| TauriError::from(anyhow::anyhow!(format!("purge failed: {e}"))))?;
@@ -341,9 +343,7 @@ pub async fn obs_disconnect(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "OBS disconnect called for connection: '{connection_name}'"
-    );
+    log::info!("OBS disconnect called for connection: '{connection_name}'");
     if connection_name.is_empty() {
         return Err(TauriError::from(anyhow::anyhow!(
             "Connection name cannot be empty"
@@ -358,9 +358,7 @@ pub async fn obs_remove_connection(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "OBS remove connection called for connection: {connection_name}"
-    );
+    log::info!("OBS remove connection called for connection: {connection_name}");
     let _ = crate::tauri_commands_obws::obs_obws_remove_connection(
         connection_name.clone(),
         app.clone(),
@@ -831,9 +829,8 @@ pub async fn get_config_stats(app: State<'_, Arc<App>>) -> Result<serde_json::Va
 
     match app.config_manager().get_config_stats().await {
         Ok(stats) => {
-            let stats_json = serde_json::to_value(stats).map_err(|e| {
-                TauriError::from(anyhow::anyhow!("Failed to serialize stats: {e}"))
-            })?;
+            let stats_json = serde_json::to_value(stats)
+                .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize stats: {e}")))?;
             Ok(stats_json)
         }
         Err(e) => Err(TauriError::from(anyhow::anyhow!(
@@ -1363,10 +1360,11 @@ pub async fn pss_list_recent_matches(
     app: State<'_, Arc<App>>,
     limit: Option<i64>,
 ) -> Result<Vec<serde_json::Value>, TauriError> {
-    let conn =
-        app.database_plugin().get_connection().await.map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}")))
-        })?;
+    let conn = app
+        .database_plugin()
+        .get_connection()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}"))))?;
     // Return only matches that have at least one event; newest first
     let max = limit.unwrap_or(50);
     let mut stmt = conn.prepare(
@@ -1403,10 +1401,11 @@ pub async fn pss_list_recent_matches(
 /// Danger: clear all PSS matches and events for a fresh start
 #[tauri::command]
 pub async fn pss_clear_all_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let mut conn =
-        app.database_plugin().get_connection().await.map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}")))
-        })?;
+    let mut conn = app
+        .database_plugin()
+        .get_connection()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}"))))?;
     // Wrap in transaction for atomicity
     let tx = conn
         .transaction()
@@ -1454,10 +1453,11 @@ pub async fn tournament_progress_context(
     app: State<'_, Arc<App>>,
     mode: String,
 ) -> Result<serde_json::Value, TauriError> {
-    let mut conn =
-        app.database_plugin().get_connection().await.map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}")))
-        })?;
+    let mut conn = app
+        .database_plugin()
+        .get_connection()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("DB connection error: {e}"))))?;
 
     // Get current active tournament/day
     let active_tournament =
@@ -1522,9 +1522,7 @@ pub async fn tournament_progress_context(
                 &mut conn, tid, start_dt, 1,
             )
             .map_err(|e| {
-                TauriError::from(anyhow::anyhow!(format!(
-                    "create_tournament_days(new): {e}"
-                )))
+                TauriError::from(anyhow::anyhow!(format!("create_tournament_days(new): {e}")))
             })?;
             let _day =
                 crate::database::operations::TournamentOperations::get_active_tournament_day(
@@ -1562,19 +1560,15 @@ pub async fn pss_get_match_details(
         Ok(id) => id,
         Err(_) => return Err(TauriError::from(anyhow::anyhow!("Match not found"))),
     };
-    let match_id_i32 = i32::try_from(dbid)
-        .map_err(|_| TauriError::from(anyhow::anyhow!("Match not found")))?;
+    let match_id_i32 =
+        i32::try_from(dbid).map_err(|_| TauriError::from(anyhow::anyhow!("Match not found")))?;
 
     let seaorm = app.database_plugin().seaorm();
 
     let match_model = matches::Entity::find_by_id(match_id_i32)
         .one(&seaorm)
         .await
-        .map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!(
-                "match lookup failed: {e}"
-            )))
-        })?
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("match lookup failed: {e}"))))?
         .ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
 
     let tournament_uuid = if let Some(tournament_id) = match_model.tournament_id {
@@ -1585,9 +1579,7 @@ pub async fn pss_get_match_details(
             .one(&seaorm)
             .await
             .map_err(|e| {
-                TauriError::from(anyhow::anyhow!(format!(
-                    "tournament lookup failed: {e}"
-                )))
+                TauriError::from(anyhow::anyhow!(format!("tournament lookup failed: {e}")))
             })?
     } else {
         None
@@ -3998,9 +3990,7 @@ fn update_flags_from_reports(
                 }
             }
             Err(err) => {
-                log::warn!(
-                    "Failed updating flag metadata for IOC {code_key}: {err}"
-                );
+                log::warn!("Failed updating flag metadata for IOC {code_key}: {err}");
             }
         }
     }
@@ -4252,8 +4242,8 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
                 })?;
 
             for row in rows {
-                let (status, count) = row
-                    .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get stats: {e}")))?;
+                let (status, count) =
+                    row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get stats: {e}")))?;
                 let key = status.to_lowercase();
                 let entry = stats_map.entry(key).or_insert(0);
                 *entry += count;
@@ -4749,9 +4739,7 @@ pub async fn tournament_import_from_directory(
     tournament_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Importing tournament '{tournament_name}' from folder {folder_path}"
-    );
+    log::info!("Importing tournament '{tournament_name}' from folder {folder_path}");
 
     let db_path = app.database_plugin().get_database_path().map_err(|e| {
         TauriError::from(anyhow::anyhow!(format!(
@@ -4769,9 +4757,7 @@ pub async fn tournament_import_from_directory(
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Import task panicked: {e}"))))?
             .map_err(|e| {
-                TauriError::from(anyhow::anyhow!(format!(
-                    "Failed to import tournament: {e}"
-                )))
+                TauriError::from(anyhow::anyhow!(format!("Failed to import tournament: {e}")))
             })?;
 
     Ok(serde_json::json!({
@@ -4860,6 +4846,7 @@ pub async fn tournament_get(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn tournament_update(
     tournament_id: i64,
     name: String,
@@ -5098,9 +5085,7 @@ pub async fn tournament_get_active_day(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Getting active tournament day for tournament: {tournament_id}"
-    );
+    log::info!("Getting active tournament day for tournament: {tournament_id}");
 
     match app
         .tournament_plugin()
@@ -5190,9 +5175,7 @@ pub async fn get_tournament_statistics(
     tournament_id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Getting tournament statistics for tournament: {tournament_id}"
-    );
+    log::info!("Getting tournament statistics for tournament: {tournament_id}");
 
     match app
         .tournament_plugin()
@@ -5429,9 +5412,7 @@ pub async fn get_comprehensive_event_statistics(
     session_id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Getting comprehensive event statistics for session {session_id}"
-    );
+    log::info!("Getting comprehensive event statistics for session {session_id}");
 
     match app
         .database_plugin()
@@ -5456,9 +5437,7 @@ pub async fn get_events_by_status(
     limit: Option<i64>,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Getting events by status: {recognition_status} for session {session_id}"
-    );
+    log::info!("Getting events by status: {recognition_status} for session {session_id}");
 
     match app
         .database_plugin()
@@ -5524,9 +5503,7 @@ pub async fn set_udp_tournament_context(
     app: tauri::State<'_, crate::core::app::App>,
     tournament_id: Option<i64>,
 ) -> Result<(), TauriError> {
-    log::info!(
-        "Setting UDP tournament context: tournament_id={tournament_id:?}"
-    );
+    log::info!("Setting UDP tournament context: tournament_id={tournament_id:?}");
 
     app.udp_plugin()
         .set_tournament_context(tournament_id)
@@ -5625,9 +5602,7 @@ pub async fn restore_from_archive(
     start_date: String,
     end_date: String,
 ) -> Result<usize, TauriError> {
-    log::info!(
-        "Restoring events from archive between {start_date} and {end_date}"
-    );
+    log::info!("Restoring events from archive between {start_date} and {end_date}");
     let restored_count = app
         .database_plugin()
         .restore_from_archive(&start_date, &end_date)
@@ -5673,11 +5648,8 @@ pub async fn get_database_pool_stats(
 ) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting database pool statistics");
     let stats = app.database_plugin().get_pool_stats();
-    serde_json::to_value(stats).map_err(|e| {
-        TauriError::from(anyhow::anyhow!(
-            "Failed to serialize pool statistics: {e}"
-        ))
-    })
+    serde_json::to_value(stats)
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to serialize pool statistics: {e}")))
 }
 
 /// Phase 2 Optimization: Clean up database pool
@@ -5698,9 +5670,7 @@ pub async fn get_cache_statistics(
 ) -> Result<serde_json::Value, tauri::Error> {
     let cache_stats = app.event_cache().get_cache_stats().await;
     serde_json::to_value(cache_stats).map_err(|e| {
-        tauri::Error::from(anyhow::anyhow!(
-            "Failed to serialize cache statistics: {e}"
-        ))
+        tauri::Error::from(anyhow::anyhow!("Failed to serialize cache statistics: {e}"))
     })
 }
 
@@ -5841,9 +5811,7 @@ pub async fn get_match_analytics(
 ) -> Result<serde_json::Value, tauri::Error> {
     let match_analytics = app.advanced_analytics().get_match_analytics().await;
     serde_json::to_value(match_analytics).map_err(|e| {
-        tauri::Error::from(anyhow::anyhow!(
-            "Failed to serialize match analytics: {e}"
-        ))
+        tauri::Error::from(anyhow::anyhow!("Failed to serialize match analytics: {e}"))
     })
 }
 
@@ -5899,9 +5867,7 @@ pub async fn obs_list_scenes(app: State<'_, Arc<App>>) -> Result<serde_json::Val
                     }
                 }
                 Err(e) => {
-                    log::warn!(
-                        "Failed to get scenes from connection '{connection_name}': {e}"
-                    );
+                    log::warn!("Failed to get scenes from connection '{connection_name}': {e}");
                 }
             }
         } else {
@@ -5930,9 +5896,7 @@ pub async fn simulation_start(
     duration: u32,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Starting simulation: mode={mode}, scenario={scenario}, duration={duration}"
-    );
+    log::info!("Starting simulation: mode={mode}, scenario={scenario}, duration={duration}");
 
     // Get the actual UDP settings from the app configuration
     let udp_settings = app.config_manager().get_udp_settings().await;
@@ -6033,9 +5997,7 @@ pub async fn simulation_send_event(
     params: serde_json::Value,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Sending simulation event: type={event_type}, params={params:?}"
-    );
+    log::info!("Sending simulation event: type={event_type}, params={params:?}");
 
     // Get the actual UDP settings from the app configuration
     let udp_settings = app.config_manager().get_udp_settings().await;
@@ -6407,9 +6369,7 @@ pub async fn simulation_run_selective_self_test(
     selected_categories: Vec<String>,
     _app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Running selective self-test for categories: {selected_categories:?}"
-    );
+    log::info!("Running selective self-test for categories: {selected_categories:?}");
 
     let (python_cmd, sim_main) = match ensure_simulation_env() {
         Ok(v) => v,
@@ -6459,8 +6419,9 @@ pub async fn simulation_run_selective_self_test(
     }
 }
 // Helper function to parse scenarios from command output
-static SCENARIOS_CACHE: Lazy<std::sync::Mutex<Option<(Instant, Vec<serde_json::Value>)>>> =
-    Lazy::new(|| std::sync::Mutex::new(None));
+type ScenarioCacheStore = std::sync::Mutex<Option<(Instant, Vec<serde_json::Value>)>>;
+
+static SCENARIOS_CACHE: Lazy<ScenarioCacheStore> = Lazy::new(|| std::sync::Mutex::new(None));
 const SCENARIOS_CACHE_TTL: Duration = Duration::from_secs(60);
 
 fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
@@ -6494,19 +6455,12 @@ fn parse_scenarios_from_output(output: &str) -> Vec<serde_json::Value> {
             in_scenario = true;
 
             // Extract name after bullet point
-            let name = if line.starts_with("• ") {
-                line[2..].trim()
-            } else if line.starts_with("- ") {
-                line[2..].trim()
-            } else if line.starts_with("* ") {
-                line[2..].trim()
-            } else if line.starts_with("  ") {
-                line[2..].trim()
-            } else if line.starts_with("ò ") {
-                line[2..].trim()
-            } else {
-                line
-            };
+            const BULLET_PREFIXES: [&str; 5] = ["• ", "- ", "* ", "  ", "ò "];
+            let name = BULLET_PREFIXES
+                .iter()
+                .find_map(|prefix| line.strip_prefix(prefix))
+                .unwrap_or(line)
+                .trim();
 
             if !name.is_empty() {
                 current_scenario.insert(
@@ -6595,9 +6549,7 @@ fn cached_scenarios() -> Vec<serde_json::Value> {
             }
         }
         Err(err) => {
-            log::warn!(
-                "Simulation environment unavailable for scenario listing: {err:?}"
-            );
+            log::warn!("Simulation environment unavailable for scenario listing: {err:?}");
             Vec::new()
         }
     }
@@ -7121,9 +7073,7 @@ pub async fn control_room_get_obs_connections(
     session_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!(
-        "Control Room: Getting OBS connections for session {session_id}"
-    );
+    log::debug!("Control Room: Getting OBS connections for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7141,9 +7091,7 @@ pub async fn control_room_get_obs_connections_with_status(
     session_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Getting OBS connections with status for session {session_id}"
-    );
+    log::info!("Control Room: Getting OBS connections with status for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7166,9 +7114,7 @@ pub async fn control_room_get_obs_connections_with_details(
     session_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Getting OBS connections with full details for session {session_id}"
-    );
+    log::info!("Control Room: Getting OBS connections with full details for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7279,9 +7225,7 @@ pub async fn control_room_change_all_obs_scenes(
     scene_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Change all OBS scenes to '{scene_name}' for session {session_id}"
-    );
+    log::info!("Control Room: Change all OBS scenes to '{scene_name}' for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7313,9 +7257,7 @@ pub async fn control_room_start_all_obs(
     session_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Start all OBS streams for session {session_id}"
-    );
+    log::info!("Control Room: Start all OBS streams for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7345,9 +7287,7 @@ pub async fn control_room_stop_all_obs(
     session_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Stop all OBS streams for session {session_id}"
-    );
+    log::info!("Control Room: Stop all OBS streams for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7421,9 +7361,7 @@ pub async fn control_room_connect_obs(
     obs_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Connecting to OBS '{obs_name}' for session {session_id}"
-    );
+    log::info!("Control Room: Connecting to OBS '{obs_name}' for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7452,18 +7390,14 @@ pub async fn control_room_disconnect_obs(
     obs_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Disconnecting from OBS '{obs_name}' for session {session_id}"
-    );
+    log::info!("Control Room: Disconnecting from OBS '{obs_name}' for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     match app.obs_obws_plugin().disconnect(&obs_name).await {
         Ok(_) => {
-            log::info!(
-                "Control Room: Successfully disconnected from OBS '{obs_name}'"
-            );
+            log::info!("Control Room: Successfully disconnected from OBS '{obs_name}'");
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("Disconnected from OBS '{}'", obs_name)
@@ -7485,18 +7419,14 @@ pub async fn control_room_remove_obs_connection(
     obs_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Removing OBS connection '{obs_name}' for session {session_id}"
-    );
+    log::info!("Control Room: Removing OBS connection '{obs_name}' for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
 
     match app.obs_obws_plugin().remove_connection(&obs_name).await {
         Ok(_) => {
-            log::info!(
-                "Control Room: Successfully removed OBS connection '{obs_name}'"
-            );
+            log::info!("Control Room: Successfully removed OBS connection '{obs_name}'");
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("OBS connection '{}' removed successfully", obs_name)
@@ -7518,9 +7448,7 @@ pub async fn control_room_get_obs_connection(
     obs_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Getting OBS connection '{obs_name}' for session {session_id}"
-    );
+    log::info!("Control Room: Getting OBS connection '{obs_name}' for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7549,9 +7477,7 @@ pub async fn control_room_update_obs_connection(
     _notes: Option<String>,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Updating OBS connection '{obs_name}' for session {session_id}"
-    );
+    log::info!("Control Room: Updating OBS connection '{obs_name}' for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7567,9 +7493,7 @@ pub async fn control_room_update_obs_connection(
     };
     match app.obs_obws_plugin().add_connection(cfg).await {
         Ok(_) => {
-            log::info!(
-                "Control Room: Successfully updated OBS connection '{obs_name}'"
-            );
+            log::info!("Control Room: Successfully updated OBS connection '{obs_name}'");
             Ok(serde_json::json!({
                 "success": true,
                 "message": format!("OBS connection '{}' updated successfully", obs_name)
@@ -7589,9 +7513,7 @@ pub async fn control_room_connect_all_obs(
     session_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!(
-        "Control Room: Connecting all OBS connections for session {session_id}"
-    );
+    log::info!("Control Room: Connecting all OBS connections for session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7615,9 +7537,7 @@ pub async fn control_room_connect_all_obs(
             .iter()
             .filter_map(|(name, r)| r.as_ref().err().map(|e| format!("{name}: {e}")))
             .collect();
-        log::info!(
-            "Control Room: Connected {success_count} of {total_count} OBS connections"
-        );
+        log::info!("Control Room: Connected {success_count} of {total_count} OBS connections");
         if failed_connections.is_empty() {
             Ok(serde_json::json!({
                 "success": true,
@@ -7667,9 +7587,7 @@ pub async fn control_room_disconnect_all_obs(
             .iter()
             .filter_map(|(name, r)| r.as_ref().err().map(|e| format!("{name}: {e}")))
             .collect();
-        log::info!(
-            "Control Room: Disconnected {success_count} of {total_count} OBS connections"
-        );
+        log::info!("Control Room: Disconnected {success_count} of {total_count} OBS connections");
         if failed_connections.is_empty() {
             Ok(serde_json::json!({
                 "success": true,
@@ -7697,9 +7615,7 @@ pub async fn control_room_get_audio_sources(
     obs_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!(
-        "Control Room: Getting audio sources for OBS '{obs_name}' session {session_id}"
-    );
+    log::debug!("Control Room: Getting audio sources for OBS '{obs_name}' session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -7779,9 +7695,7 @@ pub async fn control_room_execute_custom_operation(
             "error": response.error
         })),
         Err(e) => {
-            log::error!(
-                "Failed to execute custom operation on OBS '{obs_name}': {e}"
-            );
+            log::error!("Failed to execute custom operation on OBS '{obs_name}': {e}");
             Err(TauriError::from(anyhow::anyhow!(
                 "Failed to execute custom operation: {e}"
             )))
@@ -7817,9 +7731,7 @@ pub async fn control_room_execute_raw_request(
             "result": result
         })),
         Err(e) => {
-            log::error!(
-                "Failed to execute raw request '{request_type}' on OBS '{obs_name}': {e}"
-            );
+            log::error!("Failed to execute raw request '{request_type}' on OBS '{obs_name}': {e}");
             Err(TauriError::from(anyhow::anyhow!(
                 "Failed to execute raw request: {e}"
             )))
@@ -7834,9 +7746,7 @@ pub async fn control_room_get_scenes(
     obs_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::debug!(
-        "Control Room: Getting scenes for OBS '{obs_name}' session {session_id}"
-    );
+    log::debug!("Control Room: Getting scenes for OBS '{obs_name}' session {session_id}");
 
     // Validate session before proceeding
     validate_session(&session_id)?;
@@ -8126,8 +8036,7 @@ pub async fn ovr_start_refresh_provider(
                 let mut stmt = conn
                     .prepare("SELECT name FROM ovr_providers WHERE id = ?")
                     .ok();
-                stmt
-                    .as_mut()
+                stmt.as_mut()
                     .and_then(|s| s.query_row([provider_id], |r| r.get::<_, String>(0)).ok())
             }
             Err(_) => None,
@@ -8266,6 +8175,7 @@ pub async fn ovr_clear_all_tournaments(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn ovr_list_tournaments(
     app: State<'_, Arc<App>>,
     provider_id: Option<i64>,
@@ -8319,5 +8229,3 @@ pub async fn ovr_promote_tournament(
         Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
-
-

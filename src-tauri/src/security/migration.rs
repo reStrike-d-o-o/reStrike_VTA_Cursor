@@ -41,8 +41,7 @@ impl Default for MigrationConfig {
 }
 
 /// Migration statistics
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MigrationStats {
     pub total_configs_found: u32,
     pub configs_migrated: u32,
@@ -53,7 +52,6 @@ pub struct MigrationStats {
     pub files_backed_up: u32,
     pub migration_duration_ms: u64,
 }
-
 
 /// Configuration migration tool
 pub struct ConfigMigrationTool {
@@ -170,12 +168,10 @@ impl ConfigMigrationTool {
         log::info!("Processing configuration file: {file_path}");
 
         // Read and parse the JSON file
-        let content = fs::read_to_string(file_path).map_err(|e| {
-            SecurityError::InvalidInput(format!("Failed to read {file_path}: {e}"))
-        })?;
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| SecurityError::InvalidInput(format!("Failed to read {file_path}: {e}")))?;
 
-        let config: Value =
-            serde_json::from_str(&content).map_err(SecurityError::Serialization)?;
+        let config: Value = serde_json::from_str(&content).map_err(SecurityError::Serialization)?;
 
         // Backup original file if requested
         if self.migration_config.backup_originals {
@@ -524,9 +520,7 @@ impl ConfigMigrationTool {
 
         self.stats.files_backed_up += 1;
 
-        log::info!(
-            "Backed up configuration file: {file_path} -> {backup_path}"
-        );
+        log::info!("Backed up configuration file: {file_path} -> {backup_path}");
 
         Ok(())
     }

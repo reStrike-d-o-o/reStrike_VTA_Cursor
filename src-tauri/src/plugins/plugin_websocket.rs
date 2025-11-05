@@ -175,8 +175,7 @@ impl WebSocketServer {
         let task = tokio::spawn({
             let shutdown_notify = shutdown_notify.clone();
             async move {
-                if let Err(e) =
-                    Self::run_server(listener, clients, event_tx, shutdown_notify).await
+                if let Err(e) = Self::run_server(listener, clients, event_tx, shutdown_notify).await
                 {
                     log::error!("WebSocket server error: {e}");
                 }
@@ -361,9 +360,7 @@ impl WebSocketServer {
             }
 
             if let Err(e) = ws_sender.close().await {
-                log::debug!(
-                    "Failed to close WebSocket connection {client_id_send} cleanly: {e}"
-                );
+                log::debug!("Failed to close WebSocket connection {client_id_send} cleanly: {e}");
             }
             Ok::<(), AppError>(())
         });
@@ -392,9 +389,7 @@ impl WebSocketServer {
                     return;
                 }
                 let client_count = clients_guard.len();
-                log::info!(
-                    "Notifying {client_count} WebSocket client(s) of shutdown"
-                );
+                log::info!("Notifying {client_count} WebSocket client(s) of shutdown");
                 for client in clients_guard.iter() {
                     if let Err(err) = client.send(WebSocketMessage::ConnectionStatus {
                         connected: false,
@@ -410,9 +405,7 @@ impl WebSocketServer {
                 clients_guard.clear();
             }
             Err(err) => {
-                log::warn!(
-                    "Failed to lock WebSocket clients during shutdown notification: {err}"
-                );
+                log::warn!("Failed to lock WebSocket clients during shutdown notification: {err}");
             }
         }
     }

@@ -219,9 +219,8 @@ fn render_value(value: &Value, format: SchemaFormat) -> Result<String, Box<dyn s
 }
 
 fn write_metadata(path: &Path, metadata: &SchemaMetadata) -> AppResult<()> {
-    let payload = serde_json::to_string_pretty(metadata).map_err(|e| {
-        AppError::OpenApiError(format!("Failed to serialize schema metadata: {e}"))
-    })?;
+    let payload = serde_json::to_string_pretty(metadata)
+        .map_err(|e| AppError::OpenApiError(format!("Failed to serialize schema metadata: {e}")))?;
     fs::write(path, payload)
         .map_err(|e| AppError::OpenApiError(format!("Failed to persist schema metadata: {e}")))
 }

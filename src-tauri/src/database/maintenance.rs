@@ -105,10 +105,7 @@ impl DatabaseMaintenance {
 
         // Run VACUUM operation
         db_conn
-            .transaction(|tx| {
-                tx.execute("VACUUM", [])
-                    .map_err(DatabaseError::Sqlite)
-            })
+            .transaction(|tx| tx.execute("VACUUM", []).map_err(DatabaseError::Sqlite))
             .await?;
 
         // Update statistics
@@ -165,10 +162,7 @@ impl DatabaseMaintenance {
         log::info!("Starting database ANALYZE operation...");
 
         db_conn
-            .transaction(|tx| {
-                tx.execute("ANALYZE", [])
-                    .map_err(DatabaseError::Sqlite)
-            })
+            .transaction(|tx| tx.execute("ANALYZE", []).map_err(DatabaseError::Sqlite))
             .await?;
 
         // Update statistics
@@ -179,9 +173,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
 
-        log::info!(
-            "Database ANALYZE completed successfully in {duration:.2?}"
-        );
+        log::info!("Database ANALYZE completed successfully in {duration:.2?}");
         Ok(())
     }
 
@@ -206,9 +198,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
 
-        log::info!(
-            "Database OPTIMIZE completed successfully in {duration:.2?}"
-        );
+        log::info!("Database OPTIMIZE completed successfully in {duration:.2?}");
         Ok(())
     }
 
@@ -246,9 +236,7 @@ impl DatabaseMaintenance {
 
         let total_duration = start_time.elapsed();
 
-        log::info!(
-            "Full database maintenance completed in {total_duration:.2?}"
-        );
+        log::info!("Full database maintenance completed in {total_duration:.2?}");
 
         Ok(MaintenanceResult {
             integrity_check_passed,
@@ -442,11 +430,7 @@ impl std::fmt::Display for DatabaseInfo {
             self.free_size,
             self.free_size as f64 / 1024.0 / 1024.0
         )?;
-        writeln!(
-            f,
-            "  Fragmentation: {:.2}%",
-            self.fragmentation_percentage
-        )?;
+        writeln!(f, "  Fragmentation: {:.2}%", self.fragmentation_percentage)?;
         writeln!(f, "  Page Count: {}", self.page_count)?;
         writeln!(f, "  Page Size: {} bytes", self.page_size)?;
         writeln!(f, "  Free List Count: {}", self.freelist_count)?;

@@ -26,11 +26,11 @@ async fn main() -> AppResult<()> {
 
         // Log to app.log
         if let Err(write_err) = std::fs::write("logs/app.log", &panic_msg) {
-            eprintln!("Failed to write panic log: {}", write_err);
+            eprintln!("Failed to write panic log: {write_err}");
         }
 
         // Also log to stderr
-        eprintln!("{}", panic_msg);
+        eprintln!("{panic_msg}");
     }));
 
     // Initialize logging
@@ -44,7 +44,7 @@ async fn main() -> AppResult<()> {
 
         let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
         let level_code = re_strike_vta::logging::level_code(record.level());
-        let prefix_len = format!("[{}] [{}] - ", timestamp, level_code).len();
+        let prefix_len = format!("[{timestamp}] [{level_code}] - ").len();
 
         let message = format!("{}", record.args());
         let sanitized = re_strike_vta::logging::sanitize_message(&message);
@@ -228,13 +228,13 @@ async fn main() -> AppResult<()> {
                         }
 
                         if let Err(err) = app.stop().await {
-                            log::error!("Failed to stop application cleanly: {}", err);
+                            log::error!("Failed to stop application cleanly: {err}");
                             app.cancel_shutdown();
                             return;
                         }
 
                         if let Err(err) = window.close() {
-                            log::warn!("Failed to close main window gracefully: {}", err);
+                            log::warn!("Failed to close main window gracefully: {err}");
                         }
                         window.app_handle().exit(0);
                     });
@@ -822,13 +822,11 @@ async fn main() -> AppResult<()> {
         .run(tauri::generate_context!());
 
     if let Err(err) = tauri_result {
-        log::error!("Tauri runtime exited with an error: {}", err);
+        log::error!("Tauri runtime exited with an error: {err}");
         return Err(AppError::ConfigError(format!(
-            "Tauri runtime failed: {}",
-            err
+            "Tauri runtime failed: {err}"
         )));
     }
 
     Ok(())
 }
-

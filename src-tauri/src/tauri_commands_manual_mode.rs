@@ -70,7 +70,7 @@ pub async fn manual_create_match(
         updated_at: Set(now.naive_utc()),
         ..Default::default()
     }
-    .insert(&mut txn)
+    .insert(&txn)
     .await
     .map_err(|e| format!("Failed to insert match: {e}"))?;
 
@@ -85,7 +85,7 @@ pub async fn manual_create_match(
         updated_at: Set(now.naive_utc()),
         ..Default::default()
     }
-    .insert(&mut txn)
+    .insert(&txn)
     .await
     .map_err(|e| format!("Failed to insert athlete 1: {e}"))?;
 
@@ -100,7 +100,7 @@ pub async fn manual_create_match(
         updated_at: Set(now.naive_utc()),
         ..Default::default()
     }
-    .insert(&mut txn)
+    .insert(&txn)
     .await
     .map_err(|e| format!("Failed to insert athlete 2: {e}"))?;
 
@@ -111,7 +111,7 @@ pub async fn manual_create_match(
         created_at: Set(now.naive_utc()),
         ..Default::default()
     }
-    .insert(&mut txn)
+    .insert(&txn)
     .await
     .map_err(|e| format!("Failed to link athlete 1 to match: {e}"))?;
 
@@ -122,7 +122,7 @@ pub async fn manual_create_match(
         created_at: Set(now.naive_utc()),
         ..Default::default()
     }
-    .insert(&mut txn)
+    .insert(&txn)
     .await
     .map_err(|e| format!("Failed to link athlete 2 to match: {e}"))?;
 
@@ -232,7 +232,10 @@ pub async fn manual_get_statistics(app: State<'_, Arc<App>>) -> Result<serde_jso
     Ok(statistics)
 }
 
-async fn serialize_match_json(sea: &SeaConn, model: matches::Model) -> Result<serde_json::Value, DbErr> {
+async fn serialize_match_json(
+    sea: &SeaConn,
+    model: matches::Model,
+) -> Result<serde_json::Value, DbErr> {
     let created_at = Utc.from_utc_datetime(&model.created_at);
     let updated_at = Utc.from_utc_datetime(&model.updated_at);
 

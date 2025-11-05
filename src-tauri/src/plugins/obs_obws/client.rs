@@ -236,7 +236,11 @@ impl ObsClient {
         Ok(ObsStreamOutputStats {
             congestion: status.congestion,
             bytes: status.bytes,
-            duration: if duration_ms.is_negative() { 0 } else { duration_ms as u64 },
+            duration: if duration_ms.is_negative() {
+                0
+            } else {
+                duration_ms as u64
+            },
             skipped_frames: status.skipped_frames,
             total_frames: status.total_frames,
         })
@@ -367,10 +371,11 @@ impl ObsClient {
     /// Get current scene
     pub async fn get_current_scene(&self) -> AppResult<String> {
         let client = self.get_client()?;
-        let scene =
-            client.scenes().current_program_scene().await.map_err(|e| {
-                AppError::ConfigError(format!("Failed to get current scene: {e}"))
-            })?;
+        let scene = client
+            .scenes()
+            .current_program_scene()
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get current scene: {e}")))?;
         Ok(format!("{:?}", scene.id))
     }
 
@@ -440,9 +445,7 @@ impl ObsClient {
             }
             Err(e) => {
                 // If inputs listing is not supported, return empty list
-                log::warn!(
-                    "Audio sources listing not supported by this OBS version: {e}"
-                );
+                log::warn!("Audio sources listing not supported by this OBS version: {e}");
                 Ok(Vec::new())
             }
         }
@@ -634,9 +637,7 @@ impl ObsClient {
                             "Scene '{scene_name}' not found"
                         )))
                     }
-                    Err(e) => Err(AppError::ConfigError(format!(
-                        "Failed to get scenes: {e}"
-                    ))),
+                    Err(e) => Err(AppError::ConfigError(format!("Failed to get scenes: {e}"))),
                 }
             }
 
@@ -908,9 +909,7 @@ impl ObsClient {
     pub async fn set_record_directory(&self, directory: &str) -> AppResult<()> {
         let client = self.get_client()?;
         // Prefer official obws Config API
-        println!(
-            " obws.config.set_record_directory directory='{directory}'"
-        );
+        println!(" obws.config.set_record_directory directory='{directory}'");
         match client.config().set_record_directory(directory).await {
             Ok(_) => {
                 log::info!("Recording directory set via Config API: {directory}");

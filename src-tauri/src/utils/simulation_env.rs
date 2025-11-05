@@ -89,22 +89,18 @@ pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
             .ok(),
     ];
 
-    for path in &possible_paths {
-        if let Some(path) = path {
-            log::debug!("Checking simulation path: {path:?}");
-            if path.exists() {
-                log::info!("Found simulation main.py at: {path:?}");
-                return Ok(path.clone());
-            }
+    for path in possible_paths.iter().flatten() {
+        log::debug!("Checking requirements path: {:?}", path);
+        if path.exists() {
+            log::info!("Found requirements.txt at: {:?}", path);
+            return Ok(path.clone());
         }
     }
 
     // Log all attempted paths for debugging
     log::error!("Simulation main.py not found. Attempted paths:");
-    for path in &possible_paths {
-        if let Some(path) = path {
-            log::error!(" - {:?} (exists: {})", path, path.exists());
-        }
+    for path in possible_paths.iter().flatten() {
+        log::error!(" - {:?} (exists: {})", path, path.exists());
     }
 
     Err(SimulationEnvError::SimulationPathNotFound)
@@ -144,22 +140,18 @@ pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
             .ok(),
     ];
 
-    for path in &possible_paths {
-        if let Some(p) = path {
-            log::debug!("Checking requirements path: {p:?}");
-            if p.exists() {
-                log::info!("Found requirements.txt at: {p:?}");
-                return Ok(p.clone());
-            }
+    for path in possible_paths.iter().flatten() {
+        log::debug!("Checking simulation path: {:?}", path);
+        if path.exists() {
+            log::info!("Found simulation main.py at: {:?}", path);
+            return Ok(path.clone());
         }
     }
 
     // Log all attempted paths for debugging
     log::error!("Simulation requirements.txt not found. Attempted paths:");
-    for path in &possible_paths {
-        if let Some(path) = path {
-            log::error!(" - {:?} (exists: {})", path, path.exists());
-        }
+    for path in possible_paths.iter().flatten() {
+        log::error!(" - {:?} (exists: {})", path, path.exists());
     }
 
     Err(SimulationEnvError::SimulationPathNotFound)
@@ -180,9 +172,7 @@ pub fn install_python_requirements(
     python_cmd: &str,
     requirements_path: &PathBuf,
 ) -> Result<(), SimulationEnvError> {
-    log::info!(
-        "Installing Python requirements from: {requirements_path:?}"
-    );
+    log::info!("Installing Python requirements from: {requirements_path:?}");
     let output = Command::new(python_cmd)
         .args(["-m", "pip", "install", "-r"])
         .arg(requirements_path)

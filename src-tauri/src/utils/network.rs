@@ -361,7 +361,7 @@ impl NetworkDetector {
         let output = Command::new("ifconfig")
             .output()
             .or_else(|_| Command::new("ip").arg("addr").output())
-            .map_err(|e| crate::types::AppError::IoError(e))?;
+            .map_err(crate::types::AppError::IoError)?;
 
         let output_str = String::from_utf8_lossy(&output.stdout);
         let lines: Vec<&str> = output_str.lines().collect();

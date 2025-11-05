@@ -3315,9 +3315,7 @@ impl MigrationManager {
         let target_version = CURRENT_SCHEMA_VERSION;
 
         if current_version == target_version {
-            log::info!(
-                "Database schema is up to date (version {current_version})"
-            );
+            log::info!("Database schema is up to date (version {current_version})");
             return Ok(());
         }
 
@@ -3327,9 +3325,7 @@ impl MigrationManager {
             )));
         }
 
-        log::info!(
-            "Migrating database from version {current_version} to {target_version}"
-        );
+        log::info!("Migrating database from version {current_version} to {target_version}");
 
         // Apply migrations in order
         for migration in &self.migrations {
@@ -3374,15 +3370,11 @@ impl MigrationManager {
         let current_version = self.get_current_version(conn)?;
 
         if current_version <= target_version {
-            log::info!(
-                "Database is already at or below target version {target_version}"
-            );
+            log::info!("Database is already at or below target version {target_version}");
             return Ok(());
         }
 
-        log::info!(
-            "Rolling back database from version {current_version} to {target_version}"
-        );
+        log::info!("Rolling back database from version {current_version} to {target_version}");
 
         // Rollback migrations in reverse order
         for migration in self.migrations.iter().rev() {
@@ -3871,10 +3863,7 @@ impl Migration for Migration18 {
                 }
             }
             if !has_col {
-                let _ = conn.execute(
-                    &format!("ALTER TABLE {table} ADD COLUMN {col} {ddl}"),
-                    [],
-                );
+                let _ = conn.execute(&format!("ALTER TABLE {table} ADD COLUMN {col} {ddl}"), []);
             }
             Ok(())
         }

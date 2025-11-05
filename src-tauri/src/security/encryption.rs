@@ -224,9 +224,7 @@ impl SecureConfig {
         // Decode from base64
         let ciphertext = general_purpose::STANDARD
             .decode(&encrypted_data.ciphertext)
-            .map_err(|e| {
-                SecurityError::Decryption(format!("Invalid ciphertext encoding: {e}"))
-            })?;
+            .map_err(|e| SecurityError::Decryption(format!("Invalid ciphertext encoding: {e}")))?;
 
         let salt = general_purpose::STANDARD
             .decode(&encrypted_data.salt)

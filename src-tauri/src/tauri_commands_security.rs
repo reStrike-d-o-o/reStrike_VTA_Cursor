@@ -266,8 +266,10 @@ pub async fn security_set_config(
     let database = app.database_plugin().get_database_connection();
 
     // Parse category
-    let category =
-        ConfigCategory::from_str(&config_request.category).ok_or_else(|| TauriSecurityError {
+    let category = config_request
+        .category
+        .parse::<ConfigCategory>()
+        .map_err(|_| TauriSecurityError {
             message: "Invalid configuration category".to_string(),
             error_type: "invalid_input".to_string(),
         })?;
@@ -336,10 +338,12 @@ pub async fn security_list_config_keys(
     // Parse category if provided
     let config_category = if let Some(cat_str) = category {
         Some(
-            ConfigCategory::from_str(&cat_str).ok_or_else(|| TauriSecurityError {
-                message: "Invalid configuration category".to_string(),
-                error_type: "invalid_input".to_string(),
-            })?,
+            cat_str
+                .parse::<ConfigCategory>()
+                .map_err(|_| TauriSecurityError {
+                    message: "Invalid configuration category".to_string(),
+                    error_type: "invalid_input".to_string(),
+                })?,
         )
     } else {
         None

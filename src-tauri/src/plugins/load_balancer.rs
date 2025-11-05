@@ -480,11 +480,13 @@ impl LoadBalancer {
                 let mut selected_server = None;
 
                 for (server_id, server) in servers.iter() {
-                    if server.is_active && server.health.is_healthy
-                        && server.statistics.active_connections < least_connections {
-                            least_connections = server.statistics.active_connections;
-                            selected_server = Some(server_id.clone());
-                        }
+                    if server.is_active
+                        && server.health.is_healthy
+                        && server.statistics.active_connections < least_connections
+                    {
+                        least_connections = server.statistics.active_connections;
+                        selected_server = Some(server_id.clone());
+                    }
                 }
 
                 selected_server

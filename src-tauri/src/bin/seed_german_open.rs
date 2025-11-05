@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     // Lookup ranking id (default to G2)
     let ranking = TournamentRankingOperations::get_by_code(&conn, "G2")
         .context("Failed to lookup ranking code G2")?;
-    let ranking_id = ranking.map(|r| r.id).flatten();
+    let ranking_id = ranking.and_then(|r| r.id);
 
     // Prepare JSON payloads
     let location_json = json!({
@@ -78,10 +78,7 @@ fn main() -> Result<()> {
     })
     .to_string();
 
-    let banner_base64 = match read_and_encode_banner(Path::new(BANNER_PATH))? {
-        Some(data) => Some(data),
-        None => None,
-    };
+    let banner_base64 = read_and_encode_banner(Path::new(BANNER_PATH))?;
 
     conn.execute("PRAGMA foreign_keys = ON", [])?;
 
@@ -93,8 +90,8 @@ fn main() -> Result<()> {
         )
         .optional()?;
 
-    let start_rfc3339 = format!("{}T00:00:00Z", START_DATE);
-    let end_rfc3339 = format!("{}T23:59:59Z", END_DATE);
+    let start_rfc3339 = format!("{START_DATE}T00:00:00Z");
+    let end_rfc3339 = format!("{END_DATE}T23:59:59Z");
     let now_iso = chrono::Utc::now().to_rfc3339();
     let now_unix = chrono::Utc::now().timestamp();
 
@@ -175,10 +172,7 @@ fn main() -> Result<()> {
     seed_tournament_days(&mut conn, tournament_id)?;
     seed_octagons(&mut conn, tournament_id)?;
 
-    println!(
-        "Tournament '{}' seeded/updated successfully (id = {})",
-        TOURNAMENT_NAME, tournament_id
-    );
+    println!("Tournament '{TOURNAMENT_NAME}' seeded/updated successfully (id = {tournament_id})");
     println!("Database path: {}", db_path.display());
     Ok(())
 }
@@ -278,7 +272,7 @@ fn seed_octagons(conn: &mut Connection, tournament_id: i64) -> Result<()> {
 
         let tx = conn.transaction()?;
         for idx in 1..=COURT_COUNT {
-            let label = format!("{prefix}{:02}", idx, prefix = OCTAGON_LABEL_PREFIX);
+            let label = format!("{OCTAGON_LABEL_PREFIX}{idx:02}");
             tx.execute(
                 "INSERT OR IGNORE INTO octagons (
                     tournament_id,

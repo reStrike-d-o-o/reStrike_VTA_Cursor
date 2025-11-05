@@ -16,9 +16,9 @@ use crate::logging::LogManager;
 #[cfg(feature = "obs-obws")]
 use crate::plugins::obs_obws::manager::ObsManager as ObsObwsManager; // Use new obws-based OBS manager
 #[cfg(feature = "obs-obws")]
-use crate::plugins::obs_obws::ObsRecordingEventHandler; // Use new recording event handler
-#[cfg(feature = "obs-obws")]
 use crate::plugins::obs_obws::types::ObsConnectionHealth;
+#[cfg(feature = "obs-obws")]
+use crate::plugins::obs_obws::ObsRecordingEventHandler; // Use new recording event handler
 use chrono::Utc;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -114,9 +114,9 @@ impl App {
 
         // Initialize configuration manager
         let config_dir = PathBuf::from("config");
-        let config_manager = ConfigManager::new(&config_dir)
-            .await
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize config manager: {e}")))?;
+        let config_manager = ConfigManager::new(&config_dir).await.map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to initialize config manager: {e}"))
+        })?;
         log::info!("Configuration manager initialized");
 
         let openapi_dir = config_dir.join("openapi");
@@ -124,9 +124,11 @@ impl App {
         let openapi_document = openapi_manager.current_document().await;
         let openapi_addr = std::env::var("RE_STRIKE_OPENAPI_ADDR")
             .unwrap_or_else(|_| "127.0.0.1:8787".to_string());
-        let openapi_socket: SocketAddr = openapi_addr
-            .parse()
-            .map_err(|e| crate::types::AppError::OpenApiError(format!("Invalid OpenAPI server address '{openapi_addr}': {e}")))?;
+        let openapi_socket: SocketAddr = openapi_addr.parse().map_err(|e| {
+            crate::types::AppError::OpenApiError(format!(
+                "Invalid OpenAPI server address '{openapi_addr}': {e}"
+            ))
+        })?;
         let openapi_runtime =
             Arc::new(OpenApiRuntime::start(openapi_document, openapi_socket).await?);
         log::info!(
@@ -189,9 +191,11 @@ impl App {
         log::info!("Protocol manager plugin initialized");
 
         // Initialize database plugin first (needed for UDP plugin and trigger plugin)
-        let database_plugin = DatabasePlugin::new()
-            .await
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to initialize database plugin: {e}")))?;
+        let database_plugin = DatabasePlugin::new().await.map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to initialize database plugin: {e}"
+            ))
+        })?;
         log::info!("Database plugin initialized");
 
         // Initialize trigger plugin (after database plugin)
@@ -550,7 +554,8 @@ impl App {
         };
 
         if let Some(app_handle) = TAURI_APP_HANDLE.get() {
-            if let Err(err) = app_handle.emit("pss_stats", serde_json::json!({ "stats": snapshot })) {
+            if let Err(err) = app_handle.emit("pss_stats", serde_json::json!({ "stats": snapshot }))
+            {
                 log::error!("Failed to emit pss_stats event: {err}");
             }
         }
@@ -633,11 +638,7 @@ impl App {
         let mut match_description: Option<String> = None;
 
         if let Some(match_id) = match_db_id {
-            match self
-                .database_plugin
-                .get_pss_match_by_id(match_id)
-                .await
-            {
+            match self.database_plugin.get_pss_match_by_id(match_id).await {
                 Ok(Some(pss_match)) => {
                     match_number = pss_match
                         .match_number
@@ -982,7 +983,9 @@ impl App {
             .arg(&start_arg)
             .arg(&file_arg)
             .spawn()
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}")))?;
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}"))
+            })?;
         // Track mpv process so it can be closed later
         {
             let mut slot = self.mpv_child.lock().await;
@@ -1131,7 +1134,9 @@ impl App {
         let event_time = match chrono::DateTime::parse_from_rfc3339(&event_time_str) {
             Ok(dt) => dt.with_timezone(&chrono::Utc),
             Err(e) => {
-                return Err(crate::types::AppError::ConfigError(format!("Invalid event time: {e}")))
+                return Err(crate::types::AppError::ConfigError(format!(
+                    "Invalid event time: {e}"
+                )))
             }
         };
 
@@ -1252,7 +1257,9 @@ impl App {
             .arg(&start_arg)
             .arg(file_path.to_string_lossy().to_string())
             .spawn()
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}")))?;
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}"))
+            })?;
         {
             let mut slot = self.mpv_child.lock().await;
             *slot = Some(child);
@@ -1321,7 +1328,9 @@ impl App {
             .arg(&start_arg)
             .arg(file_path)
             .spawn()
-            .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}")))?;
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to launch mpv: {e}"))
+            })?;
         {
             let mut slot = self.mpv_child.lock().await;
             *slot = Some(child);

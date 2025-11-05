@@ -9,11 +9,7 @@ use crate::database::{
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
-    seaorm_ops::{
-        pss as sea_pss,
-        pss_catalog as sea_catalog,
-        pss_status as sea_status,
-    },
+    seaorm_ops::{pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status},
     DatabaseError,
     HybridSettingsProvider,
     MigrationResult,
@@ -21,7 +17,8 @@ use crate::database::{
     UiSettingsOperations,
 };
 use crate::entity::{
-    athlete, event, event_type, matches, udp_client_connection, udp_server_config, udp_server_session,
+    athlete, event, event_type, matches, udp_client_connection, udp_server_config,
+    udp_server_session,
 };
 use crate::types::{AppError, AppResult};
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
@@ -70,9 +67,7 @@ impl DatabasePlugin {
 
         // Initialise SeaORM connection against the same SQLite database.
         let db_path = DatabaseConnection::get_database_path().map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to resolve database path: {e}"
-            ))
+            crate::types::AppError::ConfigError(format!("Failed to resolve database path: {e}"))
         })?;
         let seaorm_connection = seaorm_connect(&db_path).await.map_err(|e| {
             crate::types::AppError::ConfigError(format!("SeaORM connection failed: {e}"))
@@ -331,9 +326,7 @@ impl DatabasePlugin {
             &mut conn, interface,
         )
         .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to upsert network interface: {e}"
-            ))
+            crate::types::AppError::ConfigError(format!("Failed to upsert network interface: {e}"))
         })
     }
 
@@ -355,16 +348,17 @@ impl DatabasePlugin {
     }
 
     /// Get UDP server configuration by ID
-    pub async fn get_udp_server_config(&self, config_id: i64) -> AppResult<Option<DbUdpServerConfig>> {
+    pub async fn get_udp_server_config(
+        &self,
+        config_id: i64,
+    ) -> AppResult<Option<DbUdpServerConfig>> {
         let sea = self.seaorm_connection.clone();
         let record = udp_server_config::Entity::find_by_id(config_id as i32)
             .one(&sea)
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server config: {e}")))?;
 
-        record
-            .map(map_udp_server_config_model)
-            .transpose()
+        record.map(map_udp_server_config_model).transpose()
     }
 
     /// Add or update UDP server configuration
@@ -386,10 +380,9 @@ impl DatabasePlugin {
                 updated_at: Set(Utc::now().naive_utc()),
             };
 
-            active
-                .update(&sea)
-                .await
-                .map_err(|e| AppError::ConfigError(format!("Failed to update UDP server config: {e}")))?;
+            active.update(&sea).await.map_err(|e| {
+                AppError::ConfigError(format!("Failed to update UDP server config: {e}"))
+            })?;
             Ok(id)
         } else {
             let now = Utc::now();
@@ -408,10 +401,9 @@ impl DatabasePlugin {
                 ..Default::default()
             };
 
-            let inserted = active
-                .insert(&sea)
-                .await
-                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP server config: {e}")))?;
+            let inserted = active.insert(&sea).await.map_err(|e| {
+                AppError::ConfigError(format!("Failed to insert UDP server config: {e}"))
+            })?;
             Ok(inserted.id as i64)
         }
     }
@@ -439,10 +431,9 @@ impl DatabasePlugin {
             ..Default::default()
         };
 
-        let model = active
-            .insert(&sea)
-            .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to create UDP server session: {e}")))?;
+        let model = active.insert(&sea).await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to create UDP server session: {e}"))
+        })?;
 
         Ok(model.id as i64)
     }
@@ -518,9 +509,7 @@ impl DatabasePlugin {
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server session: {e}")))?;
 
-        record
-            .map(map_udp_server_session_model)
-            .transpose()
+        record.map(map_udp_server_session_model).transpose()
     }
 
     /// Get recent UDP server sessions
@@ -615,9 +604,7 @@ impl DatabasePlugin {
     }
 
     /// Get all PSS event types
-    pub async fn get_pss_event_types(
-        &self,
-    ) -> AppResult<Vec<DbPssEventType>> {
+    pub async fn get_pss_event_types(&self) -> AppResult<Vec<DbPssEventType>> {
         let sea = self.seaorm_connection.clone();
         let records = event_type::Entity::find()
             .order_by_asc(event_type::Column::Code)
@@ -648,10 +635,7 @@ impl DatabasePlugin {
     }
 
     /// Upsert PSS event type
-    pub async fn upsert_pss_event_type(
-        &self,
-        event_type: &DbPssEventType,
-    ) -> AppResult<i64> {
+    pub async fn upsert_pss_event_type(&self, event_type: &DbPssEventType) -> AppResult<i64> {
         let sea = self.seaorm_connection.clone();
         let created_at = event_type.created_at;
         if let Some(id) = event_type.id {
@@ -705,10 +689,7 @@ impl DatabasePlugin {
     }
 
     /// Fetch match metadata by database id
-    pub async fn get_pss_match_by_id(
-        &self,
-        match_id: i64,
-    ) -> AppResult<Option<DbPssMatch>> {
+    pub async fn get_pss_match_by_id(&self, match_id: i64) -> AppResult<Option<DbPssMatch>> {
         sea_catalog::get_match_by_id(&self.seaorm_connection, match_id)
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to load match {match_id}: {e}")))
@@ -725,34 +706,26 @@ impl DatabasePlugin {
     }
 
     /// List recent matches
-    pub async fn get_pss_matches(
-        &self,
-        limit: Option<i64>,
-    ) -> AppResult<Vec<DbPssMatch>> {
+    pub async fn get_pss_matches(&self, limit: Option<i64>) -> AppResult<Vec<DbPssMatch>> {
         sea_catalog::get_matches(&self.seaorm_connection, limit)
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to list PSS matches: {e}")))
     }
 
     /// Insert a new match row
-    pub async fn insert_pss_match(
-        &self,
-        match_data: &DbPssMatch,
-    ) -> AppResult<i64> {
+    pub async fn insert_pss_match(&self, match_data: &DbPssMatch) -> AppResult<i64> {
         sea_catalog::insert_match(&self.seaorm_connection, match_data)
             .await
             .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS match: {e}")))
     }
 
     /// Rename match identifier
-    pub async fn rename_pss_match_id(
-        &self,
-        match_db_id: i64,
-        new_match_id: &str,
-    ) -> AppResult<()> {
+    pub async fn rename_pss_match_id(&self, match_db_id: i64, new_match_id: &str) -> AppResult<()> {
         sea_catalog::rename_match_id(&self.seaorm_connection, match_db_id, new_match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to rename match {match_db_id}: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to rename match {match_db_id}: {e}"))
+            })
     }
 
     /// Attach tournament context
@@ -761,9 +734,13 @@ impl DatabasePlugin {
         match_db_id: i64,
         tournament_id: Option<i64>,
     ) -> AppResult<()> {
-        sea_catalog::set_match_tournament_context(&self.seaorm_connection, match_db_id, tournament_id)
-            .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to set match tournament context: {e}")))
+        sea_catalog::set_match_tournament_context(
+            &self.seaorm_connection,
+            match_db_id,
+            tournament_id,
+        )
+        .await
+        .map_err(|e| AppError::ConfigError(format!("Failed to set match tournament context: {e}")))
     }
 
     /// Reassign events from one match to another
@@ -772,9 +749,13 @@ impl DatabasePlugin {
         from_match_id: i64,
         to_match_id: i64,
     ) -> AppResult<usize> {
-        sea_catalog::reassign_events_between_matches(&self.seaorm_connection, from_match_id, to_match_id)
-            .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to reassign events: {e}")))
+        sea_catalog::reassign_events_between_matches(
+            &self.seaorm_connection,
+            from_match_id,
+            to_match_id,
+        )
+        .await
+        .map_err(|e| AppError::ConfigError(format!("Failed to reassign events: {e}")))
     }
 
     /// Fetch match participants and associated athletes
@@ -842,13 +823,18 @@ impl DatabasePlugin {
         let existing = athlete::Entity::find_by_id(athlete_id as i32)
             .one(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to load athlete {athlete_id}: {e}")))?
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to load athlete {athlete_id}: {e}"))
+            })?
             .ok_or_else(|| AppError::ConfigError(format!("Athlete {athlete_id} not found")))?;
 
         let mut active: athlete::ActiveModel = existing.into();
         active.pss_code = Set(Some(athlete_data.athlete_code.clone()));
         active.short_name = Set(Some(athlete_data.short_name.clone()));
-        active.display_name = Set(athlete_data.long_name.clone().or_else(|| Some(athlete_data.short_name.clone())));
+        active.display_name = Set(athlete_data
+            .long_name
+            .clone()
+            .or_else(|| Some(athlete_data.short_name.clone())));
         active.country_code = Set(athlete_data.country_code.clone());
         active.flag_id = Set(athlete_data.flag_id.map(|v| v as i32));
         active.updated_at = Set(athlete_data.updated_at.naive_utc());
@@ -882,7 +868,9 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_events_for_session(&sea, session_id, limit)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for session: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to get PSS events for session: {e}"))
+            })
     }
 
     /// Get PSS events for a match
@@ -939,7 +927,9 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_current_scores_for_match(&sea, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get current scores for match: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to get current scores for match: {e}"))
+            })
     }
 
     /// Store PSS warning
@@ -961,7 +951,9 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_current_warnings_for_match(&sea, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get current warnings for match: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to get current warnings for match: {e}"))
+            })
     }
 
     /// Get UDP server statistics
@@ -1010,7 +1002,9 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::store_event_with_status(&sea, event)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event with status: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to store PSS event with status: {e}"))
+            })
     }
 
     /// Update event recognition status and record history
@@ -1022,9 +1016,17 @@ impl DatabasePlugin {
         change_reason: Option<&str>,
     ) -> AppResult<()> {
         let sea = self.seaorm_connection.clone();
-        sea_status::update_event_recognition_status(&sea, event_id, new_status, changed_by, change_reason)
-            .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to update event recognition status: {e}")))
+        sea_status::update_event_recognition_status(
+            &sea,
+            event_id,
+            new_status,
+            changed_by,
+            change_reason,
+        )
+        .await
+        .map_err(|e| {
+            AppError::ConfigError(format!("Failed to update event recognition status: {e}"))
+        })
     }
 
     /// Store unknown event
@@ -1112,7 +1114,9 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_event_recognition_history(&sea, event_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get event recognition history: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to get event recognition history: {e}"))
+            })
     }
 
     /// Get events by recognition status
@@ -1136,7 +1140,9 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_comprehensive_event_statistics(&sea, session_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get comprehensive event statistics: {e}")))
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to get comprehensive event statistics: {e}"))
+            })
     }
 
     // Phase 2: Data Archival Operations
@@ -1146,12 +1152,10 @@ impl DatabasePlugin {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
             crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        crate::database::operations::DataArchivalOperations::archive_old_events(
-            &mut conn, days_old,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to archive old events: {e}"))
-        })
+        crate::database::operations::DataArchivalOperations::archive_old_events(&mut conn, days_old)
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to archive old events: {e}"))
+            })
     }
 
     /// Get archive statistics
@@ -1216,9 +1220,7 @@ impl DatabasePlugin {
 
     async fn ensure_canonical_pss_schema(&self) -> AppResult<()> {
         let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get database connection: {e}"
-            ))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
 
         let has_match = table_exists(&conn, "match").map_err(|e| {
@@ -1314,7 +1316,8 @@ fn map_udp_server_config_model(model: udp_server_config::Model) -> AppResult<DbU
         updated_at,
     } = model;
 
-    let port_u16 = u16::try_from(port).map_err(|e| AppError::ConfigError(format!("Invalid UDP port value {port}: {e}")))?;
+    let port_u16 = u16::try_from(port)
+        .map_err(|e| AppError::ConfigError(format!("Invalid UDP port value {port}: {e}")))?;
 
     Ok(DbUdpServerConfig {
         id: Some(id as i64),
@@ -1393,8 +1396,9 @@ fn map_udp_client_connection_model(
         created_at: _,
     } = model;
 
-    let port_u16 = u16::try_from(client_port)
-        .map_err(|e| AppError::ConfigError(format!("Invalid UDP client port {client_port}: {e}")))?;
+    let port_u16 = u16::try_from(client_port).map_err(|e| {
+        AppError::ConfigError(format!("Invalid UDP client port {client_port}: {e}"))
+    })?;
     let first_seen_dt = parse_rfc3339(&first_seen, "first_seen")?;
     let last_seen_dt = parse_rfc3339(&last_seen, "last_seen")?;
     let total_bytes = convert_i64_to_i32(total_bytes_received, "total_bytes_received")?;

@@ -52,9 +52,8 @@ pub struct ProtocolManager {
 
 impl ProtocolManager {
     pub fn new() -> AppResult<Self> {
-        let app_dir = std::env::current_dir().map_err(|e| {
-            AppError::ConfigError(format!("Failed to get current directory: {e}"))
-        })?;
+        let app_dir = std::env::current_dir()
+            .map_err(|e| AppError::ConfigError(format!("Failed to get current directory: {e}")))?;
 
         let protocols_dir = app_dir.join("protocol");
 
@@ -342,9 +341,7 @@ impl ProtocolManager {
             log::info!("Added protocol version to registry");
         }
 
-        log::info!(
-            "Successfully uploaded protocol file: {filename} (version {version})"
-        );
+        log::info!("Successfully uploaded protocol file: {filename} (version {version})");
         Ok(version)
     }
 

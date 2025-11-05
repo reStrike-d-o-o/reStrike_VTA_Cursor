@@ -196,13 +196,9 @@ impl LogManager {
             if let Err(e) = self.log(
                 &subsystem,
                 "INFO",
-                &format!(
-                    "{subsystem} subsystem logging initialized - ready to receive data"
-                ),
+                &format!("{subsystem} subsystem logging initialized - ready to receive data"),
             ) {
-                log::error!(
-                    "Failed to initialize {subsystem} subsystem logging: {e}"
-                );
+                log::error!("Failed to initialize {subsystem} subsystem logging: {e}");
             }
         }
 

@@ -209,8 +209,9 @@ impl DatabaseConnection {
 
         // Ensure the directory exists
         if let Some(parent) = db_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| DatabaseError::Initialization(format!("Failed to create database directory: {e}")))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                DatabaseError::Initialization(format!("Failed to create database directory: {e}"))
+            })?;
         }
 
         let connection = Connection::open(&db_path)
@@ -243,20 +244,27 @@ impl DatabaseConnection {
     fn configure_connection(conn: &Connection) -> DatabaseResult<()> {
         // Enable foreign keys for referential integrity
         conn.pragma_update(None, "foreign_keys", 1i64)
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to enable foreign keys: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Initialization(format!("Failed to enable foreign keys: {e}"))
+            })?;
 
         // Set UTF-8 encoding for international text support
-        conn.pragma_update(None, "encoding", "UTF-8")
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to set UTF-8 encoding: {e}")))?;
+        conn.pragma_update(None, "encoding", "UTF-8").map_err(|e| {
+            DatabaseError::Initialization(format!("Failed to set UTF-8 encoding: {e}"))
+        })?;
 
         // Enable WAL mode for better concurrency and crash recovery
         let _: String = conn
             .query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to enable WAL mode: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Initialization(format!("Failed to enable WAL mode: {e}"))
+            })?;
 
         // Set synchronous mode to FULL for maximum durability (slower but safer)
         conn.pragma_update(None, "synchronous", "FULL")
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to set synchronous mode: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Initialization(format!("Failed to set synchronous mode: {e}"))
+            })?;
 
         // Phase 1 Optimization: Enhanced cache size to 64MB for high-volume performance
         conn.pragma_update(None, "cache_size", -65536) // Negative value means KB, so -65536 = 64MB
@@ -274,16 +282,21 @@ impl DatabaseConnection {
 
         // Enable recursive triggers
         conn.pragma_update(None, "recursive_triggers", 1i64)
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to enable recursive triggers: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Initialization(format!("Failed to enable recursive triggers: {e}"))
+            })?;
 
         // Set busy timeout to 30 seconds to handle concurrent access
         conn.busy_timeout(std::time::Duration::from_secs(30))
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to set busy timeout: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Initialization(format!("Failed to set busy timeout: {e}"))
+            })?;
 
         // Phase 1 Optimization: Additional performance settings for high-volume processing
         // Optimize for bulk operations
-        conn.execute("PRAGMA optimize", [])
-            .map_err(|e| DatabaseError::Initialization(format!("Failed to optimize database: {e}")))?;
+        conn.execute("PRAGMA optimize", []).map_err(|e| {
+            DatabaseError::Initialization(format!("Failed to optimize database: {e}"))
+        })?;
 
         // Set page size to 4KB for better performance
         conn.pragma_update(None, "page_size", 4096i64)
@@ -358,9 +371,9 @@ impl DatabaseConnection {
         // If we have a connection pool, get a connection from it
         if let Some(pool) = &self.connection_pool {
             // Get a connection from the pool
-            let pooled_conn = pool
-                .get_connection()
-                .map_err(|e| DatabaseError::Connection(format!("Failed to get connection from pool: {e}")))?;
+            let pooled_conn = pool.get_connection().map_err(|e| {
+                DatabaseError::Connection(format!("Failed to get connection from pool: {e}"))
+            })?;
 
             // Replace our internal connection with the pooled one
             // This is a bit hacky but allows backward compatibility
@@ -396,9 +409,9 @@ impl DatabaseConnection {
 
         match result {
             Ok(value) => {
-                transaction
-                    .commit()
-                    .map_err(|e| DatabaseError::Transaction(format!("Failed to commit transaction: {e}")))?;
+                transaction.commit().map_err(|e| {
+                    DatabaseError::Transaction(format!("Failed to commit transaction: {e}"))
+                })?;
                 Ok(value)
             }
             Err(e) => {
@@ -415,15 +428,15 @@ impl DatabaseConnection {
         F: FnOnce(&rusqlite::Transaction) -> DatabaseResult<T>,
     {
         let mut conn = self.get_connection().await?;
-        let transaction = conn
-            .transaction()
-            .map_err(|e| DatabaseError::Transaction(format!("Failed to start read transaction: {e}")))?;
+        let transaction = conn.transaction().map_err(|e| {
+            DatabaseError::Transaction(format!("Failed to start read transaction: {e}"))
+        })?;
 
         let result = f(&transaction)?;
 
-        transaction
-            .commit()
-            .map_err(|e| DatabaseError::Transaction(format!("Failed to commit read transaction: {e}")))?;
+        transaction.commit().map_err(|e| {
+            DatabaseError::Transaction(format!("Failed to commit read transaction: {e}"))
+        })?;
 
         Ok(result)
     }
@@ -478,7 +491,9 @@ impl DatabaseConnection {
 
         let integrity: String = backup_conn
             .query_row("PRAGMA integrity_check", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to check backup integrity: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to check backup integrity: {e}"))
+            })?;
 
         if integrity != "ok" {
             return Err(DatabaseError::Connection(format!(
@@ -532,8 +547,9 @@ impl DatabaseConnection {
     /// Get database file size
     pub fn get_file_size(&self) -> DatabaseResult<u64> {
         let path = Self::get_database_path()?;
-        let metadata = fs::metadata(&path)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get database metadata: {e}")))?;
+        let metadata = fs::metadata(&path).map_err(|e| {
+            DatabaseError::Connection(format!("Failed to get database metadata: {e}"))
+        })?;
         Ok(metadata.len())
     }
 
@@ -542,7 +558,9 @@ impl DatabaseConnection {
         let conn = self.get_connection().await?;
         let encoding: String = conn
             .query_row("PRAGMA encoding", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get database encoding: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to get database encoding: {e}"))
+            })?;
         Ok(encoding)
     }
 
@@ -561,8 +579,9 @@ impl DatabaseConnection {
         let backup_dir = Self::get_backup_directory()?;
 
         // Ensure backup directory exists
-        fs::create_dir_all(&backup_dir)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to create backup directory: {e}")))?;
+        fs::create_dir_all(&backup_dir).map_err(|e| {
+            DatabaseError::Connection(format!("Failed to create backup directory: {e}"))
+        })?;
 
         // Generate backup filename with timestamp
         let timestamp = SystemTime::now()
@@ -580,7 +599,9 @@ impl DatabaseConnection {
 
         // Use SQLite backup API to capture a consistent snapshot (includes WAL contents)
         let source = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to open database for backup: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to open database for backup: {e}"))
+            })?;
         source
             .backup(DatabaseName::Main, &backup_path, None)
             .map_err(|e| DatabaseError::Connection(format!("SQLite backup failed: {e}")))?;
@@ -590,7 +611,9 @@ impl DatabaseConnection {
             .map_err(|e| DatabaseError::Connection(format!("Failed to reopen backup file: {e}")))?;
         destination
             .pragma_update(None, "journal_mode", "WAL")
-            .map_err(|e| DatabaseError::Connection(format!("Failed to enable WAL on backup: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to enable WAL on backup: {e}"))
+            })?;
 
         log::info!("Database backup created: {backup_path:?}");
         Ok(backup_path)
@@ -605,10 +628,12 @@ impl DatabaseConnection {
         }
 
         let mut backups = Vec::new();
-        for entry in fs::read_dir(backup_dir)
-            .map_err(|e| DatabaseError::Connection(format!("Failed to read backup directory: {e}")))? {
-            let entry =
-                entry.map_err(|e| DatabaseError::Connection(format!("Failed to read backup entry: {e}")))?;
+        for entry in fs::read_dir(backup_dir).map_err(|e| {
+            DatabaseError::Connection(format!("Failed to read backup directory: {e}"))
+        })? {
+            let entry = entry.map_err(|e| {
+                DatabaseError::Connection(format!("Failed to read backup entry: {e}"))
+            })?;
 
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("db") {
@@ -675,7 +700,9 @@ impl DatabaseConnection {
 
         let synchronous: String = conn
             .query_row("PRAGMA synchronous", [], |row| row.get(0))
-            .map_err(|e| DatabaseError::Connection(format!("Failed to get synchronous mode: {e}")))?;
+            .map_err(|e| {
+                DatabaseError::Connection(format!("Failed to get synchronous mode: {e}"))
+            })?;
 
         Ok(DatabaseStatistics {
             page_count,
