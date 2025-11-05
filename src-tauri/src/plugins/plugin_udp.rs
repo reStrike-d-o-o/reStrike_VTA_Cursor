@@ -189,7 +189,7 @@ pub struct UdpServer {
     event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
     listener_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     // Hit level tracking for statistics
-    recent_hit_levels: Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>, // athlete -> [(level, timestamp)]
+    recent_hit_levels: RecentHitMap, // athlete -> [(level, timestamp)]
     // Tournament context tracking
     current_tournament_id: Arc<Mutex<Option<i64>>>,
 
@@ -754,9 +754,7 @@ impl UdpServer {
         _athlete_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: &Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event: &PssEvent,
-        recent_hit_levels: &Arc<
-            Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>,
-        >,
+        recent_hit_levels: &RecentHitMap,
         current_tournament_id: &Arc<Mutex<Option<i64>>>,
         websocket_server: &Arc<WebSocketServer>,
     ) -> AppResult<()> {
