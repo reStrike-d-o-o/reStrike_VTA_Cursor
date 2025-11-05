@@ -4,8 +4,8 @@ use crate::database::{
     // models::*,
     // operations::*,
     models::{
-        UdpClientConnection as DbUdpClientConnection, UdpServerConfig as DbUdpServerConfig,
-        UdpServerSession as DbUdpServerSession,
+        PssEventType as DbPssEventType, UdpClientConnection as DbUdpClientConnection,
+        UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     DatabaseError,
@@ -14,12 +14,14 @@ use crate::database::{
     MigrationStrategy,
     UiSettingsOperations,
 };
-use crate::entity::{event, matches, udp_client_connection, udp_server_config, udp_server_session};
+use crate::entity::{
+    event, event_type, matches, udp_client_connection, udp_server_config, udp_server_session,
+};
 use crate::types::{AppError, AppResult};
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -603,45 +605,73 @@ impl DatabasePlugin {
     /// Get all PSS event types
     pub async fn get_pss_event_types(
         &self,
-    ) -> AppResult<Vec<crate::database::models::PssEventType>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_pss_event_types(&*conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get PSS event types: {}", e))
-        })
+    ) -> AppResult<Vec<DbPssEventType>> {
+        let sea = self.seaorm_connection.clone();
+        let records = event_type::Entity::find()
+            .order_by_asc(event_type::Column::Code)
+            .all(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event types: {}", e)))?;
+
+        let mut items = Vec::with_capacity(records.len());
+        for record in records {
+            items.push(map_event_type_model(record)?);
+        }
+        Ok(items)
     }
 
     /// Get PSS event type by code
     pub async fn get_pss_event_type_by_code(
         &self,
         event_code: &str,
-    ) -> AppResult<Option<crate::database::models::PssEventType>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventOperations::get_pss_event_type_by_code(
-            &*conn, event_code,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get PSS event type: {}", e))
-        })
+    ) -> AppResult<Option<DbPssEventType>> {
+        let sea = self.seaorm_connection.clone();
+        let record = event_type::Entity::find()
+            .filter(event_type::Column::Code.eq(event_code))
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event type: {}", e)))?;
+
+        record.map(map_event_type_model).transpose()
     }
 
     /// Upsert PSS event type
     pub async fn upsert_pss_event_type(
         &self,
-        event_type: &crate::database::models::PssEventType,
+        event_type: &DbPssEventType,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssEventOperations::upsert_pss_event_type(
-            &mut *conn, event_type,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to upsert PSS event type: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        let created_at = event_type.created_at;
+        if let Some(id) = event_type.id {
+            event_type::ActiveModel {
+                id: Set(id as i32),
+                code: Set(event_type.event_code.clone()),
+                name: Set(event_type.event_name.clone()),
+                description: Set(event_type.description.clone()),
+                category: Set(event_type.category.clone()),
+                is_active: Set(event_type.is_active),
+                created_at: Set(created_at.naive_utc()),
+            }
+            .update(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS event type: {}", e)))?;
+            Ok(id)
+        } else {
+            let inserted = event_type::ActiveModel {
+                code: Set(event_type.event_code.clone()),
+                name: Set(event_type.event_name.clone()),
+                description: Set(event_type.description.clone()),
+                category: Set(event_type.category.clone()),
+                is_active: Set(event_type.is_active),
+                created_at: Set(created_at.naive_utc()),
+                ..Default::default()
+            }
+            .insert(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS event type: {}", e)))?;
+
+            Ok(inserted.id as i64)
+        }
     }
 
     /// Get or create PSS match
@@ -1352,6 +1382,18 @@ fn parse_rfc3339(value: &str, field: &str) -> AppResult<chrono::DateTime<Utc>> {
 fn convert_i64_to_i32(value: i64, field: &str) -> AppResult<i32> {
     i32::try_from(value)
         .map_err(|e| AppError::ConfigError(format!("{} out of range ({}): {}", field, value, e)))
+}
+
+fn map_event_type_model(model: event_type::Model) -> AppResult<DbPssEventType> {
+    Ok(DbPssEventType {
+        id: Some(model.id as i64),
+        event_code: model.code,
+        event_name: model.name,
+        description: model.description,
+        category: model.category,
+        is_active: model.is_active,
+        created_at: Utc.from_utc_datetime(&model.created_at),
+    })
 }
 
 /// Migration status information
