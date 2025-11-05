@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::importers::daedo::{import_tournament, ImportRequest};
+use crate::entity::{athlete, match_participant, matches, tournament};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
 #[tauri::command]
 pub async fn validate_tournament_pss_integrity(
@@ -1569,65 +1571,89 @@ pub async fn pss_get_match_details(
     app: State<'_, Arc<App>>,
     match_id: String,
 ) -> Result<serde_json::Value, TauriError> {
-    let conn =
-        app.database_plugin().get_connection().await.map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("DB connection error: {}", e)))
-        })?;
-
     // ID-only resolution: accept only numeric DB id
     let dbid: i64 = match match_id.parse::<i64>() {
         Ok(id) => id,
         Err(_) => return Err(TauriError::from(anyhow::anyhow!("Match not found"))),
     };
-    let list = crate::database::operations::PssUdpOperations::get_pss_matches(&*conn, Some(1000))
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_matches: {}", e))))?;
-    let info = list.into_iter().find(|m| m.id == Some(dbid));
+    let match_id_i32 = i32::try_from(dbid)
+        .map_err(|_| TauriError::from(anyhow::anyhow!("Match not found")))?;
 
-    let info = info.ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
-    let athletes = crate::database::operations::PssUdpOperations::get_pss_match_athletes(
-        &*conn,
-        info.id.unwrap(),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(format!("get_pss_match_athletes: {}", e))))?;
-    let mut a1 = serde_json::json!({});
-    let mut a2 = serde_json::json!({});
-    for (ma, a) in athletes {
-        let obj = serde_json::json!({
-            "short_name": a.short_name,
-            "long_name": a.long_name,
-            "country_code": a.country_code,
-        });
-        if ma.athlete_position == 1 {
-            a1 = obj;
-        } else if ma.athlete_position == 2 {
-            a2 = obj;
+    let seaorm = app.database_plugin().seaorm();
+
+    let match_model = matches::Entity::find_by_id(match_id_i32)
+        .one(&seaorm)
+        .await
+        .map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!(
+                "match lookup failed: {}",
+                e
+            )))
+        })?
+        .ok_or_else(|| TauriError::from(anyhow::anyhow!("Match not found")))?;
+
+    let tournament_uuid = if let Some(tournament_id) = match_model.tournament_id {
+        tournament::Entity::find_by_id(tournament_id)
+            .select_only()
+            .column(tournament::Column::Uuid)
+            .into_tuple::<String>()
+            .one(&seaorm)
+            .await
+            .map_err(|e| {
+                TauriError::from(anyhow::anyhow!(format!(
+                    "tournament lookup failed: {}",
+                    e
+                )))
+            })?
+    } else {
+        None
+    };
+
+    let participants = match_participant::Entity::find()
+        .filter(match_participant::Column::MatchId.eq(match_id_i32))
+        .order_by(match_participant::Column::Side, sea_orm::Order::Asc)
+        .find_also_related(athlete::Entity)
+        .all(&seaorm)
+        .await
+        .map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!(
+                "match participants lookup failed: {}",
+                e
+            )))
+        })?;
+
+    let mut athlete_blue = serde_json::json!({});
+    let mut athlete_red = serde_json::json!({});
+
+    for (participant, maybe_athlete) in participants {
+        if let Some(ath) = maybe_athlete {
+            let payload = serde_json::json!({
+                "short_name": ath.short_name,
+                "long_name": ath.display_name,
+                "country_code": ath.country_code,
+            });
+
+            match participant.side.as_str() {
+                "blue" => athlete_blue = payload,
+                "red" => athlete_red = payload,
+                _ => {}
+            }
         }
     }
-    // Fetch legacy integer tournament ids for transition
-    let ints: Option<(Option<i64>, Option<i64>)> = conn
-        .query_row(
-            "SELECT tournament_id FROM pss_matches WHERE id = ?",
-            rusqlite::params![dbid],
-            |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?)),
-        )
-        .ok();
-    let (_tid_int, _day_int) = ints.unwrap_or((None, None));
 
     Ok(serde_json::json!({
         "match": {
-            "id": info.id,
-            "uuid": info.uuid,
-            "tournament_id": info.tournament_id,
-
-
-            "match_id": info.match_id,
-            "number": info.match_number,
-            "category": info.category,
-            "weight": info.weight_class,
-            "division": info.division,
+            "id": dbid,
+            "uuid": match_model.uuid,
+            "tournament_id": tournament_uuid,
+            "match_id": match_model.match_code,
+            "number": match_model.match_number,
+            "category": match_model.category,
+            "weight": match_model.weight_class_code,
+            "division": match_model.division_code,
         },
-        "athlete1": a1,
-        "athlete2": a2,
+        "athlete1": athlete_blue,
+        "athlete2": athlete_red,
     }))
 }
 

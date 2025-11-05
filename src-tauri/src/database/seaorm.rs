@@ -1,7 +1,7 @@
 use std::{path::Path, time::Duration};
 
 use sea_orm::{
-    ConnectOptions, Database, DatabaseConnection, DbBackend, DbErr, Statement,
+    ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, Statement,
 };
 
 use super::DATABASE_FILE;
@@ -28,8 +28,7 @@ pub async fn connect(path: impl AsRef<Path>) -> Result<SeaOrmConnection, DbErr> 
         .max_connections(5)
         .min_connections(1)
         .connect_timeout(Duration::from_secs(5))
-        .sqlx_logging(false)
-        .sqlx_slow_statements_logging(false);
+        .sqlx_logging(false);
 
     let connection = Database::connect(options).await?;
 

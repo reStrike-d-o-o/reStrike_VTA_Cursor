@@ -3,6 +3,7 @@ use crate::database::{
     connection::{DatabaseConnection, DatabaseConnectionPool, PooledConnection},
     // models::*,
     // operations::*,
+    seaorm::{connect as seaorm_connect, SeaOrmConnection},
     DatabaseError,
     HybridSettingsProvider,
     MigrationResult,
@@ -22,6 +23,7 @@ pub struct DatabasePlugin {
     connection: Arc<DatabaseConnection>,
     migration_strategy: MigrationStrategy,
     hybrid_provider: Arc<Mutex<HybridSettingsProvider>>,
+    seaorm_connection: SeaOrmConnection,
 }
 
 impl DatabasePlugin {
@@ -42,11 +44,23 @@ impl DatabasePlugin {
         // Create a database connection that uses the pool
         let connection = Arc::new(DatabaseConnection::new_from_pool(connection_pool.clone()));
 
+        // Initialise SeaORM connection against the same SQLite database.
+        let db_path = DatabaseConnection::get_database_path().map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to resolve database path: {}",
+                e
+            ))
+        })?;
+        let seaorm_connection = seaorm_connect(&db_path).await.map_err(|e| {
+            crate::types::AppError::ConfigError(format!("SeaORM connection failed: {}", e))
+        })?;
+
         let plugin = Self {
             connection_pool,
             connection,
             migration_strategy,
             hybrid_provider,
+            seaorm_connection,
         };
 
         // Run database migrations using the connection pool
@@ -158,6 +172,10 @@ impl DatabasePlugin {
     /// Returns the thread-safe database connection that uses connection pooling
     pub fn get_database_connection(&self) -> Arc<DatabaseConnection> {
         self.connection.clone()
+    }
+
+    pub fn seaorm(&self) -> SeaOrmConnection {
+        self.seaorm_connection.clone()
     }
 
     /// Get database file size

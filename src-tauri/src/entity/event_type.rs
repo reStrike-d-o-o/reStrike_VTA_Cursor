@@ -20,8 +20,6 @@ pub enum Relation {
     Event,
     #[sea_orm(has_many = "super::event_statistic::Entity")]
     EventStatistic,
-    #[sea_orm(has_many = "super::event_validation_rule::Entity")]
-    EventValidationRule,
 }
 
 impl Related<super::event::Entity> for Entity {
@@ -33,12 +31,6 @@ impl Related<super::event::Entity> for Entity {
 impl Related<super::event_statistic::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::EventStatistic.def()
-    }
-}
-
-impl Related<super::event_validation_rule::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::EventValidationRule.def()
     }
 }
 
