@@ -412,27 +412,6 @@ pub struct DatabaseInfo {
 impl std::fmt::Display for DatabaseInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Database Info:")?;
-<<<<<<< HEAD
-        writeln!(
-            f,
-            "  Total Size: {} bytes ({:.2} MB)",
-            self.total_size,
-            self.total_size as f64 / 1024.0 / 1024.0
-        )?;
-        writeln!(
-            f,
-            "  Used Size: {} bytes ({:.2} MB)",
-            self.used_size,
-            self.used_size as f64 / 1024.0 / 1024.0
-        )?;
-        writeln!(
-            f,
-            "  Free Size: {} bytes ({:.2} MB)",
-            self.free_size,
-            self.free_size as f64 / 1024.0 / 1024.0
-        )?;
-        writeln!(f, "  Fragmentation: {:.2}%", self.fragmentation_percentage)?;
-=======
         let total_mb = self.total_size as f64 / 1024.0 / 1024.0;
         let used_mb = self.used_size as f64 / 1024.0 / 1024.0;
         let free_mb = self.free_size as f64 / 1024.0 / 1024.0;
@@ -459,7 +438,6 @@ impl std::fmt::Display for DatabaseInfo {
             "  Fragmentation: {fragmentation:.2}%",
             fragmentation = self.fragmentation_percentage
         )?;
->>>>>>> Scoreboard
         writeln!(f, "  Page Count: {}", self.page_count)?;
         writeln!(f, "  Page Size: {} bytes", self.page_size)?;
         writeln!(f, "  Free List Count: {}", self.freelist_count)?;

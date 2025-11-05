@@ -7,7 +7,6 @@ use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use std::time::Duration;
 
-#[derive(Clone)]
 type TpssEventMetadata = Option<(
     Option<String>,
     Option<String>,

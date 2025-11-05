@@ -2394,7 +2394,7 @@ impl Migration for Migration9 {
         // Insert default overlay templates
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "INSERT OR IGNORE INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, created_at, updated_at) VALUES 
+            "INSERT OR IGNORE INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, created_at, updated_at) VALUES
             ('Point Scored', 'Overlay for when a point is scored', 'default', '{\"primary\": \"#00ff00\", \"secondary\": \"#ffffff\"}', 'slide', 2000, 1, ?, ?),
             ('Warning Issued', 'Overlay for when a warning is issued', 'default', '{\"primary\": \"#ff0000\", \"secondary\": \"#ffffff\"}', 'fade', 3000, 1, ?, ?),
             ('Match Start', 'Overlay for match start', 'default', '{\"primary\": \"#0000ff\", \"secondary\": \"#ffffff\"}', 'zoom', 4000, 1, ?, ?),
@@ -2596,14 +2596,14 @@ impl Migration for Migration14 {
 
         // Copy data from old table to new table, converting match_number to TEXT
         conn.execute(
-            "INSERT INTO pss_matches_new 
-             SELECT id, match_id, 
-                    CASE 
-                        WHEN match_number IS NULL THEN NULL 
-                        ELSE CAST(match_number AS TEXT) 
+            "INSERT INTO pss_matches_new
+             SELECT id, match_id,
+                    CASE
+                        WHEN match_number IS NULL THEN NULL
+                        ELSE CAST(match_number AS TEXT)
                     END as match_number,
-                    category, weight_class, division, total_rounds, 
-                    round_duration, countdown_type, format_type, 
+                    category, weight_class, division, total_rounds,
+                    round_duration, countdown_type, format_type,
                     COALESCE(creation_mode, 'Automatic') as creation_mode,
                     created_at, updated_at
              FROM pss_matches",
@@ -2652,15 +2652,15 @@ impl Migration for Migration14 {
 
         // Copy data back, converting TEXT to INTEGER where possible
         conn.execute(
-            "INSERT INTO pss_matches_old 
-             SELECT id, match_id, 
-                    CASE 
-                        WHEN match_number IS NULL THEN NULL 
+            "INSERT INTO pss_matches_old
+             SELECT id, match_id,
+                    CASE
+                        WHEN match_number IS NULL THEN NULL
                         WHEN match_number GLOB '*[^0-9]*' THEN NULL  -- Contains non-numeric chars
-                        ELSE CAST(match_number AS INTEGER) 
+                        ELSE CAST(match_number AS INTEGER)
                     END as match_number,
-                    category, weight_class, division, total_rounds, 
-                    round_duration, countdown_type, format_type, 
+                    category, weight_class, division, total_rounds,
+                    round_duration, countdown_type, format_type,
                     COALESCE(creation_mode, 'Automatic') as creation_mode,
                     created_at, updated_at
              FROM pss_matches",
@@ -2719,9 +2719,9 @@ impl Migration for Migration19 {
 
         // Copy data from old table
         conn.execute(
-            "INSERT INTO pss_matches_new 
+            "INSERT INTO pss_matches_new
              SELECT id, match_id, match_number, category, weight_class, division, total_rounds,
-                    round_duration, countdown_type, format_type, 
+                    round_duration, countdown_type, format_type,
                     COALESCE(creation_mode, 'Automatic') as creation_mode,
                     created_at, updated_at
              FROM pss_matches",
@@ -2772,9 +2772,9 @@ impl Migration for Migration19 {
         )?;
 
         conn.execute(
-            "INSERT INTO pss_matches_old 
+            "INSERT INTO pss_matches_old
              SELECT id, match_id, match_number, category, weight_class, division, total_rounds,
-                    round_duration, countdown_type, format_type, 
+                    round_duration, countdown_type, format_type,
                     COALESCE(creation_mode, 'Automatic') as creation_mode,
                     created_at, updated_at
              FROM pss_matches",
@@ -3431,12 +3431,6 @@ impl MigrationManager {
     }
 }
 
-impl Default for MigrationManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Migration 15: Secure Configuration Storage
 pub struct Migration15;
 
@@ -3628,8 +3622,8 @@ impl Migration for Migration15 {
 
         for (name, display, desc, access, is_system) in categories {
             conn.execute(
-                "INSERT OR IGNORE INTO config_categories 
-                (category_name, display_name, description, access_level, is_system, created_at, updated_at) 
+                "INSERT OR IGNORE INTO config_categories
+                (category_name, display_name, description, access_level, is_system, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
                 [name, display, desc, access, if is_system { "1" } else { "0" }],
             )?;
@@ -3818,7 +3812,7 @@ impl Migration for Migration17 {
                 replay_buffer_enabled, replay_buffer_duration, auto_start_recording, auto_start_replay_buffer,
                 filename_template, folder_pattern, is_active, created_at, updated_at
             )
-            SELECT 
+            SELECT
                 id, obs_connection_name, recording_root_path, recording_format,
                 replay_buffer_enabled, replay_buffer_duration, auto_start_recording, auto_start_replay_buffer,
                 filename_template, folder_pattern, is_active, created_at, updated_at
@@ -4048,7 +4042,7 @@ impl Migration for Migration28 {
             [],
         );
         let _ = conn.execute(
-            "UPDATE udp_server_sessions SET 
+            "UPDATE udp_server_sessions SET
                 created = COALESCE(created, strftime('%s', start_time)),
                 updated = COALESCE(updated, strftime('%s', COALESCE(end_time, start_time)))",
             [],
