@@ -40,6 +40,7 @@ Keep this document current so the team always knows what remains before we can d
 - Confirm end-to-end tests for SeaORM match/event flows (UDP ingest, OBS recorder, manual mode) against a seeded sandbox database.
 - Replace remaining rusqlite paths (OBS recording/config, overlay providers, medal ceremony, archival jobs, security storage) with targeted SeaORM modules.
 - Validate the new SeaORM network interface helpers with UDP server provisioning flows to confirm parity with the legacy path.
+- Add `created_at` / `updated_at` triggers across tables so SeaORM helpers no longer need to stamp timestamps manually.
 - Audit migrations in `scripts/db_migrations/20251105_schema_unification.sql` to ensure new tables/entities match runtime expectations (timestamps, UUIDs, FKs).
 - Draft data validation scripts (pre/post migration row counts, checksum comparisons) to catch divergence during the transfer window.
 - Document rollback and recovery procedures once rusqlite dependencies are fully removed from production code paths.

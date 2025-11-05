@@ -1061,6 +1061,47 @@ BEGIN
 END;
 ```
 
+### **`created_at` / `updated_at` Trigger Blueprint**
+
+Several tables still depend on the Rust layer to stamp timestamps (`network_interfaces`, `udp_server_configs`, `udp_server_sessions`, `udp_client_connections`, `obs_sessions`, etc.). To make these columns authoritative inside SQLite, add a consistent pair of triggers per table:
+
+1. **Insert initializer** — fills in `created_at`, `updated_at`, and any Unix epoch mirrors when the row is first written.
+2. **Update touch trigger** — refreshes only the `updated_*` fields on subsequent updates.
+
+The pattern below assumes ISO-8601 strings stored in UTC and optional integer mirrors (`created`, `updated`). SQLite disables recursive trigger chaining by default, so the `UPDATE` statements inside these triggers will not loop back unless the pragma is flipped on.
+
+```sql
+-- network_interfaces timestamp triggers
+CREATE TRIGGER trg_network_interfaces_set_created
+AFTER INSERT ON network_interfaces
+FOR EACH ROW
+WHEN NEW.created_at IS NULL OR NEW.updated_at IS NULL
+BEGIN
+    UPDATE network_interfaces
+    SET created_at = COALESCE(NEW.created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+        created    = COALESCE(NEW.created,  unixepoch('now')),
+        updated    = unixepoch('now')
+    WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER trg_network_interfaces_touch
+AFTER UPDATE ON network_interfaces
+FOR EACH ROW
+BEGIN
+    UPDATE network_interfaces
+    SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+        updated    = unixepoch('now')
+    WHERE id = NEW.id;
+END;
+```
+
+> Implementation checklist
+> - Duplicate the trigger pair for every table that exposes `created_at` / `updated_at` (and their Unix epoch shadows) but lacks automatic maintenance.
+> - Align naming with the table (`trg_<table>_set_created`, `trg_<table>_touch`).
+> - If a table stores timestamps in a different format, adjust the `strftime` call accordingly.
+> - Keep SeaORM models in sync: once triggers are active, remove manual timestamp writes from the corresponding helper modules so updates do not double-fire.
+
 ### **YouTube Chapter Generation**
 
 #### **Database View for YouTube Chapters**
