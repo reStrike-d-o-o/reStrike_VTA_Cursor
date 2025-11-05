@@ -68,7 +68,7 @@ pub struct PooledConnection {
 
 #### Implementation Details
 - **Location**: `src-tauri/src/database/operations.rs`
-- **Archive Tables**: 
+- **Archive Tables**:
   - `pss_events_v2_archive`
   - `pss_event_details_archive`
 - **Features**:
@@ -182,9 +182,9 @@ Not recommended in clean start mode. Prefer purging and re-ingesting with the ne
 
 ```typescript
 // Frontend can now:
-await invoke('set_udp_tournament_context', { 
-    tournamentId: 1, 
-    tournamentDayId: 2 
+await invoke('set_udp_tournament_context', {
+    tournamentId: 1,
+    tournamentDayId: 2
 });
 await invoke('get_udp_tournament_context');
 await invoke('clear_udp_tournament_context');
@@ -220,24 +220,24 @@ impl EventBatch {
             last_flush: Instant::now(),
         }
     }
-    
+
     pub fn add_event(&mut self, event: PssEventV2) -> bool {
         self.events.push(event);
-        
+
         // Flush if batch is full or time has elapsed
-        if self.events.len() >= self.batch_size || 
+        if self.events.len() >= self.batch_size ||
            self.last_flush.elapsed() >= self.max_wait_time {
             self.flush()
         }
     }
-    
+
     pub fn flush(&mut self) -> DatabaseResult<usize> {
         if self.events.is_empty() {
             return Ok(0);
         }
-        
+
         let count = self.events.len();
-        
+
         // Use transaction for batch insert
         conn.transaction(|tx| {
             for event in &self.events {
@@ -248,10 +248,10 @@ impl EventBatch {
             }
             Ok(())
         })?;
-        
+
         self.events.clear();
         self.last_flush = Instant::now();
-        
+
         Ok(count)
     }
 }
@@ -568,7 +568,7 @@ pub struct DatabasePlugin {
 ```
 
 #### **Operations Classes**
-- `UiSettingsOperations` - UI settings management
+- `seaorm_ops::ui_settings` - UI settings management (seed, CRUD, audit history)
 - `PssUdpOperations` - PSS and UDP subsystem operations
 
 ### **Key Operation Patterns**
@@ -671,7 +671,7 @@ impl MigrationManager {
     pub fn migrate(&self, conn: &Connection) -> DatabaseResult<()> {
         // Apply pending migrations in order
     }
-    
+
     pub fn rollback(&self, conn: &Connection, target_version: u32) -> DatabaseResult<()> {
         // Rollback to specific version
     }

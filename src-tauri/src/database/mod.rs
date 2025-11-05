@@ -24,7 +24,6 @@ pub use maintenance::{
     MaintenanceStatistics,
 };
 pub use migration_strategy::{HybridSettingsProvider, MigrationResult, MigrationStrategy};
-pub use operations::UiSettingsOperations;
 pub use seaorm::{
     connect as seaorm_connect, connect_default as seaorm_connect_default, SeaOrmConnection,
 };

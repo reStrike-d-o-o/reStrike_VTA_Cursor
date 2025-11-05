@@ -11,7 +11,7 @@ This log keeps track of every subsystem that still touches the legacy `rusqlite`
 | Match catalogue (match, match_participant) | `PssUdpOperations`, raw SQL in `operations.rs` | **Done** (`seaorm_ops::pss_catalog`) | Plugin paths (UDP, OBS, Tauri commands) now call SeaORM helpers; legacy functions remain only for reference. |
 | Athletes | `operations.rs` | **Done** (SeaORM-backed) | Manual match creation and UDP ingest now upsert via SeaORM; legacy helpers unused and ready for removal. |
 | Tournaments / days / ranking / champions | `operations.rs` | **Pending** | Needed for OBS overlays, reporting, medal ceremony tooling. |
-| UI settings | `UiSettingsOperations` | **Pending** | Build SeaORM-backed key/value service; update Tauri commands & React settings views. |
+| UI settings | `seaorm_ops::ui_settings` | **Done** | Database plugin, HybridSettingsProvider, core app, and Tauri commands now use SeaORM helpers; legacy rusqlite module removed. |
 | OBS connections & recording config | `operations.rs::ObsRecordingOperations` | **Pending** | Add SeaORM helpers for `obs_connection`, `obs_recording_*`; switch `plugin_websocket`, `tauri_commands_obws`. |
 | UDP server config / sessions / clients | Mixed (SeaORM reads, rusqlite writes) | **Done** (SeaORM-backed) | Config, session lifecycle, and client tracking handled via SeaORM; keep verifying telemetry before deleting legacy helpers. |
 | Network interfaces | `PssUdpOperations` | **Pending** | Build SeaORM helpers for NIC catalog + recommendations, then swap plugin and Tauri commands away from rusqlite. |
@@ -38,7 +38,7 @@ Keep this document current so the team always knows what remains before we can d
 ## Pre-Data-Transfer Checklist
 
 - Confirm end-to-end tests for SeaORM match/event flows (UDP ingest, OBS recorder, manual mode) against a seeded sandbox database.
-- Replace remaining rusqlite paths (`UiSettingsOperations`, OBS recording/config, overlay providers, medal ceremony, archival jobs, security storage) with targeted SeaORM modules.
+- Replace remaining rusqlite paths (OBS recording/config, overlay providers, medal ceremony, archival jobs, security storage) with targeted SeaORM modules.
 - Port network interface helpers to SeaORM so UDP server provisioning no longer requires the legacy pool connection.
 - Audit migrations in `scripts/db_migrations/20251105_schema_unification.sql` to ensure new tables/entities match runtime expectations (timestamps, UUIDs, FKs).
 - Draft data validation scripts (pre/post migration row counts, checksum comparisons) to catch divergence during the transfer window.

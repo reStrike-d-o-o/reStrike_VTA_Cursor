@@ -2175,6 +2175,8 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
+    drop(conn);
+
     // 2) Update in-memory handler and persist UiSettings
     let recording_handler = app.recording_event_handler();
     let new_auto_cfg = crate::plugins::obs_obws::AutomaticRecordingConfig {
@@ -2193,91 +2195,172 @@ pub async fn obs_obws_save_full_config(
         )))
     })?;
 
-    use crate::database::operations::UiSettingsOperations as UIOps;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.enabled",
-        if cfg.enabled { "true" } else { "false" },
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.connection",
-        &cfg.connection_name,
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.stop_delay_seconds",
-        &cfg.stop_delay_seconds.to_string(),
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.include_replay_buffer",
-        if cfg.include_replay_buffer {
-            "true"
-        } else {
-            "false"
-        },
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.stop_on_match_end",
-        if cfg.auto_stop_on_match_end {
-            "true"
-        } else {
-            "false"
-        },
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.stop_on_winner",
-        if cfg.auto_stop_on_winner {
-            "true"
-        } else {
-            "false"
-        },
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.start_recording_on_match_begin",
-        if cfg.auto_start_recording_on_match_begin {
-            "true"
-        } else {
-            "false"
-        },
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-    UIOps::set_ui_setting(
-        &mut conn,
-        "obs.auto.start_replay_on_match_begin",
-        if cfg.auto_start_replay_on_match_begin {
-            "true"
-        } else {
-            "false"
-        },
-        "user",
-        Some("save full config"),
-    )
-    .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    use crate::database::seaorm_ops::ui_settings as sea_ui_settings;
+
+    let sea = app.database_plugin().seaorm();
+    let ensure_specs = [
+        (
+            "obs.auto.enabled",
+            "OBS Auto Enabled",
+            "boolean",
+            Some("false"),
+        ),
+        (
+            "obs.auto.connection",
+            "OBS Auto Connection",
+            "string",
+            Some("OBS_REC"),
+        ),
+        (
+            "obs.auto.stop_delay_seconds",
+            "OBS Stop Delay",
+            "integer",
+            Some("30"),
+        ),
+        (
+            "obs.auto.include_replay_buffer",
+            "Include Replay Buffer",
+            "boolean",
+            Some("true"),
+        ),
+        (
+            "obs.auto.stop_on_match_end",
+            "Stop On Match End",
+            "boolean",
+            Some("true"),
+        ),
+        (
+            "obs.auto.stop_on_winner",
+            "Stop On Winner",
+            "boolean",
+            Some("true"),
+        ),
+        (
+            "obs.auto.start_recording_on_match_begin",
+            "Auto-start Recording",
+            "boolean",
+            Some("true"),
+        ),
+        (
+            "obs.auto.start_replay_on_match_begin",
+            "Auto-start Replay",
+            "boolean",
+            Some("true"),
+        ),
+    ];
+
+    for (key, display, data_type, default) in ensure_specs {
+        if let Err(err) = sea_ui_settings::ensure_key(&sea, key, display, data_type, default).await
+        {
+            log::warn!("Failed to ensure UI setting '{key}': {err}");
+        }
+    }
+
+    let bool_str = |value: bool| if value { "true" } else { "false" };
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.enabled",
+            bool_str(cfg.enabled),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.connection",
+            &cfg.connection_name,
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.stop_delay_seconds",
+            &cfg.stop_delay_seconds.to_string(),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.include_replay_buffer",
+            bool_str(cfg.include_replay_buffer),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.stop_on_match_end",
+            bool_str(cfg.auto_stop_on_match_end),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.stop_on_winner",
+            bool_str(cfg.auto_stop_on_winner),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.start_recording_on_match_begin",
+            bool_str(cfg.auto_start_recording_on_match_begin),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "obs.auto.start_replay_on_match_begin",
+            bool_str(cfg.auto_start_replay_on_match_begin),
+            "user",
+            Some("save full config"),
+        )
+        .await
+    {
+        return Err(TauriError::from(anyhow::anyhow!(err.to_string())));
+    }
     // removed: save replay on match end persistence
 
     // Also return live connection status for the selected connection so the UI doesn't reset indicator
@@ -2306,125 +2389,162 @@ pub async fn obs_obws_get_full_config(
     connection_name: Option<String>,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    use crate::database::operations::{
-        ObsRecordingOperations as RecOps, UiSettingsOperations as UIOps,
-    };
+    use crate::database::operations::ObsRecordingOperations as RecOps;
+    use crate::database::seaorm_ops::ui_settings as sea_ui_settings;
 
-    let conn = app.database_plugin().get_connection().await?;
-
-    // Resolve connection name: param -> UiSettings -> default
+    // Resolve connection name: parameter -> stored setting -> default
+    let stored_connection = app
+        .database_plugin()
+        .get_ui_setting("obs.auto.connection")
+        .await
+        .unwrap_or(None);
     let resolved_conn = connection_name
-        .or(UIOps::get_ui_setting(&conn, "obs.auto.connection")
-            .ok()
-            .flatten())
+        .or(stored_connection)
         .unwrap_or_else(|| "OBS_REC".to_string());
 
-    // Ensure keys exist so get_ui_setting won't fail on fresh DBs
-    let _ = UIOps::ensure_key(
-        &conn,
+    let conn = app.database_plugin().get_connection().await?;
+    let rec_cfg = RecOps::get_recording_config(&conn, &resolved_conn)
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    drop(conn);
+
+    let sea = app.database_plugin().seaorm();
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.enabled",
         "OBS Auto Enabled",
         "boolean",
         Some("false"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.enabled exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.connection",
         "OBS Auto Connection",
         "string",
-        Some(&resolved_conn),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+        Some(resolved_conn.as_str()),
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.connection exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.stop_delay_seconds",
         "OBS Stop Delay",
         "integer",
         Some("30"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.stop_delay_seconds exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.include_replay_buffer",
         "Include Replay Buffer",
         "boolean",
         Some("true"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.include_replay_buffer exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.start_recording_on_match_begin",
         "Auto-start Recording",
         "boolean",
         Some("true"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.start_recording_on_match_begin exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.start_replay_on_match_begin",
         "Auto-start Replay",
         "boolean",
         Some("true"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.start_replay_on_match_begin exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.save_replay_on_match_end",
         "Save Replay On End",
         "boolean",
         Some("false"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.save_replay_on_match_end exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.stop_on_match_end",
         "Stop On Match End",
         "boolean",
         Some("true"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.stop_on_match_end exists: {err}");
+    }
+    if let Err(err) = sea_ui_settings::ensure_key(
+        &sea,
         "obs.auto.stop_on_winner",
         "Stop On Winner",
         "boolean",
         Some("true"),
-    );
+    )
+    .await
+    {
+        log::warn!("Failed to ensure obs.auto.stop_on_winner exists: {err}");
+    }
 
-    // Recording config
-    let rec_cfg = RecOps::get_recording_config(&conn, &resolved_conn)
-        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+    let settings = match app.database_plugin().get_all_ui_settings().await {
+        Ok(map) => map,
+        Err(err) => {
+            log::warn!(
+                "obs_obws_get_full_config: failed to load UI settings; using defaults: {err}"
+            );
+            std::collections::HashMap::<String, String>::new()
+        }
+    };
 
-    // Automatic config from UiSettings (fallbacks applied)
-    let enabled = UIOps::get_ui_setting(&conn, "obs.auto.enabled")
-        .ok()
-        .flatten()
+    let enabled = settings
+        .get("obs.auto.enabled")
         .map(|v| v == "true")
         .unwrap_or(false);
-    let stop_delay_seconds = UIOps::get_ui_setting(&conn, "obs.auto.stop_delay_seconds")
-        .ok()
-        .flatten()
+    let stop_delay_seconds = settings
+        .get("obs.auto.stop_delay_seconds")
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(30);
-    let include_replay_buffer = UIOps::get_ui_setting(&conn, "obs.auto.include_replay_buffer")
-        .ok()
-        .flatten()
+    let include_replay_buffer = settings
+        .get("obs.auto.include_replay_buffer")
         .map(|v| v == "true")
         .unwrap_or(true);
-    let auto_start_recording_on_match_begin =
-        UIOps::get_ui_setting(&conn, "obs.auto.start_recording_on_match_begin")
-            .ok()
-            .flatten()
-            .map(|v| v == "true")
-            .unwrap_or(true);
-    let auto_start_replay_on_match_begin =
-        UIOps::get_ui_setting(&conn, "obs.auto.start_replay_on_match_begin")
-            .ok()
-            .flatten()
-            .map(|v| v == "true")
-            .unwrap_or(true);
+    let auto_start_recording_on_match_begin = settings
+        .get("obs.auto.start_recording_on_match_begin")
+        .map(|v| v == "true")
+        .unwrap_or(true);
+    let auto_start_replay_on_match_begin = settings
+        .get("obs.auto.start_replay_on_match_begin")
+        .map(|v| v == "true")
+        .unwrap_or(true);
     let save_replay_on_match_end = false;
-    let auto_stop_on_match_end = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_match_end")
-        .ok()
-        .flatten()
+    let auto_stop_on_match_end = settings
+        .get("obs.auto.stop_on_match_end")
         .map(|v| v == "true")
         .unwrap_or(true);
-    let auto_stop_on_winner = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_winner")
-        .ok()
-        .flatten()
+    let auto_stop_on_winner = settings
+        .get("obs.auto.stop_on_winner")
         .map(|v| v == "true")
         .unwrap_or(true);
 
