@@ -109,7 +109,7 @@ impl App {
 
         // Initialize configuration manager
         let config_dir = PathBuf::from("config");
-        let config_manager = ConfigManager::new(&config_dir).map_err(|e| {
+        let config_manager = ConfigManager::new(&config_dir).await.map_err(|e| {
             crate::types::AppError::ConfigError(format!(
                 "Failed to initialize config manager: {}",
                 e

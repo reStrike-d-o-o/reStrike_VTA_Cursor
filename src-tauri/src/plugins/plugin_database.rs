@@ -32,7 +32,7 @@ impl DatabasePlugin {
 
         // Initialize config manager with default config directory
         let config_dir = Path::new("config");
-        let config_manager = ConfigManager::new(config_dir)?;
+        let config_manager = ConfigManager::new(config_dir).await?;
 
         let migration_strategy = MigrationStrategy::new(config_manager.clone());
         let hybrid_provider = Arc::new(Mutex::new(HybridSettingsProvider::new(

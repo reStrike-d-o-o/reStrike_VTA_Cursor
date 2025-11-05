@@ -36,7 +36,7 @@ reStrike VTA is a Windows-native desktop application designed for taekwondo comp
 - **Language**: Rust with async/await support
 - **Architecture**: Plugin-based microkernel architecture
 - **WebSocket**: tokio-tungstenite for OBS integration (v5 protocol only)
-- **Configuration**: JSON-based settings with automatic persistence
+- **Configuration**: SQLite-backed settings with automatic persistence
 - **Logging**: Structured logging with file rotation
 
 ### Frontend (React + TypeScript)
@@ -181,7 +181,7 @@ The application manages settings across multiple segments:
 9. **Advanced Settings**: Development, network, security, experimental
 
 ### Configuration Features
-- **Auto-save**: Settings automatically saved to `config/app_config.json`
+- **Auto-save**: Settings automatically saved in the `app_config` table within the embedded SQLite database
 - **Backup system**: Automatic backup to `config/app_config.backup.json`
 - **Cross-session**: All settings persist between app restarts
 - **Sync**: Frontend and backend stay synchronized

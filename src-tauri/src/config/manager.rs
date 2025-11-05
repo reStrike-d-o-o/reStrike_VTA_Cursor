@@ -1,61 +1,275 @@
 use crate::config::AppConfig;
+use crate::database::DatabaseConnection;
 use crate::types::AppResult;
 use chrono::Utc;
+use log::{info, warn};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde_json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+const CONFIG_PRIMARY_KEY: &str = "app.config";
+const CONFIG_PRIMARY_DESCRIPTION: &str = "Primary application configuration (JSON)";
+const CONFIG_PRIMARY_CATEGORY: &str = "app";
+const CONFIG_BACKUP_KEY: &str = "app.config.backup";
+const CONFIG_BACKUP_DESCRIPTION: &str = "Backup application configuration (JSON)";
+const CONFIG_BACKUP_CATEGORY: &str = "app_backup";
+
 /// Configuration manager for handling application settings
 #[derive(Clone)]
 pub struct ConfigManager {
     /// Current configuration
     config: Arc<RwLock<AppConfig>>,
-    /// Configuration file path
-    config_path: PathBuf,
-    /// Backup configuration file path
-    backup_path: PathBuf,
+    /// Database connection backing configuration persistence
+    database: Arc<DatabaseConnection>,
+    /// Legacy JSON configuration path (retained for import/export/migration)
+    legacy_config_path: PathBuf,
+    /// Legacy JSON backup path (retained for import/export/migration)
+    legacy_backup_path: PathBuf,
 }
 
 impl ConfigManager {
     /// Create a new configuration manager
-    pub fn new(config_dir: &Path) -> AppResult<Self> {
-        // Ensure config directory exists
+    pub async fn new(config_dir: &Path) -> AppResult<Self> {
+        // Ensure config directory exists for legacy import/export compatibility
         fs::create_dir_all(config_dir)?;
 
-        let config_path = config_dir.join("app_config.json");
-        let backup_path = config_dir.join("app_config.backup.json");
+        let legacy_config_path = config_dir.join("app_config.json");
+        let legacy_backup_path = config_dir.join("app_config.backup.json");
+        let database = Arc::new(DatabaseConnection::new()?);
 
-        // Try to load existing configuration or create default
-        let config = if config_path.exists() {
-            Self::load_config(&config_path)?
-        } else {
-            AppConfig::default()
+        // Load configuration from database or migrate legacy JSON file.
+        let initial_config = {
+            let mut conn = database.get_connection().await?;
+            Self::ensure_schema(&conn)?;
+
+            if let Some(config) = Self::load_from_database(&conn)? {
+                config
+            } else if legacy_config_path.exists() {
+                let migrated = Self::load_from_file(&legacy_config_path)?;
+                Self::persist_to_database(&mut conn, &migrated)?;
+                Self::archive_legacy_file(&legacy_config_path);
+                if legacy_backup_path.exists() {
+                    Self::archive_legacy_file(&legacy_backup_path);
+                }
+                migrated
+            } else {
+                let default_config = AppConfig::default();
+                Self::persist_to_database(&mut conn, &default_config)?;
+                default_config
+            }
         };
 
         Ok(Self {
-            config: Arc::new(RwLock::new(config)),
-            config_path,
-            backup_path,
+            config: Arc::new(RwLock::new(initial_config)),
+            database,
+            legacy_config_path,
+            legacy_backup_path,
         })
     }
 
-    /// Load configuration from file
-    fn load_config(config_path: &Path) -> AppResult<AppConfig> {
+    /// Load configuration from file (legacy path).
+    fn load_from_file(config_path: &Path) -> AppResult<AppConfig> {
         let content = fs::read_to_string(config_path)?;
         let config: AppConfig = serde_json::from_str(&content)?;
         Ok(config)
     }
 
-    /// Save configuration to file with retry logic and atomic write
-    async fn save_config(&self, config: &AppConfig) -> AppResult<()> {
+    /// Ensure the backing database schema exists.
+    fn ensure_schema(conn: &Connection) -> AppResult<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS app_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL UNIQUE,
+                value TEXT NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )
+        .map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to ensure app_config table: {}",
+                e
+            ))
+        })?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_app_config_category ON app_config(category)",
+            [],
+        )
+        .map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to ensure app_config index: {}",
+                e
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    /// Load configuration payload from database.
+    fn load_from_database(conn: &Connection) -> AppResult<Option<AppConfig>> {
+        Self::load_config_by_key(conn, CONFIG_PRIMARY_KEY)
+    }
+
+    fn load_backup_from_database(conn: &Connection) -> AppResult<Option<AppConfig>> {
+        Self::load_config_by_key(conn, CONFIG_BACKUP_KEY)
+    }
+
+    fn load_config_by_key(conn: &Connection, key: &str) -> AppResult<Option<AppConfig>> {
+        let mut stmt = conn
+            .prepare("SELECT value FROM app_config WHERE key = ?1 LIMIT 1")
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to prepare config load statement: {}",
+                    e
+                ))
+            })?;
+
+        let value: Option<String> = stmt
+            .query_row(params![key], |row| row.get(0))
+            .optional()
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to load configuration from database: {}",
+                    e
+                ))
+            })?;
+
+        match value {
+            Some(json) => {
+                let config: AppConfig = serde_json::from_str(&json)?;
+                Ok(Some(config))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Persist configuration snapshot to database (also updating backup copy).
+    fn persist_to_database(conn: &mut Connection, config: &AppConfig) -> AppResult<()> {
+        let serialized = serde_json::to_string_pretty(config)?;
+
+        let transaction = conn.transaction().map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to open transaction for config save: {}",
+                e
+            ))
+        })?;
+
+        let existing: Option<String> = transaction
+            .prepare("SELECT value FROM app_config WHERE key = ?1 LIMIT 1")
+            .and_then(|mut stmt| {
+                stmt.query_row(params![CONFIG_PRIMARY_KEY], |row| row.get(0))
+                    .optional()
+            })
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to read existing configuration: {}",
+                    e
+                ))
+            })?;
+
+        if let Some(previous_json) = existing {
+            Self::upsert_config_row(
+                &transaction,
+                CONFIG_BACKUP_KEY,
+                CONFIG_BACKUP_CATEGORY,
+                CONFIG_BACKUP_DESCRIPTION,
+                &previous_json,
+            )?;
+        }
+
+        Self::upsert_config_row(
+            &transaction,
+            CONFIG_PRIMARY_KEY,
+            CONFIG_PRIMARY_CATEGORY,
+            CONFIG_PRIMARY_DESCRIPTION,
+            &serialized,
+        )?;
+
+        transaction.commit().map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to commit configuration transaction: {}",
+                e
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    fn upsert_config_row(
+        tx: &Transaction,
+        key: &str,
+        category: &str,
+        description: &str,
+        value: &str,
+    ) -> AppResult<()> {
+        tx.execute(
+            "INSERT INTO app_config (key, value, category, description, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                category = excluded.category,
+                description = excluded.description,
+                updated_at = CURRENT_TIMESTAMP",
+            params![key, value, category, description],
+        )
+        .map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to upsert configuration row '{}': {}",
+                key, e
+            ))
+        })?;
+        Ok(())
+    }
+
+    fn archive_legacy_file(path: &Path) {
+        if !path.exists() {
+            return;
+        }
+
+        if let Some(stem) = path.file_stem() {
+            let mut archived = path.with_file_name(stem);
+            let extension = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or_default();
+            let new_extension = if extension.is_empty() {
+                "legacy"
+            } else {
+                &format!("{}.legacy", extension)
+            };
+            archived.set_extension(new_extension);
+
+            if let Err(err) = fs::rename(path, &archived) {
+                warn!(
+                    "Failed to archive legacy config file {:?}: {}",
+                    path,
+                    err
+                );
+            } else {
+                info!(
+                    "Archived legacy configuration file {:?} -> {:?}",
+                    path,
+                    archived
+                );
+            }
+        }
+    }
+
+    /// Persist configuration with retry logic and database-backed storage.
+    async fn save_config(&self, config: &AppConfig) -> AppResult<AppConfig> {
         const MAX_RETRIES: u32 = 3;
         let mut retry_count = 0;
 
         while retry_count < MAX_RETRIES {
             match self.try_save_config(config).await {
-                Ok(()) => return Ok(()),
+                Ok(saved) => return Ok(saved),
                 Err(e) => {
                     retry_count += 1;
                     if retry_count >= MAX_RETRIES {
@@ -73,40 +287,17 @@ impl ConfigManager {
         ))
     }
 
-    /// Try to save configuration to file with atomic write
-    async fn try_save_config(&self, config: &AppConfig) -> AppResult<()> {
-        // Create backup of current config if it exists
-        if self.config_path.exists() {
-            fs::copy(&self.config_path, &self.backup_path).map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to create backup: {}", e))
-            })?;
-        }
-
-        // Update last save timestamp
+    /// Try to persist configuration to database.
+    async fn try_save_config(&self, config: &AppConfig) -> AppResult<AppConfig> {
         let mut config_to_save = config.clone();
         config_to_save.app.last_save = Utc::now().to_rfc3339();
 
-        // Serialize configuration
-        let content = serde_json::to_string_pretty(&config_to_save).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to serialize config: {}", e))
-        })?;
+        {
+            let mut conn = self.database.get_connection().await?;
+            Self::persist_to_database(&mut conn, &config_to_save)?;
+        }
 
-        // Atomic write using temporary file
-        let temp_path = self.config_path.with_extension("tmp");
-
-        // Write to temporary file first
-        fs::write(&temp_path, content).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to write temp file: {}", e))
-        })?;
-
-        // Atomic rename (this is atomic on most filesystems)
-        fs::rename(&temp_path, &self.config_path).map_err(|e| {
-            // Clean up temp file if rename fails
-            let _ = fs::remove_file(&temp_path);
-            crate::types::AppError::ConfigError(format!("Failed to rename temp file: {}", e))
-        })?;
-
-        Ok(())
+        Ok(config_to_save)
     }
 
     /// Get current configuration (read-only)
@@ -116,12 +307,24 @@ impl ConfigManager {
 
     /// Update configuration
     pub async fn update_config(&self, new_config: AppConfig) -> AppResult<()> {
-        // Save to file
-        self.save_config(&new_config).await?;
+        let saved = self.save_config(&new_config).await?;
+        *self.config.write().await = saved;
+        Ok(())
+    }
 
-        // Update in memory
-        *self.config.write().await = new_config;
+    async fn apply_update<F>(&self, updater: F) -> AppResult<()>
+    where
+        F: FnOnce(&mut AppConfig),
+    {
+        let mut working_copy = {
+            let guard = self.config.read().await;
+            guard.clone()
+        };
 
+        updater(&mut working_copy);
+
+        let persisted = self.save_config(&working_copy).await?;
+        *self.config.write().await = persisted;
         Ok(())
     }
 
@@ -130,13 +333,10 @@ impl ConfigManager {
     where
         F: FnOnce(&mut AppConfig) -> &mut T,
     {
-        let mut config = self.config.write().await;
-        section_updater(&mut config);
-
-        // Save to file
-        self.save_config(&config).await?;
-
-        Ok(())
+        self.apply_update(|config| {
+            let _ = section_updater(config);
+        })
+        .await
     }
 
     /// Get OBS connections configuration
@@ -173,59 +373,58 @@ impl ConfigManager {
         &self,
         settings: serde_json::Value,
     ) -> AppResult<()> {
-        let mut config = self.config.write().await;
+        self.apply_update(|config| {
+            if let Some(udp_data) = settings.get("udp") {
+                if let Some(listener_data) = udp_data.get("listener") {
+                    if let Some(port) = listener_data.get("port").and_then(|p| p.as_u64()) {
+                        config.udp.listener.port = port as u16;
+                    }
+                    if let Some(bind_address) = listener_data
+                        .get("bind_address")
+                        .and_then(|value| value.as_str())
+                    {
+                        config.udp.listener.bind_address = bind_address.to_string();
+                    }
+                    if let Some(enabled) = listener_data
+                        .get("enabled")
+                        .and_then(|value| value.as_bool())
+                    {
+                        config.udp.listener.enabled = enabled;
+                    }
 
-        // Update UDP listener settings
-        if let Some(udp_data) = settings.get("udp") {
-            if let Some(listener_data) = udp_data.get("listener") {
-                if let Some(port) = listener_data.get("port") {
-                    if let Some(port_val) = port.as_u64() {
-                        config.udp.listener.port = port_val as u16;
-                    }
-                }
-                if let Some(bind_address) = listener_data.get("bind_address") {
-                    if let Some(bind_address_val) = bind_address.as_str() {
-                        config.udp.listener.bind_address = bind_address_val.to_string();
-                    }
-                }
-                if let Some(enabled) = listener_data.get("enabled") {
-                    if let Some(enabled_val) = enabled.as_bool() {
-                        config.udp.listener.enabled = enabled_val;
-                    }
-                }
-
-                // Update network interface settings
-                if let Some(network_data) = listener_data.get("network_interface") {
-                    if let Some(auto_detect) = network_data.get("auto_detect") {
-                        if let Some(auto_detect_val) = auto_detect.as_bool() {
-                            config.udp.listener.network_interface.auto_detect = auto_detect_val;
+                    if let Some(network_data) = listener_data.get("network_interface") {
+                        if let Some(auto_detect) = network_data
+                            .get("auto_detect")
+                            .and_then(|value| value.as_bool())
+                        {
+                            config.udp.listener.network_interface.auto_detect = auto_detect;
                         }
-                    }
-                    if let Some(preferred_type) = network_data.get("preferred_type") {
-                        if let Some(preferred_type_val) = preferred_type.as_str() {
+                        if let Some(preferred_type) = network_data
+                            .get("preferred_type")
+                            .and_then(|value| value.as_str())
+                        {
                             config.udp.listener.network_interface.preferred_type =
-                                preferred_type_val.to_string();
+                                preferred_type.to_string();
                         }
-                    }
-                    if let Some(fallback_to_localhost) = network_data.get("fallback_to_localhost") {
-                        if let Some(fallback_val) = fallback_to_localhost.as_bool() {
+                        if let Some(fallback_to_localhost) = network_data
+                            .get("fallback_to_localhost")
+                            .and_then(|value| value.as_bool())
+                        {
                             config.udp.listener.network_interface.fallback_to_localhost =
-                                fallback_val;
+                                fallback_to_localhost;
                         }
-                    }
-                    if let Some(selected_interface) = network_data.get("selected_interface") {
-                        if let Some(selected_interface_val) = selected_interface.as_str() {
+                        if let Some(selected_interface) = network_data
+                            .get("selected_interface")
+                            .and_then(|value| value.as_str())
+                        {
                             config.udp.listener.network_interface.selected_interface =
-                                Some(selected_interface_val.to_string());
+                                Some(selected_interface.to_string());
                         }
                     }
                 }
             }
-        }
-
-        // Save the updated configuration
-        self.save_config(&*config).await?;
-        Ok(())
+        })
+        .await
     }
 
     /// Get logging settings
@@ -335,59 +534,80 @@ impl ConfigManager {
 
     /// Get configuration file path
     pub fn get_config_path(&self) -> &Path {
-        &self.config_path
+        &self.legacy_config_path
     }
 
     /// Get backup file path
     pub fn get_backup_path(&self) -> &Path {
-        &self.backup_path
+        &self.legacy_backup_path
     }
 
     /// Restore configuration from backup
     pub async fn restore_from_backup(&self) -> AppResult<()> {
-        if !self.backup_path.exists() {
-            return Err(crate::types::AppError::ConfigError(
-                "No backup file found".to_string(),
-            ));
-        }
+        let backup_config = {
+            let conn = self.database.get_connection().await?;
+            Self::load_backup_from_database(&conn)?
+        };
 
-        let config = Self::load_config(&self.backup_path)?;
-        self.update_config(config).await
+        let config = backup_config.ok_or_else(|| {
+            crate::types::AppError::ConfigError(
+                "No backup configuration stored in database".to_string(),
+            )
+        })?;
+
+        let saved = self.save_config(&config).await?;
+        *self.config.write().await = saved;
+        Ok(())
     }
 
     /// Check if configuration file exists
-    pub fn config_exists(&self) -> bool {
-        self.config_path.exists()
+    pub async fn config_exists(&self) -> bool {
+        match self.database.get_connection().await {
+            Ok(conn) => matches!(Self::load_from_database(&conn), Ok(Some(_))),
+            Err(_) => false,
+        }
     }
 
     /// Check if backup file exists
-    pub fn backup_exists(&self) -> bool {
-        self.backup_path.exists()
+    pub async fn backup_exists(&self) -> bool {
+        match self.database.get_connection().await {
+            Ok(conn) => matches!(Self::load_backup_from_database(&conn), Ok(Some(_))),
+            Err(_) => false,
+        }
     }
 
     /// Get configuration statistics
     pub async fn get_config_stats(&self) -> AppResult<ConfigStats> {
-        let config = self.config.read().await;
-
-        let stats = ConfigStats {
-            config_file_size: if self.config_path.exists() {
-                fs::metadata(&self.config_path)?.len()
-            } else {
-                0
-            },
-            backup_file_size: if self.backup_path.exists() {
-                fs::metadata(&self.backup_path)?.len()
-            } else {
-                0
-            },
-            obs_connections_count: config.obs.connections.len(),
-            udp_enabled: config.udp.listener.enabled,
-            logging_enabled: config.logging.global.file_enabled,
-            last_save: config.app.last_save.clone(),
-            version: config.app.version.clone(),
+        let (config_size, obs_connections_count, udp_enabled, logging_enabled, last_save, version) = {
+            let guard = self.config.read().await;
+            let serialized = serde_json::to_string(&*guard)?;
+            (
+                serialized.len() as u64,
+                guard.obs.connections.len(),
+                guard.udp.listener.enabled,
+                guard.logging.global.file_enabled,
+                guard.app.last_save.clone(),
+                guard.app.version.clone(),
+            )
         };
 
-        Ok(stats)
+        let backup_size = {
+            let conn = self.database.get_connection().await?;
+            match Self::load_backup_from_database(&conn)? {
+                Some(backup) => serde_json::to_string(&backup)?.len() as u64,
+                None => 0,
+            }
+        };
+
+        Ok(ConfigStats {
+            config_file_size: config_size,
+            backup_file_size: backup_size,
+            obs_connections_count,
+            udp_enabled,
+            logging_enabled,
+            last_save,
+            version,
+        })
     }
 }
 
@@ -411,9 +631,9 @@ mod tests {
     #[tokio::test]
     async fn test_config_manager_creation() {
         let temp_dir = tempdir().unwrap();
-        let manager = ConfigManager::new(temp_dir.path()).unwrap();
+        let manager = ConfigManager::new(temp_dir.path()).await.unwrap();
 
-        assert!(manager.config_exists());
+        assert!(manager.config_exists().await);
         assert_eq!(
             manager.get_config_path().file_name().unwrap(),
             "app_config.json"
@@ -423,7 +643,7 @@ mod tests {
     #[tokio::test]
     async fn test_config_persistence() {
         let temp_dir = tempdir().unwrap();
-        let manager = ConfigManager::new(temp_dir.path()).unwrap();
+        let manager = ConfigManager::new(temp_dir.path()).await.unwrap();
 
         // Get initial config
         let initial_config = manager.get_config().await;
@@ -442,7 +662,7 @@ mod tests {
     #[tokio::test]
     async fn test_config_backup() {
         let temp_dir = tempdir().unwrap();
-        let manager = ConfigManager::new(temp_dir.path()).unwrap();
+        let manager = ConfigManager::new(temp_dir.path()).await.unwrap();
 
         // Initial save should create backup
         let config = manager.get_config().await;
@@ -452,6 +672,6 @@ mod tests {
         manager.update_config(new_config).await.unwrap();
 
         // Should have backup file
-        assert!(manager.backup_exists());
+        assert!(manager.backup_exists().await);
     }
 }
