@@ -132,24 +132,30 @@ const mapSnapshotMatches = (matches: SnapshotMatch[] | undefined): IvrMatchCard[
 };
 
 export const useIvrMatchHistorySync = () => {
-  const { selectedDate, fingerprint } = useIvrMatchHistoryStore((state) => ({
-    selectedDate: state.selectedDate,
-    fingerprint: state.fingerprintsByDate[state.selectedDate],
-  }));
+  const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
+  const fingerprint = useIvrMatchHistoryStore(
+    (state) => state.fingerprintsByDate[state.selectedDate],
+  );
   const inflightRef = useRef<Set<string>>(new Set());
   const lastFailureRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (fingerprint !== undefined) {
+      delete lastFailureRef.current[selectedDate];
+    }
+  }, [fingerprint, selectedDate]);
 
   useEffect(() => {
     if (!canListenTauri()) {
       return;
     }
 
-    if (fingerprint !== undefined) {
-      delete lastFailureRef.current[selectedDate];
+    if (inflightRef.current.has(selectedDate)) {
       return;
     }
 
-    if (inflightRef.current.has(selectedDate)) {
+    const store = useIvrMatchHistoryStore.getState();
+    if (store.fingerprintsByDate[selectedDate] !== undefined) {
       return;
     }
 
@@ -175,7 +181,7 @@ export const useIvrMatchHistorySync = () => {
         if (result?.success && result.data?.matches) {
           const matches = mapSnapshotMatches(result.data.matches);
           useIvrMatchHistoryStore.getState().setSnapshotForDate(selectedDate, matches);
-        } else {
+        } else if (!cancelled) {
           lastFailureRef.current[selectedDate] = Date.now();
         }
       } catch (error) {
@@ -192,7 +198,7 @@ export const useIvrMatchHistorySync = () => {
       cancelled = true;
       inflightRef.current.delete(selectedDate);
     };
-  }, [selectedDate, fingerprint]);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!canListenTauri()) {
