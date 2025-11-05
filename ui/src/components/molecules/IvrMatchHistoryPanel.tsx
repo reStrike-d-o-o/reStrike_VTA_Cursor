@@ -220,6 +220,10 @@ const MatchCard: React.FC<{ match: IvrMatchCard }> = ({ match }) => {
 type HydrationStatus = 'idle' | 'hydrating' | 'hydrated' | 'error';
 
 export const IvrMatchHistoryPanel: React.FC = () => {
+  const log = useCallback(
+    (...args: unknown[]) => console.info('[IVR][History]', ...args),
+    [],
+  );
   const hydrationStatusRef = useRef<Map<string, HydrationStatus>>(new Map());
   const inflightDatesRef = useRef<Set<string>>(new Set());
   const [loadingDate, setLoadingDate] = useState<string | null>(null);
@@ -245,8 +249,9 @@ export const IvrMatchHistoryPanel: React.FC = () => {
   useEffect(() => {
     if (matches.length > 0) {
       hydrationStatusRef.current.set(selectedDate, 'hydrated');
+      log('matches updated -> mark hydrated', { selectedDate, length: matches.length });
     }
-  }, [matches, selectedDate]);
+  }, [matches, selectedDate, log]);
 
   const loadMatchesForDate = useCallback(
     async (date: string, force = false) => {
@@ -266,6 +271,7 @@ export const IvrMatchHistoryPanel: React.FC = () => {
       }
 
       inflightDatesRef.current.add(date);
+      log('starting snapshot load', { date, force });
       hydrationStatusRef.current.set(date, 'hydrating');
       setLoadingDate(date);
       setLoadError(null);
@@ -282,16 +288,21 @@ export const IvrMatchHistoryPanel: React.FC = () => {
         }
 
         hydrationStatusRef.current.set(date, 'hydrated');
+        log('snapshot load finished', {
+          date,
+          matches: result?.data?.matches?.length ?? 0,
+        });
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
         setLoadError('Failed to load match history snapshot.');
         hydrationStatusRef.current.set(date, 'error');
+        log('snapshot load error', { date, error });
       } finally {
         inflightDatesRef.current.delete(date);
         setLoadingDate((current) => (current === date ? null : current));
       }
     },
-    [],
+    [log],
   );
 
   useEffect(() => {
@@ -301,6 +312,11 @@ export const IvrMatchHistoryPanel: React.FC = () => {
     }
 
     const storeMatches = useIvrMatchHistoryStore.getState().getMatchesForDate(selectedDate);
+    log('hydration effect triggered', {
+      selectedDate,
+      status,
+      storeMatches: storeMatches.length,
+    });
     if (storeMatches.length > 0) {
       hydrationStatusRef.current.set(selectedDate, 'hydrated');
       return;
@@ -308,21 +324,23 @@ export const IvrMatchHistoryPanel: React.FC = () => {
 
     hydrationStatusRef.current.set(selectedDate, 'idle');
     void loadMatchesForDate(selectedDate);
-  }, [selectedDate, loadMatchesForDate]);
+  }, [selectedDate, loadMatchesForDate, log]);
 
   const handleDateChange = useCallback(
     (value: string) => {
       hydrationStatusRef.current.set(value, 'idle');
+      log('date change', { value });
       setSelectedDate(value);
       void loadMatchesForDate(value);
     },
-    [setSelectedDate, loadMatchesForDate],
+    [setSelectedDate, loadMatchesForDate, log],
   );
 
   const handleManualReload = useCallback(() => {
     hydrationStatusRef.current.set(selectedDate, 'idle');
+    log('manual reload', { selectedDate });
     void loadMatchesForDate(selectedDate, true);
-  }, [selectedDate, loadMatchesForDate]);
+  }, [selectedDate, loadMatchesForDate, log]);
 
   const filteredMatches = useMemo(() => {
     if (!searchTerm) {
