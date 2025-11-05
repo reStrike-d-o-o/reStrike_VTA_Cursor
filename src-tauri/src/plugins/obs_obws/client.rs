@@ -14,12 +14,14 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio::time::{timeout, Duration};
 
+type EventHandlerRegistry = Arc<Mutex<HashMap<String, Box<dyn Fn(ObsEvent) + Send + Sync>>>>;
+
 /// OBS Client using the obws crate
 pub struct ObsClient {
     client: Option<Client>,
     config: ObsConnectionConfig,
     status: ObsConnectionStatus,
-    event_handlers: Arc<Mutex<HashMap<String, Box<dyn Fn(ObsEvent) + Send + Sync>>>>,
+    event_handlers: EventHandlerRegistry,
     monitoring_task: Option<tokio::task::JoinHandle<()>>,
     monitoring_shutdown: Arc<tokio::sync::Notify>,
 }
