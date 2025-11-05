@@ -86,6 +86,12 @@ pub struct LicenseStatus {
 
 pub struct LicensePlugin;
 
+impl Default for LicensePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LicensePlugin {
     pub fn new() -> Self {
         Self
@@ -94,7 +100,7 @@ impl LicensePlugin {
     /// Returns a stable per-machine hash used to bind licenses to a PC.
     pub fn compute_machine_hash(&self) -> AppResult<String> {
         let uid = machine_uid::get()
-            .map_err(|e| AppError::ConfigError(format!("Failed to get machine UID: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get machine UID: {e}")))?;
         let mut hasher = Sha256::new();
         hasher.update(uid.as_bytes());
         hasher.update(LICENSE_STORAGE_SALT.as_bytes());
@@ -103,17 +109,17 @@ impl LicensePlugin {
 
     fn storage_path() -> AppResult<PathBuf> {
         let base = dirs::data_dir()
-            .or_else(|| dirs::config_dir())
+            .or_else(dirs::config_dir)
             .unwrap_or(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
         let dir = base.join("re-strike-vta");
         fs::create_dir_all(&dir)
-            .map_err(|e| AppError::ConfigError(format!("Failed to create license dir: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to create license dir: {e}")))?;
         Ok(dir.join("license.dat"))
     }
 
     fn anchor_dir() -> PathBuf {
         let base = dirs::data_dir()
-            .or_else(|| dirs::config_dir())
+            .or_else(dirs::config_dir)
             .unwrap_or(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
         base.join(ANCHOR_DIR_NAME)
     }
@@ -200,7 +206,7 @@ impl LicensePlugin {
     pub fn save_encrypted(&self, blob: &str) -> AppResult<()> {
         let path = Self::storage_path()?;
         fs::write(&path, blob)
-            .map_err(|e| AppError::ConfigError(format!("Failed to write license: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to write license: {e}")))
     }
 
     fn derive_store_key(&self) -> AppResult<[u8; 32]> {
@@ -218,13 +224,13 @@ impl LicensePlugin {
     fn encrypt_token(&self, token: &str) -> AppResult<String> {
         let key_bytes = self.derive_store_key()?;
         let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-            .map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Cipher init failed: {e:?}")))?;
         let mut nonce = [0u8; 12];
         let mut rng = OsRng;
         rng.fill_bytes(&mut nonce);
         let ct = cipher
             .encrypt(&nonce.into(), token.as_bytes())
-            .map_err(|e| AppError::ConfigError(format!("Encrypt failed: {:?}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Encrypt failed: {e:?}")))?;
         #[derive(Serialize)]
         struct Stored {
             _v: u8,
@@ -233,7 +239,7 @@ impl LicensePlugin {
         }
         let s = Stored {
             _v: 1,
-            n: base64::engine::general_purpose::STANDARD.encode(&nonce),
+            n: base64::engine::general_purpose::STANDARD.encode(nonce),
             c: base64::engine::general_purpose::STANDARD.encode(&ct),
         };
         Ok(serde_json::to_string(&s)?)
@@ -251,13 +257,13 @@ impl LicensePlugin {
         if let Ok(stored) = serde_json::from_str::<Stored>(blob) {
             let key_bytes = self.derive_store_key()?;
             let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-                .map_err(|e| AppError::ConfigError(format!("Cipher init failed: {:?}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Cipher init failed: {e:?}")))?;
             let nonce_bytes = base64::engine::general_purpose::STANDARD
                 .decode(stored.n)
-                .map_err(|e| AppError::ConfigError(format!("Invalid nonce: {}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Invalid nonce: {e}")))?;
             let ct_bytes = base64::engine::general_purpose::STANDARD
                 .decode(stored.c)
-                .map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Invalid ciphertext: {e}")))?;
             let nonce_array: [u8; 12] = nonce_bytes
                 .as_slice()
                 .try_into()
@@ -266,7 +272,7 @@ impl LicensePlugin {
             match cipher.decrypt(&nonce, ct_bytes.as_ref()) {
                 Ok(pt) => {
                     return String::from_utf8(pt)
-                        .map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {}", e)));
+                        .map_err(|e| AppError::ConfigError(format!("Invalid UTF-8: {e}")));
                 }
                 Err(_e) => {
                     // Fallback to legacy format if AES decryption fails (e.g., file from previous version)
@@ -277,9 +283,9 @@ impl LicensePlugin {
         let master = format!("license_store:{}", self.compute_machine_hash()?);
         let sc = crate::security::SecureConfig::new(master)?;
         let enc: crate::security::encryption::EncryptedData = serde_json::from_str(blob)
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse legacy license: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to parse legacy license: {e}")))?;
         sc.decrypt_value(&enc)
-            .map_err(|e| AppError::ConfigError(format!("Failed to decrypt legacy license: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to decrypt legacy license: {e}")))
     }
 
     /// Verify Ed25519 signature and semantics.
@@ -477,7 +483,7 @@ impl LicensePlugin {
                     plan: None,
                     expires_at: None,
                     machine_ok: false,
-                    reason: Some(format!("{}", e)),
+                    reason: Some(format!("{e}")),
                     days_remaining: None,
                     in_grace: false,
                 })

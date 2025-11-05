@@ -50,7 +50,7 @@ pub fn align_multiline(prefix_len: usize, message: &str) -> String {
             if idx == 0 {
                 line.to_string()
             } else {
-                format!("{}{}", indent, line)
+                format!("{indent}{line}")
             }
         })
         .collect::<Vec<_>>()
@@ -197,14 +197,11 @@ impl LogManager {
                 &subsystem,
                 "INFO",
                 &format!(
-                    "{} subsystem logging initialized - ready to receive data",
-                    subsystem
+                    "{subsystem} subsystem logging initialized - ready to receive data"
                 ),
             ) {
                 log::error!(
-                    "Failed to initialize {} subsystem logging: {}",
-                    subsystem,
-                    e
+                    "Failed to initialize {subsystem} subsystem logging: {e}"
                 );
             }
         }
@@ -228,8 +225,8 @@ impl LogManager {
         let mut loggers = self.loggers.lock().unwrap();
         let logger = loggers.entry(subsystem.to_string()).or_insert_with(|| {
             Logger::new(&config.log_dir, subsystem).unwrap_or_else(|e| {
-                log::error!("Failed to create logger for subsystem {}: {}", subsystem, e);
-                eprintln!("Failed to create logger for subsystem: {}", subsystem);
+                log::error!("Failed to create logger for subsystem {subsystem}: {e}");
+                eprintln!("Failed to create logger for subsystem: {subsystem}");
                 Logger::new("log", "fallback").unwrap()
             })
         });
@@ -238,7 +235,7 @@ impl LogManager {
         logger.write_entry(&entry)?;
 
         // Check if rotation is needed
-        if let Ok(true) = self.rotator.should_rotate(&logger.get_current_file_path()) {
+        if let Ok(true) = self.rotator.should_rotate(logger.get_current_file_path()) {
             self.rotate_log(subsystem)?;
         }
 
@@ -278,7 +275,7 @@ impl LogManager {
                     .as_secs();
 
                 let modified_iso = DateTime::from_timestamp(modified as i64, 0)
-                    .unwrap_or_else(|| Utc::now())
+                    .unwrap_or_else(Utc::now)
                     .to_rfc3339();
 
                 files.push(LogFileInfo {
@@ -366,7 +363,7 @@ impl LogManager {
         // Create the archive
         let archive_info = self
             .create_complete_archive()
-            .map_err(|e| format!("Failed to create archive: {}", e))?;
+            .map_err(|e| format!("Failed to create archive: {e}"))?;
 
         log::info!(
             "Created archive: {} ({} bytes)",
@@ -384,7 +381,7 @@ impl LogManager {
                 None,
             )
             .await
-            .map_err(|e| format!("Failed to upload to Google Drive: {}", e))?;
+            .map_err(|e| format!("Failed to upload to Google Drive: {e}"))?;
 
         log::info!(
             "Successfully uploaded archive {} to Google Drive with ID: {}",
@@ -405,7 +402,7 @@ impl LogManager {
         // Create the archive
         let archive_info = self
             .create_complete_archive()
-            .map_err(|e| format!("Failed to create archive: {}", e))?;
+            .map_err(|e| format!("Failed to create archive: {e}"))?;
 
         log::info!(
             "Created archive: {} ({} bytes)",
@@ -423,7 +420,7 @@ impl LogManager {
                 None,
             )
             .await
-            .map_err(|e| format!("Failed to upload to Google Drive: {}", e))?;
+            .map_err(|e| format!("Failed to upload to Google Drive: {e}"))?;
 
         log::info!(
             "Successfully uploaded archive {} to Google Drive with ID: {}",
@@ -433,7 +430,7 @@ impl LogManager {
 
         // Delete local archive file after successful upload
         if let Err(e) = self.archiver.delete_archive(&archive_info.name) {
-            log::warn!("Failed to delete local archive after upload: {}", e);
+            log::warn!("Failed to delete local archive after upload: {e}");
             return Ok(format!(
                 "Archive '{}' uploaded successfully to Google Drive but local cleanup failed",
                 archive_info.name
@@ -479,14 +476,14 @@ impl LogManager {
         } else {
             let archive_info = self
                 .create_complete_archive()
-                .map_err(|e| format!("Failed to create archive: {}", e))?;
+                .map_err(|e| format!("Failed to create archive: {e}"))?;
             format!("Archive '{}' created successfully", archive_info.name)
         };
 
         // Update last archive time
         config.last_archive_time = Some(chrono::Utc::now().to_rfc3339());
 
-        log::info!("Auto-archive completed: {}", result);
+        log::info!("Auto-archive completed: {result}");
         Ok(result)
     }
 

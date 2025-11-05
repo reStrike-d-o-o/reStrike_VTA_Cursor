@@ -389,7 +389,7 @@ fn ensure_tournament_days(
         let date_value = match NaiveDate::parse_from_str(day_folder, "%Y%m%d") {
             Ok(date) => date,
             Err(_) => {
-                warn!("Skipping day folder with unexpected format: {}", day_folder);
+                warn!("Skipping day folder with unexpected format: {day_folder}");
                 continue;
             }
         };
@@ -1085,7 +1085,7 @@ fn ensure_unique_headers(headers: &csv::StringRecord) -> Vec<String> {
         if *count == 0 {
             result.push(header.to_string());
         } else {
-            result.push(format!("{}_{}", header, count));
+            result.push(format!("{header}_{count}"));
         }
         *count += 1;
     }
@@ -1316,7 +1316,7 @@ impl LookupTables {
 }
 
 fn fetch_lookup(tx: &Transaction<'_>, table: &str) -> Result<HashMap<String, i64>, ImportError> {
-    let mut stmt = tx.prepare(&format!("SELECT id, name FROM {}", table))?;
+    let mut stmt = tx.prepare(&format!("SELECT id, name FROM {table}"))?;
     let mut rows = stmt.query([])?;
     let mut map = HashMap::new();
     while let Some(row) = rows.next()? {
@@ -1472,7 +1472,7 @@ fn update_athlete(
         .5
         .as_deref()
         .and_then(|raw| serde_json::from_str(raw).ok())
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let mut changes = serde_json::Map::new();
     if profile.country != row.0 {

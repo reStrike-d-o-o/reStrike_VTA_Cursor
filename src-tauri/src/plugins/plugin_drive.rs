@@ -48,6 +48,12 @@ pub struct DrivePlugin {
     credentials_cache: Arc<StdMutex<Option<DriveCredentials>>>,
 }
 
+impl Default for DrivePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DrivePlugin {
     pub fn new() -> Self {
         Self {
@@ -138,15 +144,15 @@ impl DrivePlugin {
             ClientId::new(creds.client_id.clone()),
             Some(ClientSecret::new(creds.client_secret.clone())),
             AuthUrl::new(GOOGLE_AUTH_URI.to_string())
-                .map_err(|e| AppError::ConfigError(format!("Invalid auth URL: {}", e)))?,
+                .map_err(|e| AppError::ConfigError(format!("Invalid auth URL: {e}")))?,
             Some(
                 TokenUrl::new(GOOGLE_TOKEN_URI.to_string())
-                    .map_err(|e| AppError::ConfigError(format!("Invalid token URL: {}", e)))?,
+                    .map_err(|e| AppError::ConfigError(format!("Invalid token URL: {e}")))?,
             ),
         )
         .set_redirect_uri(
             RedirectUrl::new(REDIRECT_URI.to_string())
-                .map_err(|e| AppError::ConfigError(format!("Invalid redirect URI: {}", e)))?,
+                .map_err(|e| AppError::ConfigError(format!("Invalid redirect URI: {e}")))?,
         );
 
         Ok(client)
@@ -174,24 +180,23 @@ impl DrivePlugin {
                 "Google Drive access token not found. Complete the authorization flow.".to_string(),
             ));
         }
-        let scopes: Vec<&str> = DRIVE_SCOPES.iter().copied().collect();
+        let scopes: Vec<&str> = DRIVE_SCOPES.to_vec();
         DriveCredentials::from_file(path, &scopes).map_err(|e| {
             AppError::ConfigError(format!(
-                "Failed to read stored Google Drive credentials: {}",
-                e
+                "Failed to read stored Google Drive credentials: {e}"
             ))
         })
     }
 
     fn map_drive_error(context: &str, err: drive_v3::Error) -> AppError {
-        AppError::NetworkError(format!("Drive API {} error: {}", context, err))
+        AppError::NetworkError(format!("Drive API {context} error: {err}"))
     }
 
     fn parse_quota(field: Option<String>) -> AppResult<u64> {
         let value = field.unwrap_or_else(|| "0".to_string());
         value
             .parse::<u64>()
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse quota value: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to parse quota value: {e}")))
     }
 
     fn convert_drive_file(file: objects::File) -> Option<GoogleDriveFile> {
@@ -279,10 +284,10 @@ impl DrivePlugin {
 
             if !credentials.are_valid() {
                 credentials.refresh().map_err(|e| {
-                    AppError::NetworkError(format!("Failed to refresh Drive token: {}", e))
+                    AppError::NetworkError(format!("Failed to refresh Drive token: {e}"))
                 })?;
                 credentials.store(&credentials_path).map_err(|e| {
-                    AppError::ConfigError(format!("Failed to persist refreshed Drive token: {}", e))
+                    AppError::ConfigError(format!("Failed to persist refreshed Drive token: {e}"))
                 })?;
             }
 
@@ -292,7 +297,7 @@ impl DrivePlugin {
         })
         .await
         .map_err(|e| {
-            AppError::ConfigError(format!("{} worker join error: {}", context, e.to_string()))
+            AppError::ConfigError(format!("{context} worker join error: {e}"))
         })?
     }
 
@@ -310,7 +315,7 @@ impl DrivePlugin {
 
                 let file_name = metadata
                     .name
-                    .unwrap_or_else(|| format!("drive_file_{}", file_id));
+                    .unwrap_or_else(|| format!("drive_file_{file_id}"));
 
                 let content = drive
                     .files
@@ -323,7 +328,7 @@ impl DrivePlugin {
             })
             .await?;
 
-        let temp_path = std::env::temp_dir().join(format!("gdrive_{}", name));
+        let temp_path = std::env::temp_dir().join(format!("gdrive_{name}"));
         let mut file = fs::File::create(&temp_path).map_err(AppError::IoError)?;
         file.write_all(&bytes).map_err(AppError::IoError)?;
         Ok(temp_path)
@@ -378,7 +383,7 @@ impl DrivePlugin {
     }
 
     pub async fn list_children(&self, parent_id: Option<&str>) -> AppResult<Vec<GoogleDriveFile>> {
-        let query = parent_id.map(|id| format!("'{}' in parents and trashed=false", id));
+        let query = parent_id.map(|id| format!("'{id}' in parents and trashed=false"));
 
         self.with_drive("list_children", move |drive| {
             let files = Self::fetch_files(&drive, query.as_deref())?;
@@ -428,7 +433,7 @@ impl DrivePlugin {
             .exchange_code(AuthorizationCode::new(code))
             .request_async(async_http_client)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to exchange auth code: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to exchange auth code: {e}")))?;
 
         let refresh = token_res.refresh_token().ok_or_else(|| {
             AppError::ConfigError("Google response did not include a refresh token".to_string())
@@ -469,7 +474,7 @@ impl DrivePlugin {
         }
         credentials
             .store(&path)
-            .map_err(|e| AppError::ConfigError(format!("Failed to store credentials: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to store credentials: {e}")))?;
 
         let mut cache = self.credentials_cache.lock().unwrap();
         *cache = Some(credentials);
@@ -531,8 +536,7 @@ impl DrivePlugin {
             Ok(files) => files,
             Err(err) => {
                 log::warn!(
-                    "Failed to list existing Drive backups ({}). Proceeding with upload.",
-                    err
+                    "Failed to list existing Drive backups ({err}). Proceeding with upload."
                 );
                 Vec::new()
             }
@@ -566,8 +570,7 @@ impl DrivePlugin {
             .await?;
 
         Ok(format!(
-            "Uploaded backup {} to Google Drive (file id: {})",
-            file_name, file_id
+            "Uploaded backup {file_name} to Google Drive (file id: {file_id})"
         ))
     }
 
@@ -639,10 +642,10 @@ impl DrivePlugin {
 
             if !credentials.are_valid() {
                 credentials.refresh().map_err(|e| {
-                    AppError::NetworkError(format!("Failed to refresh Drive token: {}", e))
+                    AppError::NetworkError(format!("Failed to refresh Drive token: {e}"))
                 })?;
                 credentials.store(&credentials_path).map_err(|e| {
-                    AppError::ConfigError(format!("Failed to persist refreshed Drive token: {}", e))
+                    AppError::ConfigError(format!("Failed to persist refreshed Drive token: {e}"))
                 })?;
             }
 
@@ -654,11 +657,11 @@ impl DrivePlugin {
         match result {
             Ok(Ok(flag)) => Ok(flag),
             Ok(Err(err)) => {
-                log::warn!("Drive connection check failed: {}", err);
+                log::warn!("Drive connection check failed: {err}");
                 Ok(false)
             }
             Err(join_err) => {
-                log::warn!("Drive connection task join error: {}", join_err);
+                log::warn!("Drive connection task join error: {join_err}");
                 Ok(false)
             }
         }

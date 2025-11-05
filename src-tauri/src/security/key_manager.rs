@@ -129,7 +129,7 @@ impl KeyManager {
         // Generate random key
         let mut key_bytes = vec![0u8; (key_size / 8) as usize];
         self.rng.fill(&mut key_bytes).map_err(|e| {
-            SecurityError::RandomGeneration(format!("Failed to generate key: {:?}", e))
+            SecurityError::RandomGeneration(format!("Failed to generate key: {e:?}"))
         })?;
 
         // Create metadata
@@ -167,7 +167,7 @@ impl KeyManager {
             "SELECT config_key, encrypted_value FROM secure_config 
              WHERE category = 'encryption_keys' AND config_key LIKE ? AND is_sensitive = 1 
              ORDER BY updated_at DESC LIMIT 1",
-            [&format!("{}_%", algorithm)],
+            [&format!("{algorithm}_%")],
             |row| {
                 let config_key: String = row.get(0)?;
                 let encrypted_value: Vec<u8> = row.get(1)?;
@@ -178,7 +178,7 @@ impl KeyManager {
         match result {
             Ok((_config_key, encrypted_value)) => {
                 let encrypted_json = String::from_utf8(encrypted_value).map_err(|e| {
-                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {e}"))
                 })?;
 
                 let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
@@ -195,8 +195,7 @@ impl KeyManager {
                     let encrypted_key_data: EncryptedData =
                         serde_json::from_str(&entry.encrypted_key).map_err(|e| {
                             SecurityError::Decryption(format!(
-                                "Failed to parse encrypted key data: {}",
-                                e
+                                "Failed to parse encrypted key data: {e}"
                             ))
                         })?;
 
@@ -237,7 +236,7 @@ impl KeyManager {
             metadata.rotation_reason = reason.clone();
             self.update_key_metadata(&metadata).await?;
 
-            rotated_keys.push(format!("{}:{}", algorithm, new_key));
+            rotated_keys.push(format!("{algorithm}:{new_key}"));
 
             // Log the rotation
             self.audit
@@ -281,7 +280,7 @@ impl KeyManager {
         for row in rows {
             let (_config_key, encrypted_value) = row?;
             let encrypted_json = String::from_utf8(encrypted_value).map_err(|e| {
-                SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                SecurityError::Decryption(format!("Invalid UTF-8 in key data: {e}"))
             })?;
 
             let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
@@ -299,7 +298,7 @@ impl KeyManager {
             .log_security_event(
                 AuditAction::EncryptionKeyRotation,
                 user_context,
-                &format!("Force rotated {} encryption keys: {}", count, reason),
+                &format!("Force rotated {count} encryption keys: {reason}"),
                 true,
                 None,
             )
@@ -373,7 +372,7 @@ impl KeyManager {
         ring::rand::SystemRandom::new()
             .fill(&mut salt)
             .map_err(|e| {
-                SecurityError::RandomGeneration(format!("Failed to generate salt: {:?}", e))
+                SecurityError::RandomGeneration(format!("Failed to generate salt: {e:?}"))
             })?;
 
         // Encrypt the key using proper encryption
@@ -449,7 +448,7 @@ impl KeyManager {
         for row in rows {
             let (_config_key, encrypted_value) = row?;
             let encrypted_json = String::from_utf8(encrypted_value).map_err(|e| {
-                SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                SecurityError::Decryption(format!("Invalid UTF-8 in key data: {e}"))
             })?;
 
             let entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
@@ -482,7 +481,7 @@ impl KeyManager {
         match result {
             Ok(encrypted_value_bytes) => {
                 let encrypted_json = String::from_utf8(encrypted_value_bytes).map_err(|e| {
-                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {e}"))
                 })?;
 
                 let mut entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
@@ -517,7 +516,7 @@ impl KeyManager {
         let result = conn.query_row(
             "SELECT config_key, encrypted_value FROM secure_config 
              WHERE category = 'encryption_keys' AND config_key LIKE ?",
-            [&format!("%_{}", key_id)],
+            [&format!("%_{key_id}")],
             |row| {
                 let config_key: String = row.get(0)?;
                 let encrypted_value: Vec<u8> = row.get(1)?;
@@ -528,7 +527,7 @@ impl KeyManager {
         match result {
             Ok((config_key, encrypted_value_bytes)) => {
                 let encrypted_json = String::from_utf8(encrypted_value_bytes).map_err(|e| {
-                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {}", e))
+                    SecurityError::Decryption(format!("Invalid UTF-8 in key data: {e}"))
                 })?;
 
                 let mut entry: EncryptedKeyEntry = serde_json::from_str(&encrypted_json)?;
@@ -550,12 +549,11 @@ impl KeyManager {
                     ],
                 )?;
 
-                log::trace!("Updated usage statistics for key: {}", key_id);
+                log::trace!("Updated usage statistics for key: {key_id}");
                 Ok(())
             }
             Err(rusqlite::Error::QueryReturnedNoRows) => Err(SecurityError::KeyNotFound(format!(
-                "Key not found: {}",
-                key_id
+                "Key not found: {key_id}"
             ))),
             Err(e) => Err(SecurityError::Database(e)),
         }
@@ -575,7 +573,7 @@ impl KeyManager {
             [cutoff_date.to_rfc3339()],
         )?;
 
-        log::info!("Cleaned up {} old encryption keys", deleted);
+        log::info!("Cleaned up {deleted} old encryption keys");
         Ok(deleted as u32)
     }
 

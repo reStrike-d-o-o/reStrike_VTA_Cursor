@@ -35,20 +35,20 @@ pub async fn ivr_get_replay_settings(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     let conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::UiSettingsOperations as UIOps;
-    let mpv_path = UIOps::get_ui_setting(&*conn, "ivr.replay.mpv_path")
+    let mpv_path = UIOps::get_ui_setting(&conn, "ivr.replay.mpv_path")
         .ok()
         .flatten();
-    let seconds_from_end = UIOps::get_ui_setting(&*conn, "ivr.replay.seconds_from_end")
+    let seconds_from_end = UIOps::get_ui_setting(&conn, "ivr.replay.seconds_from_end")
         .ok()
         .flatten()
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(10);
-    let max_wait_ms = UIOps::get_ui_setting(&*conn, "ivr.replay.max_wait_ms")
+    let max_wait_ms = UIOps::get_ui_setting(&conn, "ivr.replay.max_wait_ms")
         .ok()
         .flatten()
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(500);
-    let auto_on_challenge = UIOps::get_ui_setting(&*conn, "ivr.replay.auto_on_challenge")
+    let auto_on_challenge = UIOps::get_ui_setting(&conn, "ivr.replay.auto_on_challenge")
         .ok()
         .flatten()
         .map(|s| s == "true")
@@ -76,23 +76,23 @@ pub async fn ivr_save_replay_settings(
     let mut conn = app.database_plugin().get_connection().await?;
     use crate::database::operations::UiSettingsOperations as UIOps;
     // Ensure keys exist before setting values so updates don't fail silently
-    let _ = UIOps::ensure_key(&*conn, "ivr.replay.mpv_path", "MPV Path", "string", None);
+    let _ = UIOps::ensure_key(&conn, "ivr.replay.mpv_path", "MPV Path", "string", None);
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "ivr.replay.seconds_from_end",
         "IVR Seconds From End",
         "integer",
         Some("10"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "ivr.replay.max_wait_ms",
         "IVR Max Wait (ms)",
         "integer",
         Some("500"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "ivr.replay.auto_on_challenge",
         "IVR Auto on Challenge",
         "boolean",
@@ -103,7 +103,7 @@ pub async fn ivr_save_replay_settings(
     let wait = max_wait_ms.clamp(50, 500);
     if let Some(path) = mpv_path {
         let _ = UIOps::set_ui_setting(
-            &mut *conn,
+            &mut conn,
             "ivr.replay.mpv_path",
             &path,
             "user",
@@ -111,21 +111,21 @@ pub async fn ivr_save_replay_settings(
         );
     }
     let _ = UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "ivr.replay.seconds_from_end",
         &secs.to_string(),
         "user",
         Some("update ivr seconds"),
     );
     let _ = UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "ivr.replay.max_wait_ms",
         &wait.to_string(),
         "user",
         Some("update ivr wait"),
     );
     let _ = UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "ivr.replay.auto_on_challenge",
         if auto_on_challenge { "true" } else { "false" },
         "user",
@@ -220,7 +220,7 @@ pub async fn ivr_match_history_snapshot(
 
     let history_entries = pss_catalog::get_match_history_with_videos(&sea, &selected_date, limit)
         .await
-        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to load match history: {}", e))))?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!(format!("Failed to load match history: {e}"))))?;
 
     let mut matches_json = Vec::with_capacity(history_entries.len());
     for entry in history_entries {
@@ -232,7 +232,7 @@ pub async fn ivr_match_history_snapshot(
         {
             Ok(list) => list,
             Err(e) => {
-                log::warn!("Failed to load match athletes for {}: {}", match_db_id, e);
+                log::warn!("Failed to load match athletes for {match_db_id}: {e}");
                 Vec::new()
             }
         };
@@ -448,7 +448,7 @@ pub async fn obs_obws_connect(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws connect called: {}", connection_name);
+    log::info!("OBS obws connect called: {connection_name}");
 
     match app.obs_obws_plugin().connect(&connection_name).await {
         Ok(_) => Ok(ObsObwsConnectionResponse {
@@ -472,7 +472,7 @@ pub async fn obs_obws_disconnect(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws disconnect called: {}", connection_name);
+    log::info!("OBS obws disconnect called: {connection_name}");
 
     match app.obs_obws_plugin().disconnect(&connection_name).await {
         Ok(_) => Ok(ObsObwsConnectionResponse {
@@ -496,7 +496,7 @@ pub async fn obs_obws_get_connection_status(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get connection status called: {}", connection_name);
+    log::info!("OBS obws get connection status called: {connection_name}");
 
     match app
         .obs_obws_plugin()
@@ -547,7 +547,7 @@ pub async fn obs_obws_remove_connection(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws remove connection called: {}", connection_name);
+    log::info!("OBS obws remove connection called: {connection_name}");
 
     match app
         .obs_obws_plugin()
@@ -800,7 +800,7 @@ pub async fn obs_obws_set_current_scene(
     connection_name: Option<String>,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws set current scene called: {}", scene_name);
+    log::info!("OBS obws set current scene called: {scene_name}");
 
     match app
         .obs_obws_plugin()
@@ -941,11 +941,11 @@ pub async fn obs_obws_setup_status_listener(
     app_arc
         .ensure_obs_health_task()
         .await
-        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{e}")))?;
     app_arc
         .ensure_pss_stats_task()
         .await
-        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{e}")))?;
 
     match app.obs_obws_plugin().setup_status_listener().await {
         Ok(_) => Ok(ObsObwsConnectionResponse {
@@ -1131,7 +1131,7 @@ pub async fn obs_obws_set_recording_path(
     connection_name: Option<String>,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws set recording path called: {}", path);
+    log::info!("OBS obws set recording path called: {path}");
     match app
         .obs_obws_plugin()
         .set_record_directory(&path, connection_name.as_deref())
@@ -1157,7 +1157,7 @@ pub async fn obs_obws_set_recording_filename(
     connection_name: Option<String>,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws set recording filename called: {}", pattern);
+    log::info!("OBS obws set recording filename called: {pattern}");
     match app
         .obs_obws_plugin()
         .set_filename_formatting(&pattern, connection_name.as_deref())
@@ -1189,7 +1189,7 @@ pub async fn obs_obws_get_sources(
     scene_name: String,
     _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get sources called for scene: {}", scene_name);
+    log::info!("OBS obws get sources called for scene: {scene_name}");
     Ok(ObsObwsConnectionResponse {
         success: true,
         data: Some(serde_json::json!({
@@ -1209,10 +1209,7 @@ pub async fn obs_obws_set_source_visibility(
     _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws set source visibility called: scene={}, source={}, visible={}",
-        scene_name,
-        source_name,
-        visible
+        "OBS obws set source visibility called: scene={scene_name}, source={source_name}, visible={visible}"
     );
     Ok(ObsObwsConnectionResponse {
         success: false,
@@ -1249,7 +1246,7 @@ pub async fn obs_obws_set_replay_buffer_path(
     _connection_name: Option<String>,
     _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws set replay buffer path called: {}", path);
+    log::info!("OBS obws set replay buffer path called: {path}");
 
     // For now, return a placeholder since obws doesn't have direct path configuration
     // This will be implemented using custom requests in the future
@@ -1284,7 +1281,7 @@ pub async fn obs_obws_create_recording_session(
         Ok(recording_session) => {
             let mut conn = app.database_plugin().get_connection().await?;
             match crate::database::operations::ObsRecordingOperations::create_recording_session(
-                &mut *conn,
+                &mut conn,
                 &recording_session,
             ) {
                 Ok(session_id) => Ok(ObsObwsConnectionResponse {
@@ -1305,7 +1302,7 @@ pub async fn obs_obws_create_recording_session(
         Err(e) => Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
-            error: Some(format!("Invalid session format: {}", e)),
+            error: Some(format!("Invalid session format: {e}")),
         }),
     }
 }
@@ -1318,14 +1315,12 @@ pub async fn obs_obws_update_recording_session_status(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws update recording session status called: {} -> {}",
-        session_id,
-        status
+        "OBS obws update recording session status called: {session_id} -> {status}"
     );
 
     let mut conn = app.database_plugin().get_connection().await?;
     match crate::database::operations::ObsRecordingOperations::update_recording_session_status(
-        &mut *conn, session_id, &status, None,
+        &mut conn, session_id, &status, None,
     ) {
         Ok(_) => Ok(ObsObwsConnectionResponse {
             success: true,
@@ -1349,38 +1344,34 @@ pub async fn obs_obws_generate_recording_path(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws generate recording path called: match_id={}",
-        match_id
+        "OBS obws generate recording path called: match_id={match_id}"
     );
 
     // Get database connection
     let conn = app.database_plugin().get_connection().await.map_err(|e| {
-        TauriError::from(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Database connection error: {}", e),
+        TauriError::from(std::io::Error::other(
+            format!("Database connection error: {e}"),
         ))
     })?;
 
     // Get active tournament and tournament day
     let tournament = crate::database::operations::TournamentOperations::get_active_tournament(
-        &*conn,
+        &conn,
     )
     .map_err(|e| {
-        TauriError::from(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to get active tournament: {}", e),
+        TauriError::from(std::io::Error::other(
+            format!("Failed to get active tournament: {e}"),
         ))
     })?;
 
     let tournament_day = if let Some(ref tournament) = tournament {
         crate::database::operations::TournamentOperations::get_active_tournament_day(
-            &*conn,
+            &conn,
             tournament.id.unwrap(),
         )
         .map_err(|e| {
-            TauriError::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to get active tournament day: {}", e),
+            TauriError::from(std::io::Error::other(
+                format!("Failed to get active tournament day: {e}"),
             ))
         })?
     } else {
@@ -1395,9 +1386,8 @@ pub async fn obs_obws_generate_recording_path(
         .get_pss_matches(Some(100))
         .await
         .map_err(|e| {
-            TauriError::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to get matches: {}", e),
+            TauriError::from(std::io::Error::other(
+                format!("Failed to get matches: {e}"),
             ))
         })?;
 
@@ -1407,7 +1397,7 @@ pub async fn obs_obws_generate_recording_path(
         .ok_or_else(|| {
             TauriError::from(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("Match not found: {}", match_id),
+                format!("Match not found: {match_id}"),
             ))
         })?;
 
@@ -1417,9 +1407,8 @@ pub async fn obs_obws_generate_recording_path(
         .get_pss_match_athletes(match_info.id.unwrap())
         .await
         .map_err(|e| {
-            TauriError::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to get match athletes: {}", e),
+            TauriError::from(std::io::Error::other(
+                format!("Failed to get match athletes: {e}"),
             ))
         })?;
 
@@ -1448,7 +1437,7 @@ pub async fn obs_obws_generate_recording_path(
         let conn = app.database_plugin().get_connection().await;
         if let Ok(conn) = conn {
             crate::database::operations::ObsRecordingOperations::get_recording_config(
-                &*conn, "OBS_REC",
+                &conn, "OBS_REC",
             )
             .ok()
             .flatten()
@@ -1484,7 +1473,7 @@ pub async fn obs_obws_generate_recording_path(
                 return Ok(ObsObwsConnectionResponse {
                     success: false,
                     data: None,
-                    error: Some(format!("Failed to create directory: {}", e)),
+                    error: Some(format!("Failed to create directory: {e}")),
                 });
             }
 
@@ -1596,8 +1585,7 @@ pub async fn obs_obws_test_recording(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws test recording called for connection: {}",
-        connection_name
+        "OBS obws test recording called for connection: {connection_name}"
     );
 
     // Use the obws plugin for recording controls to avoid legacy API
@@ -1609,7 +1597,7 @@ pub async fn obs_obws_test_recording(
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
-            error: Some(format!("Failed to start recording: {}", e)),
+            error: Some(format!("Failed to start recording: {e}")),
         });
     }
 
@@ -1621,7 +1609,7 @@ pub async fn obs_obws_test_recording(
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
-            error: Some(format!("Failed to start replay buffer: {}", e)),
+            error: Some(format!("Failed to start replay buffer: {e}")),
         });
     }
 
@@ -1642,9 +1630,7 @@ pub async fn obs_obws_apply_path_decision(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws apply path decision called: {} / {}",
-        tournament_name,
-        tournament_day
+        "OBS obws apply path decision called: {tournament_name} / {tournament_day}"
     );
 
     let handler = app.recording_event_handler();
@@ -1672,8 +1658,8 @@ pub async fn obs_obws_apply_path_decision(
                 "".to_string(),
                 None,
             );
-            TOps::create_tournament(&mut *conn, &t).map_err(|e| {
-                TauriError::from(anyhow::anyhow!(format!("create_tournament: {}", e)))
+            TOps::create_tournament(&mut conn, &t).map_err(|e| {
+                TauriError::from(anyhow::anyhow!(format!("create_tournament: {e}")))
             })?
         };
         // Parse day number from string like "Day 3"
@@ -1694,8 +1680,8 @@ pub async fn obs_obws_apply_path_decision(
             // Create missing days starting today; create_tournament_days appends days sequentially
             let start_dt = chrono::Utc::now();
             // Create enough days to reach day_num
-            TOps::create_tournament_days(&mut *conn, tid, start_dt, day_num).map_err(|e| {
-                TauriError::from(anyhow::anyhow!(format!("create_tournament_days: {}", e)))
+            TOps::create_tournament_days(&mut conn, tid, start_dt, day_num).map_err(|e| {
+                TauriError::from(anyhow::anyhow!(format!("create_tournament_days: {e}")))
             })?;
         }
         // Lookup the selected day id
@@ -1705,17 +1691,17 @@ pub async fn obs_obws_apply_path_decision(
                 rusqlite::params![tid, day_num],
                 |r| r.get::<_, i64>(0),
             )
-            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("resolve day_id: {}", e))))?;
+            .map_err(|e| TauriError::from(anyhow::anyhow!(format!("resolve day_id: {e}"))))?;
         // Start the selected day (mark active)
-        TOps::start_tournament_day(&mut *conn, day_id).map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!("start_tournament_day: {}", e)))
+        TOps::start_tournament_day(&mut conn, day_id).map_err(|e| {
+            TauriError::from(anyhow::anyhow!(format!("start_tournament_day: {e}")))
         })?;
         // Update UDP/tournament context so subsequent events carry these IDs
         app.udp_plugin()
             .set_tournament_context(Some(tid))
             .await
             .map_err(|e| {
-                TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {}", e)))
+                TauriError::from(anyhow::anyhow!(format!("set_tournament_context: {e}")))
             })?;
     }
 
@@ -1804,7 +1790,7 @@ pub async fn obs_obws_create_test_folders(
         Err(e) => Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
-            error: Some(format!("Failed to create folders: {}", e)),
+            error: Some(format!("Failed to create folders: {e}")),
         }),
     }
 }
@@ -1818,8 +1804,7 @@ pub async fn obs_obws_send_config_to_obs(
     _app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws send config to OBS called for connection: {}",
-        connection_name
+        "OBS obws send config to OBS called for connection: {connection_name}"
     );
     // Route through obws manager to set recording directory and filename formatting
     let result = async {
@@ -1921,9 +1906,8 @@ pub async fn obs_obws_clear_recording_session(
     let recording_handler = app.recording_event_handler();
 
     recording_handler.clear_session().map_err(|e| {
-        TauriError::from(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to clear session: {}", e),
+        TauriError::from(std::io::Error::other(
+            format!("Failed to clear session: {e}"),
         ))
     })?;
 
@@ -1944,9 +1928,7 @@ pub async fn obs_obws_manual_start_recording(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws manual start recording called: match_id={}, connection={}",
-        match_id,
-        obs_connection_name
+        "OBS obws manual start recording called: match_id={match_id}, connection={obs_connection_name}"
     );
 
     // Get the recording event handler from the app state
@@ -1985,23 +1967,22 @@ pub async fn obs_obws_manual_start_recording(
 
     // Generate recording path
     if let Err(e) = recording_handler.generate_recording_path(&match_id).await {
-        log::error!("Failed to generate recording path: {}", e);
+        log::error!("Failed to generate recording path: {e}");
         recording_handler
             .update_session_state(crate::plugins::obs_obws::RecordingState::Error(
                 e.to_string(),
             ))
             .await
             .map_err(|e| {
-                TauriError::from(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to update session state: {}", e),
+                TauriError::from(std::io::Error::other(
+                    format!("Failed to update session state: {e}"),
                 ))
             })?;
 
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
-            error: Some(format!("Failed to generate recording path: {}", e)),
+            error: Some(format!("Failed to generate recording path: {e}")),
         });
     }
 
@@ -2010,9 +1991,8 @@ pub async fn obs_obws_manual_start_recording(
         .update_session_state(crate::plugins::obs_obws::RecordingState::Recording)
         .await
         .map_err(|e| {
-            TauriError::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to update session state: {}", e),
+            TauriError::from(std::io::Error::other(
+                format!("Failed to update session state: {e}"),
             ))
         })?;
 
@@ -2022,7 +2002,7 @@ pub async fn obs_obws_manual_start_recording(
         .start_recording(Some(&obs_connection_name))
         .await
     {
-        log::error!("Failed to start recording via obws: {}", e);
+        log::error!("Failed to start recording via obws: {e}");
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
@@ -2046,8 +2026,7 @@ pub async fn obs_obws_manual_stop_recording(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!(
-        "OBS obws manual stop recording called: connection={}",
-        obs_connection_name
+        "OBS obws manual stop recording called: connection={obs_connection_name}"
     );
 
     // Get the recording event handler from the app state
@@ -2058,9 +2037,8 @@ pub async fn obs_obws_manual_stop_recording(
         .update_session_state(crate::plugins::obs_obws::RecordingState::Stopping)
         .await
         .map_err(|e| {
-            TauriError::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to update session state: {}", e),
+            TauriError::from(std::io::Error::other(
+                format!("Failed to update session state: {e}"),
             ))
         })?;
 
@@ -2070,7 +2048,7 @@ pub async fn obs_obws_manual_stop_recording(
         .stop_recording(Some(&obs_connection_name))
         .await
     {
-        log::error!("Failed to stop recording via obws: {}", e);
+        log::error!("Failed to stop recording via obws: {e}");
         return Ok(ObsObwsConnectionResponse {
             success: false,
             data: None,
@@ -2132,8 +2110,7 @@ pub async fn obs_obws_save_full_config(
     // Parse payload
     let cfg: FullObsConfigPayload = serde_json::from_value(payload).map_err(|e| {
         TauriError::from(anyhow::anyhow!(format!(
-            "Invalid full config payload: {}",
-            e
+            "Invalid full config payload: {e}"
         )))
     })?;
 
@@ -2171,7 +2148,7 @@ pub async fn obs_obws_save_full_config(
     };
     let mut conn = app.database_plugin().get_connection().await?;
     crate::database::operations::ObsRecordingOperations::upsert_recording_config(
-        &mut *conn,
+        &mut conn,
         &recording_config,
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
@@ -2190,14 +2167,13 @@ pub async fn obs_obws_save_full_config(
     };
     recording_handler.update_config(new_auto_cfg).map_err(|e| {
         TauriError::from(anyhow::anyhow!(format!(
-            "Failed to update handler config: {}",
-            e
+            "Failed to update handler config: {e}"
         )))
     })?;
 
     use crate::database::operations::UiSettingsOperations as UIOps;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.enabled",
         if cfg.enabled { "true" } else { "false" },
         "user",
@@ -2205,7 +2181,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.connection",
         &cfg.connection_name,
         "user",
@@ -2213,7 +2189,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.stop_delay_seconds",
         &cfg.stop_delay_seconds.to_string(),
         "user",
@@ -2221,7 +2197,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.include_replay_buffer",
         if cfg.include_replay_buffer {
             "true"
@@ -2233,7 +2209,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.stop_on_match_end",
         if cfg.auto_stop_on_match_end {
             "true"
@@ -2245,7 +2221,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.stop_on_winner",
         if cfg.auto_stop_on_winner {
             "true"
@@ -2257,7 +2233,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.start_recording_on_match_begin",
         if cfg.auto_start_recording_on_match_begin {
             "true"
@@ -2269,7 +2245,7 @@ pub async fn obs_obws_save_full_config(
     )
     .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     UIOps::set_ui_setting(
-        &mut *conn,
+        &mut conn,
         "obs.auto.start_replay_on_match_begin",
         if cfg.auto_start_replay_on_match_begin {
             "true"
@@ -2316,70 +2292,70 @@ pub async fn obs_obws_get_full_config(
 
     // Resolve connection name: param -> UiSettings -> default
     let resolved_conn = connection_name
-        .or(UIOps::get_ui_setting(&*conn, "obs.auto.connection")
+        .or(UIOps::get_ui_setting(&conn, "obs.auto.connection")
             .ok()
             .flatten())
         .unwrap_or_else(|| "OBS_REC".to_string());
 
     // Ensure keys exist so get_ui_setting won't fail on fresh DBs
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.enabled",
         "OBS Auto Enabled",
         "boolean",
         Some("false"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.connection",
         "OBS Auto Connection",
         "string",
         Some(&resolved_conn),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.stop_delay_seconds",
         "OBS Stop Delay",
         "integer",
         Some("30"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.include_replay_buffer",
         "Include Replay Buffer",
         "boolean",
         Some("true"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.start_recording_on_match_begin",
         "Auto-start Recording",
         "boolean",
         Some("true"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.start_replay_on_match_begin",
         "Auto-start Replay",
         "boolean",
         Some("true"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.save_replay_on_match_end",
         "Save Replay On End",
         "boolean",
         Some("false"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.stop_on_match_end",
         "Stop On Match End",
         "boolean",
         Some("true"),
     );
     let _ = UIOps::ensure_key(
-        &*conn,
+        &conn,
         "obs.auto.stop_on_winner",
         "Stop On Winner",
         "boolean",
@@ -2387,50 +2363,50 @@ pub async fn obs_obws_get_full_config(
     );
 
     // Recording config
-    let rec_cfg = RecOps::get_recording_config(&*conn, &resolved_conn)
+    let rec_cfg = RecOps::get_recording_config(&conn, &resolved_conn)
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
     // Automatic config from UiSettings (fallbacks applied)
-    let enabled = UIOps::get_ui_setting(&*conn, "obs.auto.enabled")
+    let enabled = UIOps::get_ui_setting(&conn, "obs.auto.enabled")
         .ok()
         .flatten()
         .map(|v| v == "true")
         .unwrap_or(false);
-    let stop_delay_seconds = UIOps::get_ui_setting(&*conn, "obs.auto.stop_delay_seconds")
+    let stop_delay_seconds = UIOps::get_ui_setting(&conn, "obs.auto.stop_delay_seconds")
         .ok()
         .flatten()
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(30);
-    let include_replay_buffer = UIOps::get_ui_setting(&*conn, "obs.auto.include_replay_buffer")
+    let include_replay_buffer = UIOps::get_ui_setting(&conn, "obs.auto.include_replay_buffer")
         .ok()
         .flatten()
         .map(|v| v == "true")
         .unwrap_or(true);
     let auto_start_recording_on_match_begin =
-        UIOps::get_ui_setting(&*conn, "obs.auto.start_recording_on_match_begin")
+        UIOps::get_ui_setting(&conn, "obs.auto.start_recording_on_match_begin")
             .ok()
             .flatten()
             .map(|v| v == "true")
             .unwrap_or(true);
     let auto_start_replay_on_match_begin =
-        UIOps::get_ui_setting(&*conn, "obs.auto.start_replay_on_match_begin")
+        UIOps::get_ui_setting(&conn, "obs.auto.start_replay_on_match_begin")
             .ok()
             .flatten()
             .map(|v| v == "true")
             .unwrap_or(true);
     let save_replay_on_match_end = false;
-    let auto_stop_on_match_end = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_match_end")
+    let auto_stop_on_match_end = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_match_end")
         .ok()
         .flatten()
         .map(|v| v == "true")
         .unwrap_or(true);
-    let auto_stop_on_winner = UIOps::get_ui_setting(&*conn, "obs.auto.stop_on_winner")
+    let auto_stop_on_winner = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_winner")
         .ok()
         .flatten()
         .map(|v| v == "true")
         .unwrap_or(true);
 
-    println!(" obs_obws_get_full_config(conn='{}')", resolved_conn);
+    println!(" obs_obws_get_full_config(conn='{resolved_conn}')");
 
     Ok(ObsObwsConnectionResponse {
         success: true,
@@ -2463,7 +2439,7 @@ pub async fn obs_obws_get_connection_role(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Getting OBS connection role for: {}", connection_name);
+    log::info!("Getting OBS connection role for: {connection_name}");
 
     #[cfg(feature = "obs-obws")]
     {
@@ -2478,7 +2454,7 @@ pub async fn obs_obws_get_connection_role(
                 }))
             }
             Err(e) => {
-                log::error!("Failed to get connection role: {}", e);
+                log::error!("Failed to get connection role: {e}");
                 Ok(serde_json::json!({
                     "success": false,
                     "connection_name": connection_name,
@@ -2505,9 +2481,7 @@ pub async fn obs_obws_set_connection_role(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     log::info!(
-        "Setting OBS connection role for {} to {}",
-        connection_name,
-        role
+        "Setting OBS connection role for {connection_name} to {role}"
     );
 
     #[cfg(feature = "obs-obws")]
@@ -2544,9 +2518,7 @@ pub async fn obs_obws_set_connection_role(
                 {
                     Ok(_) => {
                         log::info!(
-                            "Successfully updated connection role from {:?} to {:?}",
-                            old_role,
-                            new_role
+                            "Successfully updated connection role from {old_role:?} to {new_role:?}"
                         );
                         Ok(serde_json::json!({
                             "success": true,
@@ -2556,7 +2528,7 @@ pub async fn obs_obws_set_connection_role(
                         }))
                     }
                     Err(e) => {
-                        log::error!("Failed to update connection role: {}", e);
+                        log::error!("Failed to update connection role: {e}");
                         Ok(serde_json::json!({
                             "success": false,
                             "connection_name": connection_name,
@@ -2566,7 +2538,7 @@ pub async fn obs_obws_set_connection_role(
                 }
             }
             Err(e) => {
-                log::error!("Failed to get connection for role update: {}", e);
+                log::error!("Failed to get connection for role update: {e}");
                 Ok(serde_json::json!({
                     "success": false,
                     "connection_name": connection_name,
@@ -2591,7 +2563,7 @@ pub async fn obs_obws_start_monitoring(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Starting OBS monitoring for: {}", connection_name);
+    log::info!("Starting OBS monitoring for: {connection_name}");
 
     #[cfg(feature = "obs-obws")]
     {
@@ -2616,7 +2588,7 @@ pub async fn obs_obws_start_monitoring(
                 // Start monitoring (subscribe to events)
                 match client.start_monitoring().await {
                     Ok(_) => {
-                        log::info!("Started monitoring for connection: {}", connection_name);
+                        log::info!("Started monitoring for connection: {connection_name}");
                         Ok(serde_json::json!({
                             "success": true,
                             "connection_name": connection_name,
@@ -2624,7 +2596,7 @@ pub async fn obs_obws_start_monitoring(
                         }))
                     }
                     Err(e) => {
-                        log::error!("Failed to start monitoring: {}", e);
+                        log::error!("Failed to start monitoring: {e}");
                         Ok(serde_json::json!({
                             "success": false,
                             "connection_name": connection_name,
@@ -2634,7 +2606,7 @@ pub async fn obs_obws_start_monitoring(
                 }
             }
             Err(e) => {
-                log::error!("Failed to get connection for monitoring: {}", e);
+                log::error!("Failed to get connection for monitoring: {e}");
                 Ok(serde_json::json!({
                     "success": false,
                     "connection_name": connection_name,
@@ -2659,7 +2631,7 @@ pub async fn obs_obws_stop_monitoring(
     connection_name: String,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    log::info!("Stopping OBS monitoring for: {}", connection_name);
+    log::info!("Stopping OBS monitoring for: {connection_name}");
 
     #[cfg(feature = "obs-obws")]
     {
@@ -2669,7 +2641,7 @@ pub async fn obs_obws_stop_monitoring(
 
                 match client.stop_monitoring().await {
                     Ok(_) => {
-                        log::info!("Stopped monitoring for connection: {}", connection_name);
+                        log::info!("Stopped monitoring for connection: {connection_name}");
                         Ok(serde_json::json!({
                             "success": true,
                             "connection_name": connection_name,
@@ -2677,7 +2649,7 @@ pub async fn obs_obws_stop_monitoring(
                         }))
                     }
                     Err(e) => {
-                        log::error!("Failed to stop monitoring: {}", e);
+                        log::error!("Failed to stop monitoring: {e}");
                         Ok(serde_json::json!({
                             "success": false,
                             "connection_name": connection_name,
@@ -2687,7 +2659,7 @@ pub async fn obs_obws_stop_monitoring(
                 }
             }
             Err(e) => {
-                log::error!("Failed to get connection for stopping monitoring: {}", e);
+                log::error!("Failed to get connection for stopping monitoring: {e}");
                 Ok(serde_json::json!({
                     "success": false,
                     "connection_name": connection_name,

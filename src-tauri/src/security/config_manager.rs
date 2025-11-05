@@ -389,7 +389,7 @@ impl SecureConfigManager {
                 category.as_str(),
                 true, // All values are sensitive by default
                 base64::engine::general_purpose::STANDARD.decode(&encrypted_data.salt)
-                    .map_err(|e| SecurityError::Decryption(format!("Failed to decode salt: {}", e)))?,
+                    .map_err(|e| SecurityError::Decryption(format!("Failed to decode salt: {e}")))?,
                 encrypted_data.algorithm,
                 kdf_params_json,
                 now,
@@ -481,7 +481,7 @@ impl SecureConfigManager {
         match result {
             Ok((encrypted_value_bytes, category_str, access_count)) => {
                 let encrypted_json = String::from_utf8(encrypted_value_bytes).map_err(|e| {
-                    SecurityError::Decryption(format!("Invalid UTF-8 in encrypted data: {}", e))
+                    SecurityError::Decryption(format!("Invalid UTF-8 in encrypted data: {e}"))
                 })?;
 
                 let encrypted_data: EncryptedData = serde_json::from_str(&encrypted_json)?;
@@ -622,7 +622,7 @@ impl SecureConfigManager {
 
         let mut stmt = conn.prepare(query)?;
         let rows = stmt.query_map(rusqlite::params_from_iter(params), |row| {
-            Ok(row.get::<_, String>(0)?)
+            row.get::<_, String>(0)
         })?;
 
         let mut keys = Vec::new();

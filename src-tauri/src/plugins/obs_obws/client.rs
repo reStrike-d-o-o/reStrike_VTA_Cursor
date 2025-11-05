@@ -62,21 +62,18 @@ impl ObsClient {
             }
             Ok(Err(err)) => {
                 let error_msg = format!(
-                    "OBS WebSocket not reachable at {} ({}). Ensure OBS is running and the WebSocket server is enabled.",
-                    endpoint,
-                    err
+                    "OBS WebSocket not reachable at {endpoint} ({err}). Ensure OBS is running and the WebSocket server is enabled."
                 );
                 self.status = ObsConnectionStatus::Error(error_msg.clone());
-                log::warn!("{}", error_msg);
+                log::warn!("{error_msg}");
                 return Err(AppError::ConfigError(error_msg));
             }
             Err(_) => {
                 let error_msg = format!(
-                    "Timed out while checking OBS WebSocket availability at {}. Ensure OBS is running and reachable.",
-                    endpoint
+                    "Timed out while checking OBS WebSocket availability at {endpoint}. Ensure OBS is running and reachable."
                 );
                 self.status = ObsConnectionStatus::Error(error_msg.clone());
-                log::warn!("{}", error_msg);
+                log::warn!("{error_msg}");
                 return Err(AppError::ConfigError(error_msg));
             }
         }
@@ -103,9 +100,9 @@ impl ObsClient {
                 Ok(())
             }
             Ok(Err(e)) => {
-                let error_msg = format!("Failed to connect to OBS: {}", e);
+                let error_msg = format!("Failed to connect to OBS: {e}");
                 self.status = ObsConnectionStatus::Error(error_msg.clone());
-                log::error!("{}", error_msg);
+                log::error!("{error_msg}");
                 Err(AppError::ConfigError(error_msg))
             }
             Err(_) => {
@@ -114,7 +111,7 @@ impl ObsClient {
                     self.config.host, self.config.port
                 );
                 self.status = ObsConnectionStatus::Error(error_msg.clone());
-                log::error!("{}", error_msg);
+                log::error!("{error_msg}");
                 Err(AppError::ConfigError(error_msg))
             }
         }
@@ -154,7 +151,7 @@ impl ObsClient {
             .recording()
             .start()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to start recording: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to start recording: {e}")))?;
         log::info!("Recording started");
         Ok(())
     }
@@ -166,7 +163,7 @@ impl ObsClient {
             .recording()
             .stop()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to stop recording: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to stop recording: {e}")))?;
         log::info!("Recording stopped");
         Ok(())
     }
@@ -176,7 +173,7 @@ impl ObsClient {
         let client = self.get_client()?;
         let status =
             client.recording().status().await.map_err(|e| {
-                AppError::ConfigError(format!("Failed to get recording status: {}", e))
+                AppError::ConfigError(format!("Failed to get recording status: {e}"))
             })?;
 
         // Check if recording is active based on the status response
@@ -193,7 +190,7 @@ impl ObsClient {
             .streaming()
             .start()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to start streaming: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to start streaming: {e}")))?;
         log::info!("Streaming started");
         Ok(())
     }
@@ -205,7 +202,7 @@ impl ObsClient {
             .streaming()
             .stop()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to stop streaming: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to stop streaming: {e}")))?;
         log::info!("Streaming stopped");
         Ok(())
     }
@@ -215,7 +212,7 @@ impl ObsClient {
         let client = self.get_client()?;
         let status =
             client.streaming().status().await.map_err(|e| {
-                AppError::ConfigError(format!("Failed to get streaming status: {}", e))
+                AppError::ConfigError(format!("Failed to get streaming status: {e}"))
             })?;
 
         // Check if streaming is active based on the status response
@@ -232,7 +229,7 @@ impl ObsClient {
             .streaming()
             .status()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get stream stats: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get stream stats: {e}")))?;
 
         let duration_ms = status.duration.whole_milliseconds();
 
@@ -252,7 +249,7 @@ impl ObsClient {
             .replay_buffer()
             .start()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to start replay buffer: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to start replay buffer: {e}")))?;
 
         log::info!("Replay buffer started");
 
@@ -275,7 +272,7 @@ impl ObsClient {
             .replay_buffer()
             .stop()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to stop replay buffer: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to stop replay buffer: {e}")))?;
 
         log::info!("Replay buffer stopped");
 
@@ -298,7 +295,7 @@ impl ObsClient {
             .replay_buffer()
             .save()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to save replay buffer: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to save replay buffer: {e}")))?;
 
         log::info!("Replay buffer saved");
 
@@ -318,7 +315,7 @@ impl ObsClient {
     pub async fn get_last_replay_filename(&self) -> AppResult<String> {
         let client = self.get_client()?;
         let name = client.replay_buffer().last_replay().await.map_err(|e| {
-            AppError::ConfigError(format!("Failed to get last replay filename: {}", e))
+            AppError::ConfigError(format!("Failed to get last replay filename: {e}"))
         })?;
         Ok(name)
     }
@@ -327,7 +324,7 @@ impl ObsClient {
     pub async fn get_replay_buffer_status(&self) -> AppResult<ObsReplayBufferStatus> {
         let client = self.get_client()?;
         let active = client.replay_buffer().status().await.map_err(|e| {
-            AppError::ConfigError(format!("Failed to get replay buffer status: {}", e))
+            AppError::ConfigError(format!("Failed to get replay buffer status: {e}"))
         })?;
         Ok(if active {
             ObsReplayBufferStatus::Active
@@ -343,7 +340,7 @@ impl ObsClient {
             .virtual_cam()
             .start()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to start virtual camera: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to start virtual camera: {e}")))?;
         log::info!("Virtual camera started");
         Ok(())
     }
@@ -355,7 +352,7 @@ impl ObsClient {
             .virtual_cam()
             .stop()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to stop virtual camera: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to stop virtual camera: {e}")))?;
         log::info!("Virtual camera stopped");
         Ok(())
     }
@@ -372,7 +369,7 @@ impl ObsClient {
         let client = self.get_client()?;
         let scene =
             client.scenes().current_program_scene().await.map_err(|e| {
-                AppError::ConfigError(format!("Failed to get current scene: {}", e))
+                AppError::ConfigError(format!("Failed to get current scene: {e}"))
             })?;
         Ok(format!("{:?}", scene.id))
     }
@@ -386,11 +383,10 @@ impl ObsClient {
             .await
             .map_err(|e| {
                 AppError::ConfigError(format!(
-                    "Failed to set current scene to '{}': {}",
-                    scene_name, e
+                    "Failed to set current scene to '{scene_name}': {e}"
                 ))
             })?;
-        log::info!("Scene changed to: {}", scene_name);
+        log::info!("Scene changed to: {scene_name}");
         Ok(())
     }
 
@@ -401,7 +397,7 @@ impl ObsClient {
             .scenes()
             .list()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get scenes: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get scenes: {e}")))?;
 
         let mut obs_scenes = Vec::new();
         for scene in scenes.scenes {
@@ -445,8 +441,7 @@ impl ObsClient {
             Err(e) => {
                 // If inputs listing is not supported, return empty list
                 log::warn!(
-                    "Audio sources listing not supported by this OBS version: {}",
-                    e
+                    "Audio sources listing not supported by this OBS version: {e}"
                 );
                 Ok(Vec::new())
             }
@@ -533,7 +528,7 @@ impl ObsClient {
 
                 // For now, return error since individual input mute isn't supported
                 // This could be implemented using scene-based audio control
-                Err(AppError::ConfigError(format!("Individual input mute control not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+                Err(AppError::ConfigError(format!("Individual input mute control not supported by obws. Consider using scene-based audio control for input '{input_name}'")))
             }
 
             "GetInputMute" => {
@@ -544,7 +539,7 @@ impl ObsClient {
                         AppError::ConfigError("Missing 'inputName' parameter".to_string())
                     })?;
 
-                Err(AppError::ConfigError(format!("Individual input mute status not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+                Err(AppError::ConfigError(format!("Individual input mute status not supported by obws. Consider using scene-based audio control for input '{input_name}'")))
             }
 
             "SetInputVolume" => {
@@ -564,7 +559,7 @@ impl ObsClient {
                         )
                     })?;
 
-                Err(AppError::ConfigError(format!("Individual input volume control not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+                Err(AppError::ConfigError(format!("Individual input volume control not supported by obws. Consider using scene-based audio control for input '{input_name}'")))
             }
 
             "GetInputVolume" => {
@@ -575,7 +570,7 @@ impl ObsClient {
                         AppError::ConfigError("Missing 'inputName' parameter".to_string())
                     })?;
 
-                Err(AppError::ConfigError(format!("Individual input volume status not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+                Err(AppError::ConfigError(format!("Individual input volume status not supported by obws. Consider using scene-based audio control for input '{input_name}'")))
             }
 
             "ToggleMute" => {
@@ -586,7 +581,7 @@ impl ObsClient {
                         AppError::ConfigError("Missing 'inputName' parameter".to_string())
                     })?;
 
-                Err(AppError::ConfigError(format!("Input mute toggle not supported by obws. Consider using scene-based audio control for input '{}'", input_name)))
+                Err(AppError::ConfigError(format!("Input mute toggle not supported by obws. Consider using scene-based audio control for input '{input_name}'")))
             }
 
             // Scene item operations
@@ -629,21 +624,18 @@ impl ObsClient {
                                     }
                                     Err(e) => {
                                         return Err(AppError::ConfigError(format!(
-                                            "Failed to get scene items: {}",
-                                            e
+                                            "Failed to get scene items: {e}"
                                         )))
                                     }
                                 }
                             }
                         }
                         Err(AppError::ConfigError(format!(
-                            "Scene '{}' not found",
-                            scene_name
+                            "Scene '{scene_name}' not found"
                         )))
                     }
                     Err(e) => Err(AppError::ConfigError(format!(
-                        "Failed to get scenes: {}",
-                        e
+                        "Failed to get scenes: {e}"
                     ))),
                 }
             }
@@ -676,7 +668,7 @@ impl ObsClient {
 
                 // Use scene items API to set enabled state - obws API requires different approach
                 // For now, return error since the exact API signature is complex
-                Err(AppError::ConfigError(format!("Scene item enabled control not fully implemented in obws integration. Scene: {}, Item ID: {}, Enabled: {}", scene_name, scene_item_id, scene_item_enabled)))
+                Err(AppError::ConfigError(format!("Scene item enabled control not fully implemented in obws integration. Scene: {scene_name}, Item ID: {scene_item_id}, Enabled: {scene_item_enabled}")))
             }
 
             "SetSceneItemTransform" => {
@@ -719,7 +711,7 @@ impl ObsClient {
                     .unwrap_or(0.0);
 
                 // Scene item transform control is complex in obws - return error for now
-                Err(AppError::ConfigError(format!("Scene item transform control not fully implemented in obws integration. Scene: {}, Item ID: {}, Transform: position=({},{}) scale=({},{}) rotation={}", scene_name, scene_item_id, x, y, scale_x, scale_y, rotation)))
+                Err(AppError::ConfigError(format!("Scene item transform control not fully implemented in obws integration. Scene: {scene_name}, Item ID: {scene_item_id}, Transform: position=({x},{y}) scale=({scale_x},{scale_y}) rotation={rotation}")))
             }
 
             "SetCurrentSceneTransition" => {
@@ -732,8 +724,7 @@ impl ObsClient {
 
                 // Transition setting not fully implemented in obws integration
                 Err(AppError::ConfigError(format!(
-                    "Transition setting not fully implemented in obws integration. Transition: {}",
-                    transition_name
+                    "Transition setting not fully implemented in obws integration. Transition: {transition_name}"
                 )))
             }
 
@@ -765,7 +756,7 @@ impl ObsClient {
                     .unwrap_or(300);
 
                 // Transition override not fully implemented in obws integration
-                Err(AppError::ConfigError(format!("Transition override not fully implemented in obws integration. Scene: {}, Transition: {}", scene_name, transition_name)))
+                Err(AppError::ConfigError(format!("Transition override not fully implemented in obws integration. Scene: {scene_name}, Transition: {transition_name}")))
             }
 
             "GetTransitionList" => {
@@ -782,8 +773,7 @@ impl ObsClient {
                         "currentTransitionKind": transitions.current_scene_transition_kind
                     })),
                     Err(e) => Err(AppError::ConfigError(format!(
-                        "Failed to get transitions: {}",
-                        e
+                        "Failed to get transitions: {e}"
                     ))),
                 }
             }
@@ -807,15 +797,13 @@ impl ObsClient {
 
                 // Note: obws doesn't directly support studio mode
                 Err(AppError::ConfigError(format!(
-                    "Studio mode control not supported by obws crate. Studio mode enabled: {}",
-                    studio_mode_enabled
+                    "Studio mode control not supported by obws crate. Studio mode enabled: {studio_mode_enabled}"
                 )))
             }
 
             // Default case for unknown requests
             _ => Err(AppError::ConfigError(format!(
-                "Unknown raw request type: {}",
-                request_type
+                "Unknown raw request type: {request_type}"
             ))),
         }
     }
@@ -837,7 +825,7 @@ impl ObsClient {
             .general()
             .version()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get OBS version: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get OBS version: {e}")))?;
 
         Ok(ObsVersion {
             obs_version: version.obs_version.to_string(),
@@ -889,7 +877,7 @@ impl ObsClient {
             .general()
             .stats()
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get OBS stats: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get OBS stats: {e}")))?;
 
         Ok(ObsStats {
             cpu_usage: stats.cpu_usage,
@@ -909,7 +897,7 @@ impl ObsClient {
         // For now, convert to a generic custom event since the obws event structure
         // may be different than expected. This can be enhanced later.
         Ok(ObsEvent::Custom {
-            event_type: format!("{:?}", event),
+            event_type: format!("{event:?}"),
             data: serde_json::json!({
                 "raw_event": format!("{:?}", event)
             }),
@@ -921,22 +909,20 @@ impl ObsClient {
         let client = self.get_client()?;
         // Prefer official obws Config API
         println!(
-            " obws.config.set_record_directory directory='{}'",
-            directory
+            " obws.config.set_record_directory directory='{directory}'"
         );
         match client.config().set_record_directory(directory).await {
             Ok(_) => {
-                log::info!("Recording directory set via Config API: {}", directory);
+                log::info!("Recording directory set via Config API: {directory}");
                 return Ok(());
             }
             Err(e) => {
-                log::warn!("Config.set_record_directory failed ({}). Falling back to profiles.set_parameter.", e);
+                log::warn!("Config.set_record_directory failed ({e}). Falling back to profiles.set_parameter.");
             }
         }
         // Fallback to profile parameter because some OBS profiles store RecFilePath there
         println!(
-            " obws.profiles.set_parameter category=Output name=RecFilePath value='{}'",
-            directory
+            " obws.profiles.set_parameter category=Output name=RecFilePath value='{directory}'"
         );
         client
             .profiles()
@@ -946,11 +932,10 @@ impl ObsClient {
                 value: Some(directory),
             })
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to set record directory: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to set record directory: {e}")))?;
         // Try alternative advanced output key as well, but do not fail the call if it errors
         println!(
-            " obws.profiles.set_parameter category=AdvOut name=RecFilePath value='{}'",
-            directory
+            " obws.profiles.set_parameter category=AdvOut name=RecFilePath value='{directory}'"
         );
         let _ = client
             .profiles()
@@ -960,7 +945,7 @@ impl ObsClient {
                 value: Some(directory),
             })
             .await;
-        log::info!("Recording directory set (fallback): {}", directory);
+        log::info!("Recording directory set (fallback): {directory}");
         Ok(())
     }
 
@@ -970,8 +955,7 @@ impl ObsClient {
         // Use profile.set_parameter for filename formatting. Key commonly "FilenameFormatting" under "Output" or "AdvOut".
         // We set both likely keys to improve compatibility; ignore errors on the second set.
         println!(
-            " obws.profiles.set_parameter {{category='Output', name='FilenameFormatting', value='{}'}}",
-            formatting
+            " obws.profiles.set_parameter {{category='Output', name='FilenameFormatting', value='{formatting}'}}"
         );
         client
             .profiles()
@@ -982,12 +966,11 @@ impl ObsClient {
             })
             .await
             .map_err(|e| {
-                AppError::ConfigError(format!("Failed to set filename formatting: {}", e))
+                AppError::ConfigError(format!("Failed to set filename formatting: {e}"))
             })?;
         // Try alternative advanced key without failing whole call if it errors
         println!(
-            " obws.profiles.set_parameter {{category='AdvOut', name='FilenameFormatting', value='{}'}}",
-            formatting
+            " obws.profiles.set_parameter {{category='AdvOut', name='FilenameFormatting', value='{formatting}'}}"
         );
         let _ = client
             .profiles()
@@ -997,7 +980,7 @@ impl ObsClient {
                 value: Some(formatting),
             })
             .await;
-        log::info!("Filename formatting set to: {}", formatting);
+        log::info!("Filename formatting set to: {formatting}");
         Ok(())
     }
 
@@ -1013,7 +996,7 @@ impl ObsClient {
             .profiles()
             .parameter("Output", "RecFilePath")
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get record directory: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get record directory: {e}")))?;
         Ok(param.value.unwrap_or_default())
     }
 
@@ -1025,7 +1008,7 @@ impl ObsClient {
             .parameter("Output", "FilenameFormatting")
             .await
             .map_err(|e| {
-                AppError::ConfigError(format!("Failed to get filename formatting: {}", e))
+                AppError::ConfigError(format!("Failed to get filename formatting: {e}"))
             })?;
         Ok(param.value.unwrap_or_default())
     }
@@ -1131,18 +1114,18 @@ impl ObsClient {
         // Call handlers for this event type
         if let Some(handler) = handlers.get(event_type) {
             handler(event.clone());
-            log::debug!("Event '{}' handler executed", event_type);
+            log::debug!("Event '{event_type}' handler executed");
         } else {
-            log::debug!("No handler registered for event type: {}", event_type);
+            log::debug!("No handler registered for event type: {event_type}");
         }
 
         // Also call wildcard handlers for "all" events
         if let Some(handler) = handlers.get("all") {
             handler(event.clone());
-            log::debug!("Wildcard event handler executed for '{}'", event_type);
+            log::debug!("Wildcard event handler executed for '{event_type}'");
         }
 
-        log::debug!("Event triggered: {:?}", event);
+        log::debug!("Event triggered: {event:?}");
         Ok(())
     }
 
@@ -1153,7 +1136,7 @@ impl ObsClient {
         // Set up event handler for all events
         let events = client
             .events()
-            .map_err(|e| AppError::ConfigError(format!("Failed to set up event handler: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to set up event handler: {e}")))?;
 
         // Pin the stream and set up event handler
         let mut events = Box::pin(events);
@@ -1165,12 +1148,12 @@ impl ObsClient {
                 tokio::select! {
                     // Handle incoming events
                     Some(event) = events.next() => {
-                        log::debug!("OBS event: {:?}", event);
+                        log::debug!("OBS event: {event:?}");
 
                         // Convert obws event to our ObsEvent and trigger it
                         if let Ok(obs_event) = ObsClient::convert_obws_event(event) {
                             // TODO: For now, just log the event - event triggering needs proper client reference
-                            log::debug!("Converted OBS event: {:?}", obs_event);
+                            log::debug!("Converted OBS event: {obs_event:?}");
                         }
                     }
                     // Handle shutdown signal
@@ -1218,7 +1201,7 @@ impl ObsClient {
         // Set up event handler for all events
         let events = client
             .events()
-            .map_err(|e| AppError::ConfigError(format!("Failed to set up event handler: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to set up event handler: {e}")))?;
 
         // Pin the stream and set up event handler
         let mut events = Box::pin(events);
@@ -1226,7 +1209,7 @@ impl ObsClient {
         // Set up event handler
         tokio::spawn(async move {
             while let Some(event) = events.next().await {
-                log::debug!("OBS event: {:?}", event);
+                log::debug!("OBS event: {event:?}");
             }
         });
 

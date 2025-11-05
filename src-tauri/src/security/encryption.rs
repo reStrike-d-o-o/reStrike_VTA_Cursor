@@ -134,7 +134,7 @@ impl SecureConfig {
         let mut salt = vec![0u8; self.kdf_params.salt_length];
 
         rng.fill(&mut salt).map_err(|e| {
-            SecurityError::RandomGeneration(format!("Failed to generate salt: {:?}", e))
+            SecurityError::RandomGeneration(format!("Failed to generate salt: {e:?}"))
         })?;
 
         Ok(salt)
@@ -146,7 +146,7 @@ impl SecureConfig {
         let mut nonce = vec![0u8; 12]; // AES-GCM standard nonce length
 
         rng.fill(&mut nonce).map_err(|e| {
-            SecurityError::RandomGeneration(format!("Failed to generate nonce: {:?}", e))
+            SecurityError::RandomGeneration(format!("Failed to generate nonce: {e:?}"))
         })?;
 
         Ok(nonce)
@@ -186,7 +186,7 @@ impl SecureConfig {
         // Derive encryption key
         let key_bytes = self.derive_key(&salt)?;
         let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| {
-            SecurityError::Encryption(format!("Failed to initialize cipher: {:?}", e))
+            SecurityError::Encryption(format!("Failed to initialize cipher: {e:?}"))
         })?;
         let nonce_array: [u8; 12] = nonce_bytes
             .as_slice()
@@ -197,7 +197,7 @@ impl SecureConfig {
         // Encrypt the data
         let ciphertext = cipher
             .encrypt(&nonce, plaintext.as_bytes())
-            .map_err(|e| SecurityError::Encryption(format!("AES encryption failed: {:?}", e)))?;
+            .map_err(|e| SecurityError::Encryption(format!("AES encryption failed: {e:?}")))?;
 
         // Encode to base64
         let encrypted_data = EncryptedData {
@@ -225,21 +225,21 @@ impl SecureConfig {
         let ciphertext = general_purpose::STANDARD
             .decode(&encrypted_data.ciphertext)
             .map_err(|e| {
-                SecurityError::Decryption(format!("Invalid ciphertext encoding: {}", e))
+                SecurityError::Decryption(format!("Invalid ciphertext encoding: {e}"))
             })?;
 
         let salt = general_purpose::STANDARD
             .decode(&encrypted_data.salt)
-            .map_err(|e| SecurityError::Decryption(format!("Invalid salt encoding: {}", e)))?;
+            .map_err(|e| SecurityError::Decryption(format!("Invalid salt encoding: {e}")))?;
 
         let nonce_bytes = general_purpose::STANDARD
             .decode(&encrypted_data.nonce)
-            .map_err(|e| SecurityError::Decryption(format!("Invalid nonce encoding: {}", e)))?;
+            .map_err(|e| SecurityError::Decryption(format!("Invalid nonce encoding: {e}")))?;
 
         // Derive decryption key
         let key_bytes = self.derive_key(&salt)?;
         let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|e| {
-            SecurityError::Decryption(format!("Failed to initialize cipher: {:?}", e))
+            SecurityError::Decryption(format!("Failed to initialize cipher: {e:?}"))
         })?;
         let nonce_array: [u8; 12] = nonce_bytes
             .as_slice()
@@ -250,11 +250,11 @@ impl SecureConfig {
         // Decrypt the data
         let plaintext = cipher
             .decrypt(&nonce, ciphertext.as_ref())
-            .map_err(|e| SecurityError::Decryption(format!("AES decryption failed: {:?}", e)))?;
+            .map_err(|e| SecurityError::Decryption(format!("AES decryption failed: {e:?}")))?;
 
         // Convert to string
         String::from_utf8(plaintext)
-            .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in plaintext: {}", e)))
+            .map_err(|e| SecurityError::Decryption(format!("Invalid UTF-8 in plaintext: {e}")))
     }
 
     /// Hash a password for storage (one-way hash)
@@ -300,7 +300,7 @@ impl SecureConfig {
         // Decode stored hash
         let stored_data = general_purpose::STANDARD
             .decode(stored_hash)
-            .map_err(|e| SecurityError::Authentication(format!("Invalid hash encoding: {}", e)))?;
+            .map_err(|e| SecurityError::Authentication(format!("Invalid hash encoding: {e}")))?;
 
         if stored_data.len() != SALT_LENGTH + 32 {
             return Err(SecurityError::Authentication(
@@ -344,7 +344,7 @@ impl SecureConfig {
         for _ in 0..length {
             let mut byte = [0u8; 1];
             rng.fill(&mut byte).map_err(|e| {
-                SecurityError::RandomGeneration(format!("Failed to generate random byte: {:?}", e))
+                SecurityError::RandomGeneration(format!("Failed to generate random byte: {e:?}"))
             })?;
 
             let idx = (byte[0] as usize) % CHARSET.len();
@@ -352,7 +352,7 @@ impl SecureConfig {
         }
 
         String::from_utf8(result)
-            .map_err(|e| SecurityError::RandomGeneration(format!("Failed to create string: {}", e)))
+            .map_err(|e| SecurityError::RandomGeneration(format!("Failed to create string: {e}")))
     }
 }
 

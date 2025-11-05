@@ -29,7 +29,7 @@ pub async fn test_obs_obws_plugin() -> AppResult<()> {
 
     // Test connection count
     let count = manager.connection_count().await;
-    log::info!("Connection count: {}", count);
+    log::info!("Connection count: {count}");
 
     log::info!("OBS obws plugin test completed successfully");
     Ok(())
@@ -62,14 +62,14 @@ pub async fn test_obs_obws_with_real_obs() -> AppResult<()> {
 
             // Test basic operations
             let status = manager.get_status(Some("local_obs")).await?;
-            log::info!("OBS Status: {:?}", status);
+            log::info!("OBS Status: {status:?}");
 
             // Disconnect
             manager.disconnect("local_obs").await?;
             log::info!("Disconnected from OBS Studio");
         }
         Err(e) => {
-            log::warn!("Could not connect to OBS Studio: {}", e);
+            log::warn!("Could not connect to OBS Studio: {e}");
             log::info!("Make sure OBS Studio is running with WebSocket enabled");
         }
     }

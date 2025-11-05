@@ -11,6 +11,12 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 
 pub struct StorePlugin;
 
+impl Default for StorePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StorePlugin {
     pub fn new() -> Self {
         Self

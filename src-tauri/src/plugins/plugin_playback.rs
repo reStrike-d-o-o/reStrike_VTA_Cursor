@@ -210,7 +210,7 @@ impl VideoPlayer {
                 Ok(())
             }
             Err(e) => {
-                let error_msg = format!("Failed to start mpv: {}", e);
+                let error_msg = format!("Failed to start mpv: {e}");
 
                 // Update status
                 {
@@ -235,7 +235,7 @@ impl VideoPlayer {
             let mut process_guard = self.mpv_process.lock().unwrap();
             if let Some(mut process) = process_guard.take() {
                 // Try to terminate gracefully
-                if let Err(_) = process.kill() {
+                if process.kill().is_err() {
                     // Force kill if graceful termination fails
                     let _ = process.kill();
                 }
@@ -342,7 +342,7 @@ impl VideoPlayer {
                 clip_id: clip.id,
                 position,
             });
-            log::info!("Seeked to: {:.1}s", position);
+            log::info!("Seeked to: {position:.1}s");
         }
 
         Ok(())
@@ -435,7 +435,7 @@ impl VideoPlayer {
                         clip_id: clip_id.clone(),
                     });
 
-                    log::info!("Playback ended for clip: {}", clip_id);
+                    log::info!("Playback ended for clip: {clip_id}");
                     break;
                 }
             }
@@ -483,9 +483,9 @@ impl VideoUtils {
             .arg("--no-config")
             .arg("--no-terminal")
             .arg("--no-audio")
-            .arg(format!("--start={}", timestamp))
+            .arg(format!("--start={timestamp}"))
             .arg("--frames=1")
-            .arg(format!("--o={}", output_path))
+            .arg(format!("--o={output_path}"))
             .arg(video_path)
             .output()
             .map_err(AppError::IoError)?;
@@ -537,13 +537,12 @@ pub fn create_video_player() -> (VideoPlayer, mpsc::UnboundedReceiver<PlaybackEv
 }
 
 pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
-    log::info!("Starting playback of: {} ({})", clip_name, clip_path);
+    log::info!("Starting playback of: {clip_name} ({clip_path})");
 
     // Validate the video file
     if !VideoUtils::validate_video_file(clip_path) {
         return Err(AppError::ConfigError(format!(
-            "Invalid video file: {}",
-            clip_path
+            "Invalid video file: {clip_path}"
         )));
     }
 
@@ -576,18 +575,18 @@ pub fn playback_clip(clip_path: &str, clip_name: &str) -> AppResult<()> {
         while let Some(event) = event_rx.recv().await {
             match event {
                 PlaybackEvent::Started { clip_id } => {
-                    log::info!("Playback started: {}", clip_id);
+                    log::info!("Playback started: {clip_id}");
                 }
                 PlaybackEvent::ClipEnded { clip_id } => {
-                    log::info!("Playback ended: {}", clip_id);
+                    log::info!("Playback ended: {clip_id}");
                     break;
                 }
                 PlaybackEvent::Error { clip_id, error } => {
-                    log::error!("Playback error for {}: {}", clip_id, error);
+                    log::error!("Playback error for {clip_id}: {error}");
                     break;
                 }
                 _ => {
-                    log::info!("Playback event: {:?}", event);
+                    log::info!("Playback event: {event:?}");
                 }
             }
         }

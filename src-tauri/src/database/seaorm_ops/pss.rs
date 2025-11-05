@@ -101,8 +101,7 @@ pub async fn insert_event_details(
         .is_none()
     {
         warn!(
-            "Skipping event detail insert because event {} does not exist",
-            event_id
+            "Skipping event detail insert because event {event_id} does not exist"
         );
         return Ok(());
     }
@@ -374,16 +373,14 @@ async fn resolve_match_identifier(
     }
 
     Err(DbErr::Custom(format!(
-        "Match not found for identifier '{}'",
-        identifier
+        "Match not found for identifier '{identifier}'"
     )))
 }
 
 pub(crate) fn to_i32(value: i64, field: &str) -> Result<i32, DbErr> {
     i32::try_from(value).map_err(|_| {
         DbErr::Custom(format!(
-            "{} value {} exceeds supported range for SeaORM operations",
-            field, value
+            "{field} value {value} exceeds supported range for SeaORM operations"
         ))
     })
 }
@@ -397,7 +394,7 @@ pub(crate) fn opt_i64_to_i32(value: Option<i64>, field: &str) -> Result<Option<i
 pub(crate) fn parse_rfc3339(value: &str, field: &str) -> Result<ChronoDateTime<Utc>, DbErr> {
     ChronoDateTime::parse_from_rfc3339(value)
         .map(|dt| dt.with_timezone(&Utc))
-        .map_err(|err| DbErr::Custom(format!("Invalid {} '{}': {}", field, value, err)))
+        .map_err(|err| DbErr::Custom(format!("Invalid {field} '{value}': {err}")))
 }
 
 pub(crate) fn position_to_side(position: i32) -> Result<String, DbErr> {
@@ -405,8 +402,7 @@ pub(crate) fn position_to_side(position: i32) -> Result<String, DbErr> {
         1 => Ok("blue".to_string()),
         2 => Ok("red".to_string()),
         other => Err(DbErr::Custom(format!(
-            "Unsupported athlete position {} (expected 1 or 2)",
-            other
+            "Unsupported athlete position {other} (expected 1 or 2)"
         ))),
     }
 }

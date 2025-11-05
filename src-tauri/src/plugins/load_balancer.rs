@@ -237,12 +237,11 @@ impl EventDistributor {
             // Update load balancer
             self.load_balancer.remove_server(server_id).await;
 
-            log::info!("Removed UDP server: {}", server_id);
+            log::info!("Removed UDP server: {server_id}");
             Ok(())
         } else {
             Err(crate::AppError::ConfigError(format!(
-                "Server {} not found",
-                server_id
+                "Server {server_id} not found"
             )))
         }
     }
@@ -268,18 +267,16 @@ impl EventDistributor {
                 let distribution_time = start_time.elapsed();
                 self.update_distributor_statistics(distribution_time).await;
 
-                log::debug!("Distributed event to server: {}", server_id);
+                log::debug!("Distributed event to server: {server_id}");
                 Ok(())
             } else {
                 Err(crate::AppError::ConfigError(format!(
-                    "Server {} is not available",
-                    server_id
+                    "Server {server_id} is not available"
                 )))
             }
         } else {
             Err(crate::AppError::ConfigError(format!(
-                "Server {} not found",
-                server_id
+                "Server {server_id} not found"
             )))
         }
     }
@@ -365,7 +362,7 @@ impl EventDistributor {
 
             // Cache the distributed event for quick access
             if let Some(match_id) = event.match_id {
-                let _ = self.cache.set_match_stats(
+                self.cache.set_match_stats(
                     match_id.to_string(),
                     crate::plugins::event_cache::MatchStatistics {
                         match_id: match_id.to_string(),
@@ -483,12 +480,11 @@ impl LoadBalancer {
                 let mut selected_server = None;
 
                 for (server_id, server) in servers.iter() {
-                    if server.is_active && server.health.is_healthy {
-                        if server.statistics.active_connections < least_connections {
+                    if server.is_active && server.health.is_healthy
+                        && server.statistics.active_connections < least_connections {
                             least_connections = server.statistics.active_connections;
                             selected_server = Some(server_id.clone());
                         }
-                    }
                 }
 
                 selected_server

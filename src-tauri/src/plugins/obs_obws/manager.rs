@@ -63,7 +63,7 @@ impl ObsManager {
         let client_arc = {
             let clients = self.clients.lock().await;
             clients.get(name).cloned().ok_or_else(|| {
-                AppError::ConfigError(format!("Connection '{}' not found", name))
+                AppError::ConfigError(format!("Connection '{name}' not found"))
             })?
         };
 
@@ -109,9 +109,7 @@ impl ObsManager {
                                     }
                                     Err(err) => {
                                         log::trace!(
-                                            "Stream stats unavailable for {}: {}",
-                                            task_name,
-                                            err
+                                            "Stream stats unavailable for {task_name}: {err}"
                                         );
                                     }
                                 }
@@ -120,9 +118,7 @@ impl ObsManager {
                             }
                             Err(err) => {
                                 log::trace!(
-                                    "OBS stats unavailable for {}: {}",
-                                    task_name,
-                                    err
+                                    "OBS stats unavailable for {task_name}: {err}"
                                 );
                                 None
                             }
@@ -193,8 +189,7 @@ impl ObsManager {
             let clients = self.clients.lock().await;
             if !clients.contains_key(old_name) {
                 return Err(AppError::ConfigError(format!(
-                    "Connection '{}' not found",
-                    old_name
+                    "Connection '{old_name}' not found"
                 )));
             }
             if old_name != new_config.name && clients.contains_key(&new_config.name) {
@@ -210,7 +205,7 @@ impl ObsManager {
             clients
                 .remove(old_name)
                 .ok_or_else(|| {
-                    AppError::ConfigError(format!("Connection '{}' not found", old_name))
+                    AppError::ConfigError(format!("Connection '{old_name}' not found"))
                 })?
         };
 
@@ -243,7 +238,7 @@ impl ObsManager {
         if was_connected {
             let mut new_client = new_client_arc.lock().await;
             if let Err(e) = new_client.connect().await {
-                log::warn!("Warning: Failed to reconnect after update: {}", e);
+                log::warn!("Warning: Failed to reconnect after update: {e}");
             }
         }
 
@@ -265,8 +260,7 @@ impl ObsManager {
                 Some(client) => client,
                 None => {
                     return Err(AppError::ConfigError(format!(
-                        "Connection '{}' not found",
-                        name
+                        "Connection '{name}' not found"
                     )))
                 }
             }
@@ -277,7 +271,7 @@ impl ObsManager {
         {
             let mut client = client_arc.lock().await;
             if let Err(e) = client.disconnect().await {
-                log::warn!("Warning: Failed to disconnect client '{}': {}", name, e);
+                log::warn!("Warning: Failed to disconnect client '{name}': {e}");
             }
         }
 
@@ -294,7 +288,7 @@ impl ObsManager {
             }
         }
 
-        log::info!("Removed OBS connection: {}", name);
+        log::info!("Removed OBS connection: {name}");
         Ok(())
     }
 
@@ -305,7 +299,7 @@ impl ObsManager {
             clients.get(name).cloned()
         }
         .ok_or_else(|| {
-            AppError::ConfigError(format!("Connection '{}' not found", name))
+            AppError::ConfigError(format!("Connection '{name}' not found"))
         })?;
 
         {
@@ -315,7 +309,7 @@ impl ObsManager {
 
         self.ensure_health_watcher(name).await?;
 
-        log::info!("Connected to OBS: {}", name);
+        log::info!("Connected to OBS: {name}");
         Ok(())
     }
 
@@ -325,12 +319,11 @@ impl ObsManager {
         if let Some(client_arc) = clients.get(name) {
             let mut client = client_arc.lock().await;
             client.disconnect().await?;
-            log::info!("Disconnected from OBS: {}", name);
+            log::info!("Disconnected from OBS: {name}");
             Ok(())
         } else {
             Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                name
+                "Connection '{name}' not found"
             )))
         }
     }
@@ -343,8 +336,7 @@ impl ObsManager {
             Ok(client.get_connection_status())
         } else {
             Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                name
+                "Connection '{name}' not found"
             )))
         }
     }
@@ -355,8 +347,7 @@ impl ObsManager {
         match clients.get(name) {
             Some(client) => Ok(client.clone()),
             None => Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                name
+                "Connection '{name}' not found"
             ))),
         }
     }
@@ -387,14 +378,13 @@ impl ObsManager {
         let clients = self.clients.lock().await;
         if !clients.contains_key(name) {
             return Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                name
+                "Connection '{name}' not found"
             )));
         }
 
         let mut default = self.default_connection.lock().await;
         *default = Some(name.to_string());
-        log::info!("Set default OBS connection: {}", name);
+        log::info!("Set default OBS connection: {name}");
         Ok(())
     }
 
@@ -421,7 +411,7 @@ impl ObsManager {
 
         let clients = self.clients.lock().await;
         clients.get(&connection_name).cloned().ok_or_else(|| {
-            AppError::ConfigError(format!("Connection '{}' not found", connection_name))
+            AppError::ConfigError(format!("Connection '{connection_name}' not found"))
         })
     }
 
@@ -659,7 +649,7 @@ impl ObsManager {
         for (name, client_arc) in clients.iter_mut() {
             let mut client = client_arc.lock().await;
             if let Err(e) = client.disconnect().await {
-                log::warn!("Warning: Failed to disconnect client '{}': {}", name, e);
+                log::warn!("Warning: Failed to disconnect client '{name}': {e}");
             }
         }
         clients.clear();
@@ -766,9 +756,7 @@ impl ObsManager {
             let client = client_arc.lock().await;
             if let Err(e) = client.setup_status_listener().await {
                 log::warn!(
-                    "Warning: Failed to set up status listener for '{}': {}",
-                    name,
-                    e
+                    "Warning: Failed to set up status listener for '{name}': {e}"
                 );
             }
         }

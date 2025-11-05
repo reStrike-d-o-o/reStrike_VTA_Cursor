@@ -168,7 +168,7 @@ impl ObsPathGenerator {
         // Player 1
         if let Some(player1) = &match_info.player1_name {
             let player1_str = if let Some(flag1) = &match_info.player1_flag {
-                format!("{}_{}", player1, flag1)
+                format!("{player1}_{flag1}")
             } else {
                 player1.clone()
             };
@@ -181,7 +181,7 @@ impl ObsPathGenerator {
         // Player 2
         if let Some(player2) = &match_info.player2_name {
             let player2_str = if let Some(flag2) = &match_info.player2_flag {
-                format!("{}_{}", player2, flag2)
+                format!("{player2}_{flag2}")
             } else {
                 player2.clone()
             };
@@ -213,7 +213,7 @@ impl ObsPathGenerator {
     /// Ensure directory exists
     pub fn ensure_directory_exists(&self, path: &Path) -> AppResult<()> {
         if !path.exists() {
-            std::fs::create_dir_all(path).map_err(|e| crate::types::AppError::IoError(e))?;
+            std::fs::create_dir_all(path).map_err(crate::types::AppError::IoError)?;
         }
         Ok(())
     }

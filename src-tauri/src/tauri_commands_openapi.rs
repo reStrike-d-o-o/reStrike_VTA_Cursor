@@ -162,8 +162,7 @@ fn parse_format(raw: &str) -> Result<SchemaFormat, tauri::Error> {
         .or_else(|| SchemaFormat::from_extension(&raw.to_ascii_lowercase()))
         .ok_or_else(|| {
             tauri::Error::from(anyhow::anyhow!(format!(
-                "Unsupported schema format '{}'",
-                raw
+                "Unsupported schema format '{raw}'"
             )))
         })
 }

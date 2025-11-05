@@ -36,7 +36,7 @@ pub fn validate(
 fn parse_to_json_value(raw: &str, format: SchemaFormat) -> Result<Value, SchemaValidationError> {
     match format {
         SchemaFormat::Json => serde_json::from_str::<Value>(raw).map_err(|err| {
-            SchemaValidationError::new(format!("JSON parse error: {}", err))
+            SchemaValidationError::new(format!("JSON parse error: {err}"))
                 .with_location(Some(err.line() as u64), Some(err.column() as u64))
         }),
         SchemaFormat::Yaml => serde_yaml::from_str::<Value>(raw).map_err(|err| {
@@ -44,7 +44,7 @@ fn parse_to_json_value(raw: &str, format: SchemaFormat) -> Result<Value, SchemaV
                 Some(loc) => (Some(loc.line() as u64), Some(loc.column() as u64)),
                 None => (None, None),
             };
-            SchemaValidationError::new(format!("YAML parse error: {}", err))
+            SchemaValidationError::new(format!("YAML parse error: {err}"))
                 .with_location(line, column)
         }),
     }
@@ -211,8 +211,7 @@ fn run_openapiv3_deserialize(
         Ok(json) => json,
         Err(err) => {
             errors.push(SchemaValidationError::new(format!(
-                "Failed to serialize value for validation: {}",
-                err
+                "Failed to serialize value for validation: {err}"
             )));
             return errors;
         }

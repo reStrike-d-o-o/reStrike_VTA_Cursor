@@ -47,14 +47,14 @@ impl MigrationStrategy {
             match self.migrate_setting(conn, &key, &value).await {
                 Ok(_) => {
                     result.migrated_settings += 1;
-                    log::debug!("Migrated setting: {}", key);
+                    log::debug!("Migrated setting: {key}");
                 }
                 Err(e) => {
                     result.failed_settings += 1;
                     result
                         .errors
-                        .push(format!("Failed to migrate '{}': {}", key, e));
-                    log::warn!("Failed to migrate setting '{}': {}", key, e);
+                        .push(format!("Failed to migrate '{key}': {e}"));
+                    log::warn!("Failed to migrate setting '{key}': {e}");
                 }
             }
         }
@@ -166,7 +166,7 @@ impl MigrationStrategy {
                 Some("Migrated from JSON configuration"),
             )?;
         } else {
-            log::debug!("Setting '{}' already exists in database, skipping", key);
+            log::debug!("Setting '{key}' already exists in database, skipping");
         }
 
         Ok(())
@@ -192,12 +192,11 @@ impl MigrationStrategy {
             if let Some(db_value) = db_settings.get(&key) {
                 if json_value != *db_value {
                     validation_errors.push(format!(
-                        "Value mismatch for '{}': JSON='{}', DB='{}'",
-                        key, json_value, db_value
+                        "Value mismatch for '{key}': JSON='{json_value}', DB='{db_value}'"
                     ));
                 }
             } else {
-                validation_errors.push(format!("Setting '{}' not found in database", key));
+                validation_errors.push(format!("Setting '{key}' not found in database"));
             }
         }
 
@@ -207,7 +206,7 @@ impl MigrationStrategy {
                 validation_errors.len()
             );
             for error in &validation_errors {
-                log::warn!(" - {}", error);
+                log::warn!(" - {error}");
             }
             return Err(crate::types::AppError::ConfigError(format!(
                 "Migration validation failed: {} errors",
@@ -265,9 +264,7 @@ impl HybridSettingsProvider {
                 Ok(value) => Ok(value),
                 Err(e) => {
                     log::warn!(
-                        "Database lookup failed for '{}', falling back to JSON: {}",
-                        key,
-                        e
+                        "Database lookup failed for '{key}', falling back to JSON: {e}"
                     );
                     self.get_from_json(key).await
                 }

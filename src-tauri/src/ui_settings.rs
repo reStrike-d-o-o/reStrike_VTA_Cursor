@@ -51,7 +51,7 @@ impl UiSettingsManager {
 
     /// Get a UI setting
     pub fn get_setting(key_name: &str) -> Result<Value, String> {
-        log::info!("Getting UI setting: {}", key_name);
+        log::info!("Getting UI setting: {key_name}");
 
         let settings = UI_SETTINGS.lock().unwrap();
         let value = settings.get(key_name).cloned();
@@ -71,11 +71,7 @@ impl UiSettingsManager {
         change_reason: Option<&str>,
     ) -> Result<Value, String> {
         log::info!(
-            "Setting UI setting: {} = {} (by: {}, reason: {:?})",
-            key_name,
-            value,
-            changed_by,
-            change_reason
+            "Setting UI setting: {key_name} = {value} (by: {changed_by}, reason: {change_reason:?})"
         );
 
         let mut settings = UI_SETTINGS.lock().unwrap();

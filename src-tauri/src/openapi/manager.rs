@@ -28,29 +28,29 @@ impl OpenApiManager {
 
         if !yaml_path.exists() {
             fs::write(&yaml_path, DEFAULT_OPENAPI_YAML).map_err(|e| {
-                AppError::OpenApiError(format!("Failed to write default schema: {}", e))
+                AppError::OpenApiError(format!("Failed to write default schema: {e}"))
             })?;
         }
 
         if !json_path.exists() {
             let default_value =
                 convert_to_json(DEFAULT_OPENAPI_YAML, SchemaFormat::Yaml).map_err(|e| {
-                    AppError::OpenApiError(format!("Failed to convert default schema: {}", e))
+                    AppError::OpenApiError(format!("Failed to convert default schema: {e}"))
                 })?;
             let json_string = render_value(&default_value, SchemaFormat::Json).map_err(|e| {
-                AppError::OpenApiError(format!("Failed to render default JSON: {}", e))
+                AppError::OpenApiError(format!("Failed to render default JSON: {e}"))
             })?;
             fs::write(&json_path, json_string).map_err(|e| {
-                AppError::OpenApiError(format!("Failed to write default JSON: {}", e))
+                AppError::OpenApiError(format!("Failed to write default JSON: {e}"))
             })?;
         }
 
         let metadata = if meta_path.exists() {
             let raw_meta = fs::read_to_string(&meta_path).map_err(|e| {
-                AppError::OpenApiError(format!("Failed to read schema metadata: {}", e))
+                AppError::OpenApiError(format!("Failed to read schema metadata: {e}"))
             })?;
             serde_json::from_str::<SchemaMetadata>(&raw_meta).map_err(|e| {
-                AppError::OpenApiError(format!("Invalid schema metadata format: {}", e))
+                AppError::OpenApiError(format!("Invalid schema metadata format: {e}"))
             })?
         } else {
             let meta = SchemaMetadata {
@@ -119,9 +119,9 @@ impl OpenApiManager {
             .map_err(|e| AppError::OpenApiError(e.to_string()))?;
 
         fs::write(&self.json_path, &canonical_json)
-            .map_err(|e| AppError::OpenApiError(format!("Failed to write JSON schema: {}", e)))?;
+            .map_err(|e| AppError::OpenApiError(format!("Failed to write JSON schema: {e}")))?;
         fs::write(&self.yaml_path, &canonical_yaml)
-            .map_err(|e| AppError::OpenApiError(format!("Failed to write YAML schema: {}", e)))?;
+            .map_err(|e| AppError::OpenApiError(format!("Failed to write YAML schema: {e}")))?;
 
         let updated_at = Utc::now();
         let metadata = SchemaMetadata { format, updated_at };
@@ -188,7 +188,7 @@ fn load_document(
     };
 
     let value = convert_to_json(&raw, format)
-        .map_err(|e| AppError::OpenApiError(format!("Invalid persisted schema: {}", e)))?;
+        .map_err(|e| AppError::OpenApiError(format!("Invalid persisted schema: {e}")))?;
 
     let canonical =
         render_value(&value, format).map_err(|e| AppError::OpenApiError(e.to_string()))?;
@@ -220,8 +220,8 @@ fn render_value(value: &Value, format: SchemaFormat) -> Result<String, Box<dyn s
 
 fn write_metadata(path: &Path, metadata: &SchemaMetadata) -> AppResult<()> {
     let payload = serde_json::to_string_pretty(metadata).map_err(|e| {
-        AppError::OpenApiError(format!("Failed to serialize schema metadata: {}", e))
+        AppError::OpenApiError(format!("Failed to serialize schema metadata: {e}"))
     })?;
     fs::write(path, payload)
-        .map_err(|e| AppError::OpenApiError(format!("Failed to persist schema metadata: {}", e)))
+        .map_err(|e| AppError::OpenApiError(format!("Failed to persist schema metadata: {e}")))
 }

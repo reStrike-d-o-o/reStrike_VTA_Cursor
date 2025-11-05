@@ -372,7 +372,7 @@ impl TriggerPlugin {
                 tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
                 let mut buf = plugin.buffered_rdy.write().await;
                 if let Some(rdy_raw) = buf.take() {
-                    let msg = format!("rdy;{}", rdy_raw);
+                    let msg = format!("rdy;{rdy_raw}");
                     let _ = plugin.process_pss_event(&msg).await;
                 }
             });
@@ -434,7 +434,7 @@ impl TriggerPlugin {
         let event_type = match self.parse_pss_message(message) {
             Some(event) => event,
             None => {
-                log::debug!("Could not parse PSS message: {}", message);
+                log::debug!("Could not parse PSS message: {message}");
                 return Ok(results);
             }
         };
@@ -505,7 +505,7 @@ impl TriggerPlugin {
         drop(triggers);
 
         if event_triggers.is_empty() {
-            log::debug!("No triggers found for event type: {}", event_type_str);
+            log::debug!("No triggers found for event type: {event_type_str}");
             return Ok(results);
         }
 
@@ -737,8 +737,7 @@ impl TriggerPlugin {
             .find(|s| s.id == Some(scene_id))
             .ok_or_else(|| {
                 crate::types::AppError::ConfigError(format!(
-                    "OBS scene with ID {} not found",
-                    scene_id
+                    "OBS scene with ID {scene_id} not found"
                 ))
             })?;
 
@@ -763,10 +762,10 @@ impl TriggerPlugin {
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("OBS_REC");
         if start {
             self.obs_manager.start_recording(Some(conn_name)).await?;
-            log::info!("Started recording on {}", conn_name);
+            log::info!("Started recording on {conn_name}");
         } else {
             self.obs_manager.stop_recording(Some(conn_name)).await?;
-            log::info!("Stopped recording on {}", conn_name);
+            log::info!("Stopped recording on {conn_name}");
         }
         Ok(())
     }
@@ -775,10 +774,10 @@ impl TriggerPlugin {
         let conn_name = trigger.obs_connection_name.as_deref().unwrap_or("OBS_REC");
         // Use obws manager to save replay buffer
         if let Err(e) = self.obs_manager.save_replay_buffer(Some(conn_name)).await {
-            log::warn!("Failed to save replay buffer on {}: {}", conn_name, e);
+            log::warn!("Failed to save replay buffer on {conn_name}: {e}");
             return Err(e);
         }
-        log::info!("Save Replay Buffer executed on {}", conn_name);
+        log::info!("Save Replay Buffer executed on {conn_name}");
         Ok(())
     }
 
@@ -804,8 +803,7 @@ impl TriggerPlugin {
             .find(|t| t.id == Some(template_id))
             .ok_or_else(|| {
                 crate::types::AppError::ConfigError(format!(
-                    "Overlay template with ID {} not found",
-                    template_id
+                    "Overlay template with ID {template_id} not found"
                 ))
             })?;
 
@@ -855,7 +853,7 @@ impl TriggerPlugin {
         // Reload triggers for new context
         self.load_enabled_triggers().await?;
 
-        log::info!("Set tournament context: tournament_id={:?}", tournament_id);
+        log::info!("Set tournament context: tournament_id={tournament_id:?}");
         Ok(())
     }
 

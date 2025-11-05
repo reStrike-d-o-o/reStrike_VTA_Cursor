@@ -43,7 +43,7 @@ pub async fn update_event_recognition_status(
         .await?
     else {
         txn.rollback().await?;
-        return Err(DbErr::Custom(format!("Event {} not found", event_id)));
+        return Err(DbErr::Custom(format!("Event {event_id} not found")));
     };
 
     let current_status = model.recognition_status.clone();

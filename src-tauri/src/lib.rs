@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)] // TODO: migrate logging calls to captured format args
+
 //! reStrike VTA - Windows Desktop Application Library
 //!
 //! This library provides the core functionality for the taekwondo referee application
@@ -42,11 +44,11 @@ pub const APP_NAME: &str = "reStrike VTA";
 
 /// Initialize the application library
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("Initializing {} v{}", APP_NAME, VERSION);
+    log::info!("Initializing {APP_NAME} v{VERSION}");
 
     // Initialize core systems
     core::init()?;
 
-    log::info!("{} library initialized successfully", APP_NAME);
+    log::info!("{APP_NAME} library initialized successfully");
     Ok(())
 }

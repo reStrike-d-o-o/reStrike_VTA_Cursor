@@ -91,9 +91,9 @@ pub fn get_simulation_main_py() -> Result<PathBuf, SimulationEnvError> {
 
     for path in &possible_paths {
         if let Some(path) = path {
-            log::debug!("Checking simulation path: {:?}", path);
+            log::debug!("Checking simulation path: {path:?}");
             if path.exists() {
-                log::info!("Found simulation main.py at: {:?}", path);
+                log::info!("Found simulation main.py at: {path:?}");
                 return Ok(path.clone());
             }
         }
@@ -146,9 +146,9 @@ pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
 
     for path in &possible_paths {
         if let Some(p) = path {
-            log::debug!("Checking requirements path: {:?}", p);
+            log::debug!("Checking requirements path: {p:?}");
             if p.exists() {
-                log::info!("Found requirements.txt at: {:?}", p);
+                log::info!("Found requirements.txt at: {p:?}");
                 return Ok(p.clone());
             }
         }
@@ -167,7 +167,7 @@ pub fn get_simulation_requirements() -> Result<PathBuf, SimulationEnvError> {
 
 /// Check if a required python package is installed (e.g. requests)
 pub fn check_python_package(python_cmd: &str, package: &str) -> bool {
-    let code = format!("import {}; print('ok')", package);
+    let code = format!("import {package}; print('ok')");
     if let Ok(output) = Command::new(python_cmd).arg("-c").arg(&code).output() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         return stdout.contains("ok");
@@ -181,8 +181,7 @@ pub fn install_python_requirements(
     requirements_path: &PathBuf,
 ) -> Result<(), SimulationEnvError> {
     log::info!(
-        "Installing Python requirements from: {:?}",
-        requirements_path
+        "Installing Python requirements from: {requirements_path:?}"
     );
     let output = Command::new(python_cmd)
         .args(["-m", "pip", "install", "-r"])
@@ -194,7 +193,7 @@ pub fn install_python_requirements(
         Ok(())
     } else {
         let error_msg = String::from_utf8_lossy(&output.stderr).to_string();
-        log::error!("Failed to install Python requirements: {}", error_msg);
+        log::error!("Failed to install Python requirements: {error_msg}");
         Err(SimulationEnvError::PipInstallFailed(error_msg))
     }
 }
@@ -218,7 +217,7 @@ pub fn ensure_simulation_env() -> Result<(String, PathBuf), SimulationEnvError> 
 
     // Detect Python
     let python_cmd = detect_python_cmd()?;
-    log::info!("Detected Python command: {}", python_cmd);
+    log::info!("Detected Python command: {python_cmd}");
 
     // Check Python version
     check_python_version(&python_cmd)?;
@@ -226,11 +225,11 @@ pub fn ensure_simulation_env() -> Result<(String, PathBuf), SimulationEnvError> 
 
     // Get simulation main.py path
     let sim_main = get_simulation_main_py()?;
-    log::info!("Simulation main.py found at: {:?}", sim_main);
+    log::info!("Simulation main.py found at: {sim_main:?}");
 
     // Get requirements.txt path
     let req_path = get_simulation_requirements()?;
-    log::info!("Requirements.txt found at: {:?}", req_path);
+    log::info!("Requirements.txt found at: {req_path:?}");
 
     // Check for a common package (requests)
     if !check_python_package(&python_cmd, "requests") {

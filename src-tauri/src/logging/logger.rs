@@ -13,7 +13,7 @@ pub struct Logger {
 
 impl Logger {
     pub fn new(log_dir: &str, subsystem: &str) -> io::Result<Self> {
-        let current_file_path = Path::new(log_dir).join(format!("{}.log", subsystem));
+        let current_file_path = Path::new(log_dir).join(format!("{subsystem}.log"));
 
         let file = OpenOptions::new()
             .create(true)
@@ -41,7 +41,7 @@ impl Logger {
             let sanitized = crate::logging::sanitize_message(&entry.message);
             let formatted_message =
                 crate::logging::align_multiline(prefix.len(), sanitized.as_ref());
-            let log_line = format!("{}{}\n", prefix, formatted_message);
+            let log_line = format!("{prefix}{formatted_message}\n");
             writer.write_all(log_line.as_bytes())?;
             writer.flush()?;
         }

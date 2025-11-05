@@ -30,6 +30,12 @@ pub mod performance_monitor {
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PerformanceMonitor;
 
+    impl Default for PerformanceMonitor {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl PerformanceMonitor {
         pub fn new() -> Self {
             Self
@@ -70,6 +76,12 @@ pub mod event_cache {
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct EventCache;
+
+    impl Default for EventCache {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
 
     impl EventCache {
         pub fn new() -> Self {

@@ -144,7 +144,7 @@ pub async fn update_match(
         .one(conn)
         .await?
     else {
-        return Err(DbErr::Custom(format!("Match {} not found", match_id)));
+        return Err(DbErr::Custom(format!("Match {match_id} not found")));
     };
 
     let mut active: matches::ActiveModel = model.into();
@@ -377,10 +377,7 @@ pub async fn get_match_history_with_videos(
         let category: Option<String> = row.try_get("", "category")?;
         let weight_class: Option<String> = row.try_get("", "weight_class_code")?;
         let division: Option<String> = row.try_get("", "division_code")?;
-        let created_at: Option<String> = match row.try_get::<String>("", "created_at") {
-            Ok(value) => Some(value),
-            Err(_) => None,
-        };
+        let created_at: Option<String> = row.try_get::<String>("", "created_at").ok();
         let match_row = MatchHistoryRow {
             id,
             match_code,

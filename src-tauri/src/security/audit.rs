@@ -283,7 +283,7 @@ impl SecurityAudit {
             );
 
             if let Some(error) = &entry.error_message {
-                log::error!("Security error: {}", error);
+                log::error!("Security error: {error}");
             }
         }
 
@@ -427,7 +427,7 @@ impl SecurityAudit {
 
         // Total events
         let total_events: i64 = conn.query_row(
-            &format!("SELECT COUNT(*) FROM config_audit {}", where_clause),
+            &format!("SELECT COUNT(*) FROM config_audit {where_clause}"),
             rusqlite::params_from_iter(&params),
             |row| row.get(0),
         )?;
@@ -450,8 +450,7 @@ impl SecurityAudit {
         // Unique users
         let unique_users: i64 = conn.query_row(
             &format!(
-                "SELECT COUNT(DISTINCT user_context) FROM config_audit {}",
-                where_clause
+                "SELECT COUNT(DISTINCT user_context) FROM config_audit {where_clause}"
             ),
             rusqlite::params_from_iter(&params),
             |row| row.get(0),
@@ -459,7 +458,7 @@ impl SecurityAudit {
 
         // Most active user
         let most_active_user = conn.query_row(
-            &format!("SELECT user_context, COUNT(*) as count FROM config_audit {} GROUP BY user_context ORDER BY count DESC LIMIT 1", where_clause),
+            &format!("SELECT user_context, COUNT(*) as count FROM config_audit {where_clause} GROUP BY user_context ORDER BY count DESC LIMIT 1"),
             rusqlite::params_from_iter(&params),
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
         ).ok();
@@ -483,9 +482,7 @@ impl SecurityAudit {
         )?;
 
         log::info!(
-            "Cleaned up {} old audit entries older than {} days",
-            deleted,
-            retention_days
+            "Cleaned up {deleted} old audit entries older than {retention_days} days"
         );
         Ok(deleted as u64)
     }

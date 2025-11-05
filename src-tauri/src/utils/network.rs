@@ -151,7 +151,7 @@ impl NetworkDetector {
 
             // Third, try to find any IPv4 address
             for ip in &interface.ip_addresses {
-                if let IpAddr::V4(_) = ip {
+                if ip.is_ipv4() {
                     return Ok(*ip);
                 }
             }
@@ -182,7 +182,7 @@ impl NetworkDetector {
         let output = Command::new("ipconfig")
             .arg("/all")
             .output()
-            .map_err(|e| crate::types::AppError::IoError(e))?;
+            .map_err(crate::types::AppError::IoError)?;
 
         let output_str = String::from_utf8_lossy(&output.stdout);
         let lines: Vec<&str> = output_str.lines().collect();

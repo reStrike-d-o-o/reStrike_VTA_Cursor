@@ -53,7 +53,7 @@ pub struct ProtocolManager {
 impl ProtocolManager {
     pub fn new() -> AppResult<Self> {
         let app_dir = std::env::current_dir().map_err(|e| {
-            AppError::ConfigError(format!("Failed to get current directory: {}", e))
+            AppError::ConfigError(format!("Failed to get current directory: {e}"))
         })?;
 
         let protocols_dir = app_dir.join("protocol");
@@ -61,7 +61,7 @@ impl ProtocolManager {
         // Create protocols directory if it doesn't exist
         if !protocols_dir.exists() {
             fs::create_dir_all(&protocols_dir).map_err(|e| {
-                AppError::ConfigError(format!("Failed to create protocols directory: {}", e))
+                AppError::ConfigError(format!("Failed to create protocols directory: {e}"))
             })?;
         }
 
@@ -97,10 +97,10 @@ impl ProtocolManager {
         }
 
         for entry in fs::read_dir(&self.protocols_dir).map_err(|e| {
-            AppError::ConfigError(format!("Failed to read protocols directory: {}", e))
+            AppError::ConfigError(format!("Failed to read protocols directory: {e}"))
         })? {
             let entry = entry.map_err(|e| {
-                AppError::ConfigError(format!("Failed to read directory entry: {}", e))
+                AppError::ConfigError(format!("Failed to read directory entry: {e}"))
             })?;
 
             let path = entry.path();
@@ -115,7 +115,7 @@ impl ProtocolManager {
                             let version = self.extract_version_from_filename(&filename_str);
 
                             let metadata = fs::metadata(&path).map_err(|e| {
-                                AppError::ConfigError(format!("Failed to get file metadata: {}", e))
+                                AppError::ConfigError(format!("Failed to get file metadata: {e}"))
                             })?;
 
                             let created_date = metadata
@@ -136,7 +136,7 @@ impl ProtocolManager {
                                 version: version.clone(),
                                 filename: filename_str,
                                 file_path: path.to_string_lossy().to_string(),
-                                description: format!("PSS Protocol Version {}", version),
+                                description: format!("PSS Protocol Version {version}"),
                                 created_date: DateTime::from_timestamp(created_date as i64, 0)
                                     .unwrap_or_default()
                                     .to_rfc3339(),
@@ -167,12 +167,12 @@ impl ProtocolManager {
                 // Look for the first underscore or end of string to get just the version number
                 if let Some(underscore_pos) = version_part.find('_') {
                     let clean_version = &version_part[..underscore_pos];
-                    if clean_version.chars().any(|c| c.is_digit(10)) {
+                    if clean_version.chars().any(|c| c.is_ascii_digit()) {
                         return clean_version.to_string();
                     }
                 } else {
                     // No underscore, use the whole version part
-                    if version_part.chars().any(|c| c.is_digit(10)) {
+                    if version_part.chars().any(|c| c.is_ascii_digit()) {
                         return version_part.to_string();
                     }
                 }
@@ -230,8 +230,7 @@ impl ProtocolManager {
         // Verify the version exists
         if !self.versions.lock().unwrap().contains_key(version) {
             return Err(AppError::ConfigError(format!(
-                "Protocol version {} not found",
-                version
+                "Protocol version {version} not found"
             )));
         }
 
@@ -252,7 +251,7 @@ impl ProtocolManager {
         // Load the new active protocol
         self.load_active_protocol().await?;
 
-        log::info!("Set active protocol version to {}", version);
+        log::info!("Set active protocol version to {version}");
         Ok(())
     }
 
@@ -262,7 +261,7 @@ impl ProtocolManager {
         file_content: Vec<u8>,
         filename: &str,
     ) -> AppResult<String> {
-        log::info!("Starting upload of protocol file: {}", filename);
+        log::info!("Starting upload of protocol file: {filename}");
 
         // Validate file content
         if file_content.is_empty() {
@@ -272,14 +271,13 @@ impl ProtocolManager {
 
         // Extract version from filename
         let version = self.extract_version_from_filename(filename);
-        log::info!("Extracted version: {} from filename: {}", version, filename);
+        log::info!("Extracted version: {version} from filename: {filename}");
 
         // Check if version already exists
         if self.versions.lock().unwrap().contains_key(&version) {
-            log::error!("Protocol version {} already exists", version);
+            log::error!("Protocol version {version} already exists");
             return Err(AppError::ConfigError(format!(
-                "Protocol version {} already exists",
-                version
+                "Protocol version {version} already exists"
             )));
         }
 
@@ -291,10 +289,9 @@ impl ProtocolManager {
         match fs::write(&file_path, &file_content) {
             Ok(_) => log::info!("File written successfully"),
             Err(e) => {
-                log::error!("Failed to write protocol file: {}", e);
+                log::error!("Failed to write protocol file: {e}");
                 return Err(AppError::ConfigError(format!(
-                    "Failed to write protocol file: {}",
-                    e
+                    "Failed to write protocol file: {e}"
                 )));
             }
         }
@@ -307,7 +304,7 @@ impl ProtocolManager {
                 file
             }
             Err(e) => {
-                log::error!("Failed to parse protocol file: {}", e);
+                log::error!("Failed to parse protocol file: {e}");
                 // Clean up the file we just wrote
                 let _ = fs::remove_file(&file_path);
                 return Err(e);
@@ -318,10 +315,9 @@ impl ProtocolManager {
         let metadata = match fs::metadata(&file_path) {
             Ok(meta) => meta,
             Err(e) => {
-                log::error!("Failed to get file metadata: {}", e);
+                log::error!("Failed to get file metadata: {e}");
                 return Err(AppError::ConfigError(format!(
-                    "Failed to get file metadata: {}",
-                    e
+                    "Failed to get file metadata: {e}"
                 )));
             }
         };
@@ -347,9 +343,7 @@ impl ProtocolManager {
         }
 
         log::info!(
-            "Successfully uploaded protocol file: {} (version {})",
-            filename,
-            version
+            "Successfully uploaded protocol file: {filename} (version {version})"
         );
         Ok(version)
     }
@@ -373,7 +367,7 @@ impl ProtocolManager {
             let file_path = Path::new(&protocol_version.file_path);
             if file_path.exists() {
                 fs::remove_file(file_path).map_err(|e| {
-                    AppError::ConfigError(format!("Failed to delete protocol file: {}", e))
+                    AppError::ConfigError(format!("Failed to delete protocol file: {e}"))
                 })?;
             }
 
@@ -383,12 +377,11 @@ impl ProtocolManager {
                 versions.remove(version);
             }
 
-            log::info!("Deleted protocol version: {}", version);
+            log::info!("Deleted protocol version: {version}");
             Ok(())
         } else {
             Err(AppError::ConfigError(format!(
-                "Protocol version {} not found",
-                version
+                "Protocol version {version} not found"
             )))
         }
     }
@@ -404,7 +397,7 @@ impl ProtocolManager {
             let file_path = Path::new(&protocol_version.file_path);
             if file_path.exists() {
                 let content = fs::read(file_path).map_err(|e| {
-                    AppError::ConfigError(format!("Failed to read protocol file: {}", e))
+                    AppError::ConfigError(format!("Failed to read protocol file: {e}"))
                 })?;
                 Ok(content)
             } else {
@@ -414,8 +407,7 @@ impl ProtocolManager {
             }
         } else {
             Err(AppError::ConfigError(format!(
-                "Protocol version {} not found",
-                version
+                "Protocol version {version} not found"
             )))
         }
     }
@@ -423,7 +415,7 @@ impl ProtocolManager {
     /// Parse a protocol file (supports both TXT and JSON formats)
     async fn parse_protocol_file(&self, file_path: &str) -> AppResult<ProtocolFile> {
         let content = fs::read_to_string(file_path)
-            .map_err(|e| AppError::ConfigError(format!("Failed to read protocol file: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to read protocol file: {e}")))?;
 
         let path = Path::new(file_path);
         if let Some(extension) = path.extension() {
@@ -443,7 +435,7 @@ impl ProtocolManager {
     /// Parse JSON protocol file
     fn parse_json_protocol(&self, content: &str) -> AppResult<ProtocolFile> {
         serde_json::from_str(content)
-            .map_err(|e| AppError::ConfigError(format!("Failed to parse JSON protocol: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to parse JSON protocol: {e}")))
     }
 
     /// Parse TXT protocol file (enhanced parsing for the WT_UDP format)
@@ -506,7 +498,7 @@ impl ProtocolManager {
                 if let Some(stream_name) = current_stream {
                     let stream_def = StreamDefinition {
                         name: stream_name.clone(),
-                        description: format!("Stream for {}", stream_name),
+                        description: format!("Stream for {stream_name}"),
                         required_arguments: current_required_args.clone(),
                         optional_arguments: if current_optional_args.is_empty() {
                             None
@@ -576,7 +568,7 @@ impl ProtocolManager {
         if let Some(stream_name) = current_stream {
             let stream_def = StreamDefinition {
                 name: stream_name.clone(),
-                description: format!("Stream for {}", stream_name),
+                description: format!("Stream for {stream_name}"),
                 required_arguments: current_required_args.clone(),
                 optional_arguments: if current_optional_args.is_empty() {
                     None

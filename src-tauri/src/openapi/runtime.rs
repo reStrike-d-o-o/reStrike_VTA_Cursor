@@ -33,11 +33,11 @@ impl OpenApiRuntime {
 
         let listener = TcpListener::bind(address)
             .await
-            .map_err(|e| AppError::OpenApiError(format!("Failed to bind OpenAPI server: {}", e)))?;
+            .map_err(|e| AppError::OpenApiError(format!("Failed to bind OpenAPI server: {e}")))?;
         let server = axum::serve(listener, router.into_make_service());
         let handle = tokio::spawn(async move {
             if let Err(err) = server.await {
-                log::error!("OpenAPI server terminated unexpectedly: {}", err);
+                log::error!("OpenAPI server terminated unexpectedly: {err}");
             }
         });
 
@@ -92,7 +92,7 @@ async fn get_openapi_yaml(State(shared): State<SharedDocument>) -> impl IntoResp
             .body(body.into())
             .unwrap(),
         Err(err) => {
-            log::error!("Failed to render YAML OpenAPI document: {}", err);
+            log::error!("Failed to render YAML OpenAPI document: {err}");
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }

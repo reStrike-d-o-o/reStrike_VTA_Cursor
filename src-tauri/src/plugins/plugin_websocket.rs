@@ -103,7 +103,7 @@ impl WebSocketServer {
     fn format_time_from_seconds(seconds: u32) -> String {
         let minutes = seconds / 60;
         let secs = seconds % 60;
-        format!("{:02}:{:02}", minutes, secs)
+        format!("{minutes:02}:{secs:02}")
     }
 
     /// Check if the clock time matches the expected round duration start time
@@ -139,23 +139,22 @@ impl WebSocketServer {
     }
 
     pub async fn start(&self, port: u16) -> AppResult<()> {
-        log::info!("Starting WebSocket server on port {}", port);
-        let addr = format!("127.0.0.1:{}", port);
+        log::info!("Starting WebSocket server on port {port}");
+        let addr = format!("127.0.0.1:{port}");
 
         let listener = match TcpListener::bind(&addr).await {
             Ok(listener) => listener,
             Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
                 let message = format!(
-                    "WebSocket port {} is already in use. Another instance may be running; skipping overlay server startup.",
-                    port
+                    "WebSocket port {port} is already in use. Another instance may be running; skipping overlay server startup."
                 );
-                log::warn!("{}", message);
+                log::warn!("{message}");
                 self.broadcast_error(message.clone());
                 return Err(AppError::ConfigError(message));
             }
             Err(err) => {
-                let message = format!("Failed to bind WebSocket server on {}: {}", addr, err);
-                log::error!("{}", message);
+                let message = format!("Failed to bind WebSocket server on {addr}: {err}");
+                log::error!("{message}");
                 self.broadcast_error(message.clone());
                 return Err(AppError::ConfigError(message));
             }
@@ -179,7 +178,7 @@ impl WebSocketServer {
                 if let Err(e) =
                     Self::run_server(listener, clients, event_tx, shutdown_notify).await
                 {
-                    log::error!("WebSocket server error: {}", e);
+                    log::error!("WebSocket server error: {e}");
                 }
             }
         });
@@ -217,7 +216,7 @@ impl WebSocketServer {
                     log::warn!("WebSocket server task was cancelled before completing");
                 }
                 Err(err) => {
-                    log::warn!("WebSocket server task ended with error: {}", err);
+                    log::warn!("WebSocket server task ended with error: {err}");
                 }
             }
         }
@@ -232,7 +231,7 @@ impl WebSocketServer {
         shutdown_notify: Arc<Notify>,
     ) -> AppResult<()> {
         if let Ok(addr) = listener.local_addr() {
-            log::info!("WebSocket server listening on {}", addr);
+            log::info!("WebSocket server listening on {addr}");
         } else {
             log::info!("WebSocket server listening (address unavailable)");
         }
@@ -246,7 +245,7 @@ impl WebSocketServer {
                 accept_result = listener.accept() => {
                     match accept_result {
                         Ok((stream, addr)) => {
-                            log::info!("New WebSocket connection from {}", addr);
+                            log::info!("New WebSocket connection from {addr}");
 
                             let clients_clone = clients.clone();
                             let event_tx_clone = event_tx.clone();
@@ -255,12 +254,12 @@ impl WebSocketServer {
                                 if let Err(e) =
                                     Self::handle_client(stream, addr, clients_clone, event_tx_clone).await
                                 {
-                                    log::error!("Client handler error: {}", e);
+                                    log::error!("Client handler error: {e}");
                                 }
                             });
                         }
                         Err(err) => {
-                            log::warn!("WebSocket listener accept error: {}", err);
+                            log::warn!("WebSocket listener accept error: {err}");
                             break;
                         }
                     }
@@ -278,13 +277,13 @@ impl WebSocketServer {
         clients: Arc<Mutex<Vec<WebSocketClient>>>,
         _event_tx: mpsc::UnboundedSender<PssEvent>,
     ) -> AppResult<()> {
-        let client_id = format!("client_{}", addr);
-        log::info!("New WebSocket client connected: {}", client_id);
+        let client_id = format!("client_{addr}");
+        log::info!("New WebSocket client connected: {client_id}");
 
         // Accept the WebSocket connection
         let ws_stream = accept_async(stream)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to accept WebSocket: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to accept WebSocket: {e}")))?;
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<WebSocketMessage>();
         let client = WebSocketClient::new(client_id.clone(), tx.clone());
@@ -301,7 +300,7 @@ impl WebSocketServer {
         };
 
         if let Err(e) = tx.send(status_msg) {
-            log::error!("Failed to send connection status: {}", e);
+            log::error!("Failed to send connection status: {e}");
         }
 
         drop(tx);
@@ -318,23 +317,23 @@ impl WebSocketServer {
             while let Some(msg) = ws_receiver.next().await {
                 match msg {
                     Ok(Message::Text(text)) => {
-                        log::debug!("Received text message from {}: {}", client_id_receive, text);
+                        log::debug!("Received text message from {client_id_receive}: {text}");
                         // Handle text messages (ping, etc.)
                         if text == "ping" {
                             // Just log the ping, don't send a response to avoid loops
-                            log::debug!("Received ping from {}", client_id_receive);
+                            log::debug!("Received ping from {client_id_receive}");
                         }
                     }
                     Ok(Message::Close(_)) => {
-                        log::info!("Client {} requested close", client_id_receive);
+                        log::info!("Client {client_id_receive} requested close");
                         break;
                     }
                     Ok(Message::Ping(_data)) => {
                         // Note: We can't send pong here because ws_sender is moved
-                        log::debug!("Received ping from {}", client_id_receive);
+                        log::debug!("Received ping from {client_id_receive}");
                     }
                     Err(e) => {
-                        log::error!("WebSocket error from {}: {}", client_id_receive, e);
+                        log::error!("WebSocket error from {client_id_receive}: {e}");
                         break;
                     }
                     _ => {}
@@ -348,24 +347,22 @@ impl WebSocketServer {
                 let json = match message {
                     WebSocketMessage::RawJson(json_value) => serde_json::to_string(&json_value)
                         .map_err(|e| {
-                            AppError::ConfigError(format!("Failed to serialize raw JSON: {}", e))
+                            AppError::ConfigError(format!("Failed to serialize raw JSON: {e}"))
                         })?,
                     _ => serde_json::to_string(&message).map_err(|e| {
-                        AppError::ConfigError(format!("Failed to serialize message: {}", e))
+                        AppError::ConfigError(format!("Failed to serialize message: {e}"))
                     })?,
                 };
 
                 if let Err(e) = ws_sender.send(Message::Text(json)).await {
-                    log::error!("Failed to send message to {}: {}", client_id_send, e);
+                    log::error!("Failed to send message to {client_id_send}: {e}");
                     break;
                 }
             }
 
             if let Err(e) = ws_sender.close().await {
                 log::debug!(
-                    "Failed to close WebSocket connection {} cleanly: {}",
-                    client_id_send,
-                    e
+                    "Failed to close WebSocket connection {client_id_send} cleanly: {e}"
                 );
             }
             Ok::<(), AppError>(())
@@ -381,7 +378,7 @@ impl WebSocketServer {
         if let Ok(mut clients_guard) = clients_clone.lock() {
             clients_guard.retain(|c| c.id != client_id);
         }
-        log::info!("Client {} disconnected", client_id);
+        log::info!("Client {client_id} disconnected");
 
         Ok(())
     }
@@ -396,8 +393,7 @@ impl WebSocketServer {
                 }
                 let client_count = clients_guard.len();
                 log::info!(
-                    "Notifying {} WebSocket client(s) of shutdown",
-                    client_count
+                    "Notifying {client_count} WebSocket client(s) of shutdown"
                 );
                 for client in clients_guard.iter() {
                     if let Err(err) = client.send(WebSocketMessage::ConnectionStatus {
@@ -415,8 +411,7 @@ impl WebSocketServer {
             }
             Err(err) => {
                 log::warn!(
-                    "Failed to lock WebSocket clients during shutdown notification: {}",
-                    err
+                    "Failed to lock WebSocket clients during shutdown notification: {err}"
                 );
             }
         }
@@ -428,7 +423,7 @@ impl WebSocketServer {
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
         if let Err(err) = self.broadcast_message(error_msg) {
-            log::warn!("Failed to broadcast WebSocket error notification: {}", err);
+            log::warn!("Failed to broadcast WebSocket error notification: {err}");
         }
     }
 
@@ -503,10 +498,10 @@ impl WebSocketServer {
         let mut clients = self
             .clients
             .lock()
-            .map_err(|e| AppError::ConfigError(format!("Failed to lock clients mutex: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to lock clients mutex: {e}")))?;
 
         let client_count = clients.len();
-        log::info!("Broadcasting message to {} connected clients", client_count);
+        log::info!("Broadcasting message to {client_count} connected clients");
 
         let mut disconnected_clients = Vec::new();
 
@@ -576,7 +571,7 @@ impl WebSocketServer {
 
         // Collect indices of disconnected clients
         for (index, client) in clients.iter().enumerate() {
-            if let Err(_) = client.send_raw_json(overlay_message.clone()) {
+            if client.send_raw_json(overlay_message.clone()).is_err() {
                 log::warn!("Client {} disconnected during broadcast", client.id);
                 disconnected_clients.push(index);
             }
@@ -684,13 +679,13 @@ impl WebSocketServer {
                 // Only update current_time when we receive a valid Clock event
                 if let Ok(mut time_guard) = self.current_time.lock() {
                     *time_guard = Some(time.clone());
-                    log::info!("Updated current_time to: {}", time);
+                    log::info!("Updated current_time to: {time}");
                 }
                 // Mark match as started when we see clk;{round_duration};start
-                if self.is_match_start_time(&time) && action.as_deref() == Some("start") {
+                if self.is_match_start_time(time) && action.as_deref() == Some("start") {
                     if let Ok(mut match_guard) = self.match_started.lock() {
                         *match_guard = true;
-                        log::info!("Match started! (clk;{};start detected)", time);
+                        log::info!("Match started! (clk;{time};start detected)");
                     }
                 }
 
@@ -701,8 +696,8 @@ impl WebSocketServer {
                     round: get_event_round(None),  // Use last known round
                     time: time.clone(),            // Clock events always have their own time
                     timestamp: pss_timestamp,
-                    raw_data: format!("clk;{};", time),
-                    description: format!("Clock: {}", time),
+                    raw_data: format!("clk;{time};"),
+                    description: format!("Clock: {time}"),
                     action: action.clone(),
                     structured_data: serde_json::json!({
                         "time": time,
@@ -724,8 +719,8 @@ impl WebSocketServer {
                     round: *current_round,         // Round events always have their own round
                     time: get_event_time(None),    // Use last known time
                     timestamp: pss_timestamp,
-                    raw_data: format!("rnd;{};", current_round),
-                    description: format!("Round {}", current_round),
+                    raw_data: format!("rnd;{current_round};"),
+                    description: format!("Round {current_round}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "current_round": current_round,
@@ -762,12 +757,12 @@ impl WebSocketServer {
 
                 // Create appropriate description based on point type
                 let description = match point_type {
-                    1 => format!("{} punch point", athlete_str),
-                    2 => format!("{} body kick", athlete_str), // CHANGED: body point -> body kick
-                    3 => format!("{} head point", athlete_str),
-                    4 => format!("{} technical body", athlete_str),
-                    5 => format!("{} technical head", athlete_str),
-                    _ => format!("{} point", athlete_str),
+                    1 => format!("{athlete_str} punch point"),
+                    2 => format!("{athlete_str} body kick"), // CHANGED: body point -> body kick
+                    3 => format!("{athlete_str} head point"),
+                    4 => format!("{athlete_str} technical body"),
+                    5 => format!("{athlete_str} technical head"),
+                    _ => format!("{athlete_str} point"),
                 };
 
                 WebSocketMessage::PssEvent {
@@ -777,7 +772,7 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("pt{}", point_type),
+                    raw_data: format!("pt{point_type}"),
                     description,
                     action: None,
                     structured_data: serde_json::json!({
@@ -803,10 +798,9 @@ impl WebSocketServer {
                     round: get_event_round(None),  // Use last known round
                     time: get_event_time(None),    // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("wg1;{};wg2;{}", athlete1_warnings, athlete2_warnings),
+                    raw_data: format!("wg1;{athlete1_warnings};wg2;{athlete2_warnings}"),
                     description: format!(
-                        "Warnings - Blue: {}, Red: {}",
-                        athlete1_warnings, athlete2_warnings
+                        "Warnings - Blue: {athlete1_warnings}, Red: {athlete2_warnings}"
                     ),
                     action: None,
                     structured_data: serde_json::json!({
@@ -825,11 +819,7 @@ impl WebSocketServer {
 
                 // Log important events with raw message
                 log::info!(
-                    "IMPORTANT EVENT - O: athlete={}, level={}, raw=hl{};{};",
-                    athlete,
-                    level,
-                    athlete,
-                    level
+                    "IMPORTANT EVENT - O: athlete={athlete}, level={level}, raw=hl{athlete};{level};"
                 );
 
                 WebSocketMessage::PssEvent {
@@ -839,8 +829,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("hl{};{};", athlete, level),
-                    description: format!("{} hit level: {}", athlete_str, level),
+                    raw_data: format!("hl{athlete};{level};"),
+                    description: format!("{athlete_str} hit level: {level}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete": *athlete,
@@ -863,7 +853,7 @@ impl WebSocketServer {
                 };
 
                 // Log important events with raw message
-                log::info!("IMPORTANT EVENT - R: source={}, accepted={:?}, won={:?}, canceled={}, raw=ch{};", source, accepted, won, canceled, source);
+                log::info!("IMPORTANT EVENT - R: source={source}, accepted={accepted:?}, won={won:?}, canceled={canceled}, raw=ch{source};");
 
                 WebSocketMessage::PssEvent {
                     event_type: "challenge".to_string(),
@@ -872,8 +862,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("ch{};", source),
-                    description: format!("{} challenge", athlete_str),
+                    raw_data: format!("ch{source};"),
+                    description: format!("{athlete_str} challenge"),
                     action: None,
                     structured_data: serde_json::json!({
                         "source": *source,
@@ -897,12 +887,10 @@ impl WebSocketServer {
                     time: get_event_time(None),  // Use last known time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!(
-                        "wr1;{};wr2;{};wr3;{}",
-                        round1_winner, round2_winner, round3_winner
+                        "wr1;{round1_winner};wr2;{round2_winner};wr3;{round3_winner}"
                     ),
                     description: format!(
-                        "Winner Rounds - R1: {}, R2: {}, R3: {}",
-                        round1_winner, round2_winner, round3_winner
+                        "Winner Rounds - R1: {round1_winner}, R2: {round2_winner}, R3: {round3_winner}"
                     ),
                     action: None,
                     structured_data: serde_json::json!({
@@ -924,8 +912,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("win;{};", name),
-                    description: format!("Winner: {}", name),
+                    raw_data: format!("win;{name};"),
+                    description: format!("Winner: {name}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "name": name,
@@ -970,8 +958,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("mch;{};{};{}", number, category, weight),
-                    description: format!("Match Config - #{} {} {}", number, category, weight),
+                    raw_data: format!("mch;{number};{category};{weight}"),
+                    description: format!("Match Config - #{number} {category} {weight}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "number": number,
@@ -1007,15 +995,9 @@ impl WebSocketServer {
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!(
-                        "ath1;{};{};{};ath2;{};{};{}",
-                        athlete1_short,
-                        athlete1_long,
-                        athlete1_country,
-                        athlete2_short,
-                        athlete2_long,
-                        athlete2_country
+                        "ath1;{athlete1_short};{athlete1_long};{athlete1_country};ath2;{athlete2_short};{athlete2_long};{athlete2_country}"
                     ),
-                    description: format!("Athletes - {} vs {}", athlete1_short, athlete2_short),
+                    description: format!("Athletes - {athlete1_short} vs {athlete2_short}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "athlete1_short": athlete1_short,
@@ -1039,10 +1021,9 @@ impl WebSocketServer {
                     round: get_event_round(None),  // Use last known round
                     time: current_time.clone().unwrap_or_else(|| "2:00".to_string()), // Use last known time or default to 2:00
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("sc1;{};sc2;{}", athlete1_score, athlete2_score),
+                    raw_data: format!("sc1;{athlete1_score};sc2;{athlete2_score}"),
                     description: format!(
-                        "Current Scores - A1: {}, A2: {}",
-                        athlete1_score, athlete2_score
+                        "Current Scores - A1: {athlete1_score}, A2: {athlete2_score}"
                     ),
                     action: None,
                     structured_data: serde_json::json!({
@@ -1070,22 +1051,10 @@ impl WebSocketServer {
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
                     raw_data: format!(
-                        "s11;{};s21;{};s12;{};s22;{};s13;{};s23;{}",
-                        athlete1_r1,
-                        athlete2_r1,
-                        athlete1_r2,
-                        athlete2_r2,
-                        athlete1_r3,
-                        athlete2_r3
+                        "s11;{athlete1_r1};s21;{athlete2_r1};s12;{athlete1_r2};s22;{athlete2_r2};s13;{athlete1_r3};s23;{athlete2_r3}"
                     ),
                     description: format!(
-                        "Scores - R1: {}-{}, R2: {}-{}, R3: {}-{}",
-                        athlete1_r1,
-                        athlete2_r1,
-                        athlete1_r2,
-                        athlete2_r2,
-                        athlete1_r3,
-                        athlete2_r3
+                        "Scores - R1: {athlete1_r1}-{athlete2_r1}, R2: {athlete1_r2}-{athlete2_r2}, R3: {athlete1_r3}-{athlete2_r3}"
                     ),
                     action: None,
                     structured_data: serde_json::json!({
@@ -1181,8 +1150,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: time.clone(),           // Injury events have their own time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("inj;{};{}", athlete, time),
-                    description: format!("Injury - {} {}", athlete_str, time),
+                    raw_data: format!("inj;{athlete};{time}"),
+                    description: format!("Injury - {athlete_str} {time}"),
                     action: action.clone(),
                     structured_data: serde_json::json!({
                         "athlete": *athlete,
@@ -1200,8 +1169,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: time.clone(),           // Break events have their own time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("brk;{}", time),
-                    description: format!("Break - {}", time),
+                    raw_data: format!("brk;{time}"),
+                    description: format!("Break - {time}"),
                     action: action.clone(),
                     structured_data: serde_json::json!({
                         "time": time,
@@ -1218,8 +1187,8 @@ impl WebSocketServer {
                     round: get_event_round(None), // Use last known round
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
-                    raw_data: format!("sup;{}", value),
-                    description: format!("Supremacy: {}", value),
+                    raw_data: format!("sup;{value}"),
+                    description: format!("Supremacy: {value}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "value": *value
@@ -1236,7 +1205,7 @@ impl WebSocketServer {
                     time: get_event_time(None),   // Use last known time
                     timestamp: pss_timestamp.clone(),
                     raw_data: raw_msg.clone(),
-                    description: format!("Raw: {}", raw_msg),
+                    description: format!("Raw: {raw_msg}"),
                     action: None,
                     structured_data: serde_json::json!({
                         "raw_message": raw_msg
@@ -1249,28 +1218,26 @@ impl WebSocketServer {
     /// Extract raw data string from PSS event for timestamp generation
     fn extract_raw_data(&self, event: &PssEvent) -> Option<String> {
         match event {
-            PssEvent::Points { point_type, .. } => Some(format!("pt{}", point_type)),
+            PssEvent::Points { point_type, .. } => Some(format!("pt{point_type}")),
             PssEvent::Warnings {
                 athlete1_warnings,
                 athlete2_warnings,
             } => Some(format!(
-                "wg1;{};wg2;{}",
-                athlete1_warnings, athlete2_warnings
+                "wg1;{athlete1_warnings};wg2;{athlete2_warnings}"
             )),
             PssEvent::WinnerRounds {
                 round1_winner,
                 round2_winner,
                 round3_winner,
             } => Some(format!(
-                "wr1;{};wr2;{};wr3;{}",
-                round1_winner, round2_winner, round3_winner
+                "wr1;{round1_winner};wr2;{round2_winner};wr3;{round3_winner}"
             )),
             PssEvent::MatchConfig {
                 number,
                 category,
                 weight,
                 ..
-            } => Some(format!("mch;{};{};{}", number, category, weight)),
+            } => Some(format!("mch;{number};{category};{weight}")),
             PssEvent::Athletes {
                 athlete1_short,
                 athlete1_long,
@@ -1279,18 +1246,12 @@ impl WebSocketServer {
                 athlete2_long,
                 athlete2_country,
             } => Some(format!(
-                "ath1;{};{};{};ath2;{};{};{}",
-                athlete1_short,
-                athlete1_long,
-                athlete1_country,
-                athlete2_short,
-                athlete2_long,
-                athlete2_country
+                "ath1;{athlete1_short};{athlete1_long};{athlete1_country};ath2;{athlete2_short};{athlete2_long};{athlete2_country}"
             )),
             PssEvent::CurrentScores {
                 athlete1_score,
                 athlete2_score,
-            } => Some(format!("sc1;{};sc2;{}", athlete1_score, athlete2_score)),
+            } => Some(format!("sc1;{athlete1_score};sc2;{athlete2_score}")),
             PssEvent::Scores {
                 athlete1_r1,
                 athlete2_r1,
@@ -1299,12 +1260,11 @@ impl WebSocketServer {
                 athlete1_r3,
                 athlete2_r3,
             } => Some(format!(
-                "s11;{};s21;{};s12;{};s22;{};s13;{};s23;{}",
-                athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3
+                "s11;{athlete1_r1};s21;{athlete2_r1};s12;{athlete1_r2};s22;{athlete2_r2};s13;{athlete1_r3};s23;{athlete2_r3}"
             )),
-            PssEvent::Clock { time, .. } => Some(format!("clk;{}", time)),
-            PssEvent::Round { current_round } => Some(format!("rnd;{}", current_round)),
-            PssEvent::Injury { athlete, time, .. } => Some(format!("inj;{};{}", athlete, time)),
+            PssEvent::Clock { time, .. } => Some(format!("clk;{time}")),
+            PssEvent::Round { current_round } => Some(format!("rnd;{current_round}")),
+            PssEvent::Injury { athlete, time, .. } => Some(format!("inj;{athlete};{time}")),
             PssEvent::Challenge {
                 source,
                 accepted,
@@ -1317,11 +1277,11 @@ impl WebSocketServer {
                 won.map(|w| if w { "1" } else { "0" }).unwrap_or(""),
                 if *canceled { "1" } else { "0" }
             )),
-            PssEvent::Break { time, .. } => Some(format!("brk;{}", time)),
-            PssEvent::HitLevel { athlete, level } => Some(format!("hl;{};{}", athlete, level)),
+            PssEvent::Break { time, .. } => Some(format!("brk;{time}")),
+            PssEvent::HitLevel { athlete, level } => Some(format!("hl;{athlete};{level}")),
             PssEvent::FightLoaded => Some("fld;".to_string()),
             PssEvent::FightReady => Some("rdy;".to_string()),
-            PssEvent::Supremacy { value } => Some(format!("sup;{}", value)),
+            PssEvent::Supremacy { value } => Some(format!("sup;{value}")),
             PssEvent::Winner { .. } => Some("win;".to_string()),
             PssEvent::Raw(raw_data) => Some(raw_data.clone()),
         }

@@ -217,7 +217,7 @@ impl From<crate::security::SecurityError> for AppError {
 // Add conversion from AppError to tauri::Error for Tauri commands
 impl From<crate::types::AppError> for tauri::Error {
     fn from(error: crate::types::AppError) -> Self {
-        tauri::Error::from(anyhow::anyhow!("{}", error))
+        tauri::Error::from(anyhow::anyhow!("{error}"))
     }
 }
 

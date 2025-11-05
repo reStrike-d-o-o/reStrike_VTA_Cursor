@@ -104,7 +104,7 @@ impl CpuMonitorPlugin {
 
                 // Update CPU data
                 if let Err(e) = plugin.update_cpu_data().await {
-                    log::warn!("[CPU_MONITOR] Error updating CPU data: {}", e);
+                    log::warn!("[CPU_MONITOR] Error updating CPU data: {e}");
                 }
 
                 // Get interval without holding the lock
@@ -163,7 +163,7 @@ impl CpuMonitorPlugin {
         {
             // Try using sysinfo crate first (more efficient than WMIC)
             if let Ok(cpu_percent) = self.get_system_cpu_sysinfo().await {
-                log::info!("[CPU_SYSTEM] Using sysinfo: {:.1}%", cpu_percent);
+                log::info!("[CPU_SYSTEM] Using sysinfo: {cpu_percent:.1}%");
 
                 // Get actual number of CPU cores (not logical processors)
                 // Use num_cpus::get() for physical cores, not sysinfo which might return logical processors
@@ -172,7 +172,7 @@ impl CpuMonitorPlugin {
                 // Create a vector with the system CPU percentage for each core
                 let cores = vec![cpu_percent; num_cores as usize];
 
-                log::info!("[CPU_SYSTEM] Detected {} physical CPU cores", num_cores);
+                log::info!("[CPU_SYSTEM] Detected {num_cores} physical CPU cores");
 
                 let system_data = SystemCpuData {
                     total_cpu_percent: cpu_percent,
@@ -194,14 +194,14 @@ impl CpuMonitorPlugin {
             log::info!("[CPU_SYSTEM] Executing WMIC command...");
 
             let output = Command::new("wmic")
-                .args(&["cpu", "get", "loadpercentage", "/format:csv"])
+                .args(["cpu", "get", "loadpercentage", "/format:csv"])
                 .output()
-                .map_err(|e| AppError::ConfigError(format!("Failed to get system CPU: {}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Failed to get system CPU: {e}")))?;
 
             log::info!("[CPU_SYSTEM] WMIC command completed successfully");
 
             let system_cpu = String::from_utf8_lossy(&output.stdout);
-            log::debug!("[CPU_SYSTEM] WMIC system output: {}", system_cpu);
+            log::debug!("[CPU_SYSTEM] WMIC system output: {system_cpu}");
 
             let total_cpu_percent: f64 = system_cpu
                 .lines()
@@ -221,8 +221,7 @@ impl CpuMonitorPlugin {
                 .unwrap_or(0.0);
 
             log::info!(
-                "[CPU_SYSTEM] Parsed CPU percentage: {:.1}%",
-                total_cpu_percent
+                "[CPU_SYSTEM] Parsed CPU percentage: {total_cpu_percent:.1}%"
             );
 
             // Get actual number of CPU cores (not logical processors)
@@ -232,7 +231,7 @@ impl CpuMonitorPlugin {
             // Create a vector with the system CPU percentage for each core
             let cores = vec![total_cpu_percent; num_cores as usize];
 
-            log::info!("[CPU_SYSTEM] Detected {} physical CPU cores", num_cores);
+            log::info!("[CPU_SYSTEM] Detected {num_cores} physical CPU cores");
 
             let system_data = SystemCpuData {
                 total_cpu_percent,
@@ -322,16 +321,16 @@ impl CpuMonitorPlugin {
             log::info!("[CPU_PROCESS] Executing PowerShell command...");
 
             let output = Command::new("powershell")
-                .args(&["-Command", "Get-Process | Select-Object Name, Id, CPU, WorkingSet | ConvertTo-Csv -NoTypeInformation"])
+                .args(["-Command", "Get-Process | Select-Object Name, Id, CPU, WorkingSet | ConvertTo-Csv -NoTypeInformation"])
                 .output()
                 .map_err(|e| {
-                    AppError::ConfigError(format!("Failed to get all processes: {}", e))
+                    AppError::ConfigError(format!("Failed to get all processes: {e}"))
                 })?;
 
             log::info!("[CPU_PROCESS] PowerShell command completed successfully");
 
             let process_info = String::from_utf8_lossy(&output.stdout);
-            log::debug!("[CPU_PROCESS] PowerShell output: {}", process_info);
+            log::debug!("[CPU_PROCESS] PowerShell output: {process_info}");
 
             let lines: Vec<&str> = process_info.lines().collect();
             log::info!(
@@ -341,7 +340,7 @@ impl CpuMonitorPlugin {
 
             let mut new_process_data = HashMap::new();
 
-            for (_i, line) in lines.iter().skip(1).enumerate() {
+            for line in lines.iter().skip(1) {
                 // Skip header
 
                 let parts: Vec<&str> = line.split(',').collect();
@@ -474,7 +473,7 @@ impl CpuMonitorPlugin {
 
         let mut processes = HashMap::new();
 
-        for (_pid, process) in sys.processes() {
+        for process in sys.processes().values() {
             // sysinfo returns CPU usage as a percentage, but it might be cumulative
             // We need to get the actual percentage by dividing by the number of cores
             let raw_cpu_usage = process.cpu_usage() as f64;

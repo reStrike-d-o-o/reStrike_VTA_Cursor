@@ -255,7 +255,7 @@ impl UiSettingsOperations {
                 category_id.to_string(),
                 key_name.to_string(),
                 display_name.to_string(),
-                Some(format!("UI setting for {}", display_name)),
+                Some(format!("UI setting for {display_name}")),
                 data_type.to_string(),
                 default_value.map(|s| s.to_string()),
                 validation_rules.map(|s| s.to_string()),
@@ -348,7 +348,7 @@ impl UiSettingsOperations {
         let setting_key: SettingsKey = tx.query_row(
             "SELECT * FROM settings_keys WHERE key_name = ?",
             params![key_name],
-            |row| SettingsKey::from_row(row),
+            SettingsKey::from_row,
         )?;
 
         // Check if setting value exists
@@ -356,7 +356,7 @@ impl UiSettingsOperations {
             .query_row(
                 "SELECT * FROM settings_values WHERE key_id = ?",
                 params![setting_key.id.clone().unwrap()],
-                |row| SettingsValue::from_row(row),
+                SettingsValue::from_row,
             )
             .optional()?;
 
@@ -466,7 +466,7 @@ impl PssUdpOperations {
         )?;
 
         let interfaces = stmt
-            .query_map([], |row| NetworkInterface::from_row(row))?
+            .query_map([], NetworkInterface::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(interfaces)
@@ -479,7 +479,7 @@ impl PssUdpOperations {
         let interface = conn.query_row(
             "SELECT * FROM network_interfaces WHERE is_recommended = 1 AND is_active = 1 LIMIT 1",
             [],
-            |row| NetworkInterface::from_row(row)
+            NetworkInterface::from_row
         ).optional()?;
 
         Ok(interface)
@@ -554,7 +554,7 @@ impl PssUdpOperations {
         let mut stmt = conn.prepare("SELECT * FROM udp_server_configs ORDER BY name")?;
 
         let configs = stmt
-            .query_map([], |row| UdpServerConfig::from_row(row))?
+            .query_map([], UdpServerConfig::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(configs)
@@ -569,7 +569,7 @@ impl PssUdpOperations {
             .query_row(
                 "SELECT * FROM udp_server_configs WHERE id = ?",
                 params![config_id],
-                |row| UdpServerConfig::from_row(row),
+                UdpServerConfig::from_row,
             )
             .optional()?;
 
@@ -761,7 +761,7 @@ impl PssUdpOperations {
             .query_row(
                 "SELECT * FROM udp_server_sessions WHERE id = ?",
                 params![session_id],
-                |row| UdpServerSession::from_row(row),
+                UdpServerSession::from_row,
             )
             .optional()?;
 
@@ -777,7 +777,7 @@ impl PssUdpOperations {
             conn.prepare("SELECT * FROM udp_server_sessions ORDER BY start_time DESC LIMIT ?")?;
 
         let sessions = stmt
-            .query_map(params![limit], |row| UdpServerSession::from_row(row))?
+            .query_map(params![limit], UdpServerSession::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(sessions)
@@ -859,7 +859,7 @@ impl PssUdpOperations {
         )?;
 
         let event_types = stmt
-            .query_map([], |row| PssEventType::from_row(row))?
+            .query_map([], PssEventType::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(event_types)
@@ -874,7 +874,7 @@ impl PssUdpOperations {
             .query_row(
                 "SELECT * FROM pss_event_types WHERE event_code = ? AND is_active = 1",
                 params![event_code],
-                |row| PssEventType::from_row(row),
+                PssEventType::from_row,
             )
             .optional()?;
 
@@ -955,7 +955,7 @@ impl PssUdpOperations {
         let mut stmt = conn.prepare("SELECT * FROM pss_matches WHERE id = ?")?;
         let mut rows = stmt.query([id])?;
         if let Some(row) = rows.next()? {
-            Ok(Some(PssMatch::from_row(&row)?))
+            Ok(Some(PssMatch::from_row(row)?))
         } else {
             Ok(None)
         }
@@ -969,7 +969,7 @@ impl PssUdpOperations {
         let mut stmt = conn.prepare("SELECT * FROM pss_matches WHERE match_id = ?")?;
         let mut rows = stmt.query([match_id])?;
         if let Some(row) = rows.next()? {
-            Ok(Some(PssMatch::from_row(&row)?))
+            Ok(Some(PssMatch::from_row(row)?))
         } else {
             Ok(None)
         }
@@ -997,7 +997,7 @@ impl PssUdpOperations {
         let updated = conn.execute(
             "UPDATE pss_events SET match_id = ? WHERE match_id = ?",
             params![to_match_id, from_match_id],
-        )? as usize;
+        )?;
         Ok(updated)
     }
 
@@ -1116,7 +1116,7 @@ impl PssUdpOperations {
         )?;
 
         let events = stmt
-            .query_map(params![session_id, limit], |row| PssEventV2::from_row(row))?
+            .query_map(params![session_id, limit], PssEventV2::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(events)
@@ -1134,7 +1134,7 @@ impl PssUdpOperations {
         )?;
 
         let events = stmt
-            .query_map(params![match_id, limit], |row| PssEventV2::from_row(row))?
+            .query_map(params![match_id, limit], PssEventV2::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(events)
@@ -1158,7 +1158,7 @@ impl PssUdpOperations {
             .unwrap_or(0);
         if exists == 0 {
             // Event row not found; skip details to maintain integrity
-            log::warn!("pss_event_details skipped: event_id {} not found", event_id);
+            log::warn!("pss_event_details skipped: event_id {event_id} not found");
             return Ok(());
         }
 
@@ -1194,7 +1194,7 @@ impl PssUdpOperations {
             conn.prepare("SELECT * FROM pss_event_details WHERE event_id = ? ORDER BY detail_key")?;
 
         let details = stmt
-            .query_map(params![event_id], |row| PssEventDetail::from_row(row))?
+            .query_map(params![event_id], PssEventDetail::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(details)
@@ -1237,7 +1237,7 @@ impl PssUdpOperations {
         )?;
 
         let scores = stmt
-            .query_map(params![match_id], |row| PssScore::from_row(row))?
+            .query_map(params![match_id], PssScore::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(scores)
@@ -1280,7 +1280,7 @@ impl PssUdpOperations {
         )?;
 
         let warnings = stmt
-            .query_map(params![match_id], |row| PssWarning::from_row(row))?
+            .query_map(params![match_id], PssWarning::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(warnings)
@@ -1328,15 +1328,14 @@ impl PssUdpOperations {
     }
 
     pub fn get_pss_matches(conn: &Connection, limit: Option<i64>) -> DatabaseResult<Vec<PssMatch>> {
-        let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+        let limit_clause = limit.map(|l| format!(" LIMIT {l}")).unwrap_or_default();
         let query = format!(
-            "SELECT * FROM pss_matches ORDER BY created DESC{}",
-            limit_clause
+            "SELECT * FROM pss_matches ORDER BY created DESC{limit_clause}"
         );
 
         let mut stmt = conn.prepare(&query)?;
         let matches = stmt
-            .query_map([], |row| PssMatch::from_row(row))?
+            .query_map([], PssMatch::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(matches)
@@ -1350,7 +1349,7 @@ impl PssUdpOperations {
             .prepare("SELECT * FROM pss_matches WHERE creation_mode = ? ORDER BY created DESC")?;
 
         let matches = stmt
-            .query_map([creation_mode], |row| PssMatch::from_row(row))?
+            .query_map([creation_mode], PssMatch::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(matches)
@@ -1372,8 +1371,8 @@ impl PssUdpOperations {
                 pss_match.creation_mode,
                 pss_match.created_at.to_rfc3339(),
                 pss_match.updated_at.to_rfc3339(),
-                pss_match.created.unwrap_or_else(|| crate::utils::now_unix()),
-                pss_match.updated.unwrap_or_else(|| crate::utils::now_unix()),
+                pss_match.created.unwrap_or_else(crate::utils::now_unix),
+                pss_match.updated.unwrap_or_else(crate::utils::now_unix),
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -1591,7 +1590,7 @@ impl PssUdpOperations {
         )?;
 
         let connections = stmt
-            .query_map([], |row| ObsConnection::from_row(row))?
+            .query_map([], ObsConnection::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(connections)
@@ -1727,7 +1726,7 @@ impl TournamentOperations {
             ORDER BY created DESC",
         )?;
 
-        let rows = stmt.query_map([], |row| Tournament::from_row(row))?;
+        let rows = stmt.query_map([], Tournament::from_row)?;
 
         let mut tournaments = Vec::new();
         for row in rows {
@@ -1768,7 +1767,7 @@ impl TournamentOperations {
                 updated
             FROM tournaments WHERE id = ?",
                 params![tournament_id],
-                |row| Tournament::from_row(row),
+                Tournament::from_row,
             )
             .optional()?;
 
@@ -1885,7 +1884,7 @@ impl TournamentOperations {
              FROM tournament_days WHERE tournament_id = ? ORDER BY day_number"
         )?;
 
-        let rows = stmt.query_map(params![tournament_id], |row| TournamentDay::from_row(row))?;
+        let rows = stmt.query_map(params![tournament_id], TournamentDay::from_row)?;
 
         let mut days = Vec::new();
         for row in rows {
@@ -2011,7 +2010,7 @@ impl TournamentOperations {
             ORDER BY created DESC
             LIMIT 1",
                 [],
-                |row| Tournament::from_row(row),
+                Tournament::from_row,
             )
             .optional()?;
 
@@ -2043,7 +2042,7 @@ impl TournamentOperations {
             ORDER BY day_number DESC
             LIMIT 1",
                 params![tournament_id],
-                |row| TournamentDay::from_row(row),
+                TournamentDay::from_row,
             )
             .optional()?;
 
@@ -2076,7 +2075,7 @@ impl TournamentRankingOperations {
              ORDER BY code",
         )?;
 
-        let rows = stmt.query_map([], |row| TournamentRanking::from_row(row))?;
+        let rows = stmt.query_map([], TournamentRanking::from_row)?;
         let mut rankings = Vec::new();
         for row in rows {
             rankings.push(row?);
@@ -2091,7 +2090,7 @@ impl TournamentRankingOperations {
                  FROM tournament_rankings
                  WHERE code = ?1",
                 params![code],
-                |row| TournamentRanking::from_row(row),
+                TournamentRanking::from_row,
             )
             .optional()?;
         Ok(ranking)
@@ -2110,7 +2109,7 @@ impl OctagonOperations {
              ORDER BY octagon_number",
         )?;
 
-        let rows = stmt.query_map(params![tournament_day_id], |row| Octagon::from_row(row))?;
+        let rows = stmt.query_map(params![tournament_day_id], Octagon::from_row)?;
         let mut octagons = Vec::new();
         for row in rows {
             octagons.push(row?);
@@ -2215,7 +2214,7 @@ impl AthleteOperations {
                  FROM athletes
                  WHERE wtid = ?1",
                 params![wtid],
-                |row| Athlete::from_row(row),
+                Athlete::from_row,
             )
             .optional()?;
         Ok(athlete)
@@ -2459,10 +2458,9 @@ impl PssEventStatusOperations {
                 &format!(
                     "UPDATE pss_event_statistics SET 
                     total_events = total_events + 1, 
-                    {}, 
+                    {update_sql}, 
                     updated_at = ? 
-                    WHERE id = ?",
-                    update_sql
+                    WHERE id = ?"
                 ),
                 params![chrono::Utc::now().to_rfc3339(), stats_id],
             )?;
@@ -2553,7 +2551,7 @@ impl PssEventStatusOperations {
              ORDER BY total_events DESC",
         )?;
 
-        let rows = stmt.query_map(params![session_id], |row| PssEventStatistics::from_row(row))?;
+        let rows = stmt.query_map(params![session_id], PssEventStatistics::from_row)?;
 
         let mut statistics = Vec::new();
         for row in rows {
@@ -2803,7 +2801,7 @@ impl PssEventOperations {
              WHERE event_code = ?",
         )?;
 
-        let mut rows = stmt.query_map(params![event_code], |row| PssEventType::from_row(row))?;
+        let mut rows = stmt.query_map(params![event_code], PssEventType::from_row)?;
 
         if let Some(row) = rows.next() {
             Ok(Some(row?))
@@ -2873,7 +2871,7 @@ impl PssEventOperations {
              ORDER BY event_code",
         )?;
 
-        let rows = stmt.query_map([], |row| PssEventType::from_row(row))?;
+        let rows = stmt.query_map([], PssEventType::from_row)?;
 
         let mut event_types = Vec::new();
         for row in rows {
@@ -2979,12 +2977,7 @@ impl DataArchivalOperations {
 
         let duration = start_time.elapsed();
         log::info!(
-            " Archived {} events and {} details in {:?} (deleted {} events and {} details)",
-            archived_count,
-            archived_details,
-            duration,
-            deleted_count,
-            deleted_details
+            " Archived {archived_count} events and {archived_details} details in {duration:?} (deleted {deleted_count} events and {deleted_details} details)"
         );
 
         Ok(archived_count)
@@ -3068,10 +3061,7 @@ impl DataArchivalOperations {
 
         let duration = start_time.elapsed();
         log::info!(
-            " Restored {} events and {} details from archive in {:?}",
-            restored_events,
-            restored_details,
-            duration
+            " Restored {restored_events} events and {restored_details} details from archive in {duration:?}"
         );
 
         Ok(restored_events)
@@ -3100,10 +3090,7 @@ impl DataArchivalOperations {
 
         let duration = start_time.elapsed();
         log::info!(
-            " Cleaned up {} archived events and {} details in {:?}",
-            deleted_events,
-            deleted_details,
-            duration
+            " Cleaned up {deleted_events} archived events and {deleted_details} details in {duration:?}"
         );
 
         Ok(deleted_events)
@@ -3155,7 +3142,7 @@ impl DatabaseConnection {
         let mut stmt = conn.prepare("SELECT * FROM obs_scenes ORDER BY scene_name")?;
 
         let scenes = stmt
-            .query_map([], |row| ObsScene::from_row(row))?
+            .query_map([], ObsScene::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(scenes)
@@ -3168,7 +3155,7 @@ impl DatabaseConnection {
             conn.prepare("SELECT * FROM obs_scenes WHERE is_active = 1 ORDER BY scene_name")?;
 
         let scenes = stmt
-            .query_map([], |row| ObsScene::from_row(row))?
+            .query_map([], ObsScene::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(scenes)
@@ -3183,7 +3170,7 @@ impl DatabaseConnection {
         let mut stmt = conn.prepare("SELECT * FROM obs_scenes WHERE scene_name = ?")?;
 
         let scene = stmt
-            .query_row([scene_name], |row| ObsScene::from_row(row))
+            .query_row([scene_name], ObsScene::from_row)
             .optional()?;
 
         Ok(scene)
@@ -3268,7 +3255,7 @@ impl DatabaseConnection {
         let mut stmt = conn.prepare("SELECT * FROM overlay_templates ORDER BY name")?;
 
         let templates = stmt
-            .query_map([], |row| OverlayTemplate::from_row(row))?
+            .query_map([], OverlayTemplate::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(templates)
@@ -3281,7 +3268,7 @@ impl DatabaseConnection {
             conn.prepare("SELECT * FROM overlay_templates WHERE is_active = 1 ORDER BY name")?;
 
         let templates = stmt
-            .query_map([], |row| OverlayTemplate::from_row(row))?
+            .query_map([], OverlayTemplate::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(templates)
@@ -3296,7 +3283,7 @@ impl DatabaseConnection {
         let mut stmt = conn.prepare("SELECT * FROM overlay_templates WHERE name = ?")?;
 
         let template = stmt
-            .query_row([name], |row| OverlayTemplate::from_row(row))
+            .query_row([name], OverlayTemplate::from_row)
             .optional()?;
 
         Ok(template)
@@ -3373,7 +3360,7 @@ impl DatabaseConnection {
             conn.prepare("SELECT * FROM event_triggers ORDER BY priority DESC, event_type")?;
 
         let triggers = stmt
-            .query_map([], |row| EventTrigger::from_row(row))?
+            .query_map([], EventTrigger::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(triggers)
@@ -3390,7 +3377,7 @@ impl DatabaseConnection {
         )?;
 
         let triggers = stmt
-            .query_map([tournament_id], |row| EventTrigger::from_row(row))?
+            .query_map([tournament_id], EventTrigger::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(triggers)
@@ -3404,7 +3391,7 @@ impl DatabaseConnection {
         )?;
 
         let triggers = stmt
-            .query_map([], |row| EventTrigger::from_row(row))?
+            .query_map([], EventTrigger::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(triggers)
@@ -3582,7 +3569,7 @@ impl DatabaseConnection {
         let mut stmt = conn.prepare("SELECT * FROM obs_connections ORDER BY name")?;
 
         let connections = stmt
-            .query_map([], |row| ObsConnection::from_row(row))?
+            .query_map([], ObsConnection::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(connections)
@@ -3595,7 +3582,7 @@ impl DatabaseConnection {
             conn.prepare("SELECT * FROM obs_connections WHERE is_active = 1 ORDER BY name")?;
 
         let connections = stmt
-            .query_map([], |row| ObsConnection::from_row(row))?
+            .query_map([], ObsConnection::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(connections)
@@ -3610,7 +3597,7 @@ impl DatabaseConnection {
         let mut stmt = conn.prepare("SELECT * FROM obs_connections WHERE name = ?")?;
 
         let connection = stmt
-            .query_row([name], |row| ObsConnection::from_row(row))
+            .query_row([name], ObsConnection::from_row)
             .optional()?;
 
         Ok(connection)
@@ -3652,7 +3639,7 @@ impl DatabaseConnection {
 
         conn.execute(
             "UPDATE obs_connections SET status = ?, error = ?, updated_at = ? WHERE name = ?",
-            [status, &error.unwrap_or("").to_string(), &now, name],
+            [status, error.unwrap_or(""), &now, name],
         )?;
 
         Ok(())
@@ -3687,7 +3674,7 @@ impl ObsRecordingOperations {
             conn.prepare("SELECT * FROM obs_recording_config ORDER BY obs_connection_name")?;
 
         let configs = stmt
-            .query_map([], |row| ObsRecordingConfig::from_row(row))?
+            .query_map([], ObsRecordingConfig::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(configs)
@@ -3763,7 +3750,7 @@ impl ObsRecordingOperations {
         )?;
 
         let sessions = stmt
-            .query_map([], |row| ObsRecordingSession::from_row(row))?
+            .query_map([], ObsRecordingSession::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(sessions)
@@ -3797,7 +3784,7 @@ impl ObsRecordingOperations {
         )?;
 
         let sessions = stmt
-            .query_map([match_id], |row| ObsRecordingSession::from_row(row))?
+            .query_map([match_id], ObsRecordingSession::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(sessions)
@@ -3922,7 +3909,7 @@ impl ObsRecordingOperations {
         let mut stmt = conn.prepare("SELECT * FROM obs_recording_sessions WHERE id = ?")?;
 
         let session = stmt
-            .query_row([session_id], |row| ObsRecordingSession::from_row(row))
+            .query_row([session_id], ObsRecordingSession::from_row)
             .optional()?;
 
         Ok(session)
@@ -3939,7 +3926,7 @@ impl ObsRecordingOperations {
             "UPDATE obs_recording_sessions SET status = ?, error_message = ?, updated = ? WHERE id = ?",
             [
                 status,
-                &error_message.unwrap_or(""),
+                error_message.unwrap_or(""),
                 &crate::utils::now_unix().to_string(),
                 &session_id.to_string(),
             ],
@@ -3961,7 +3948,7 @@ impl ObsRecordingOperations {
             ],
         )?;
 
-        log::info!("Started recording session {} at {}", session_id, now);
+        log::info!("Started recording session {session_id} at {now}");
         Ok(())
     }
 
@@ -4006,10 +3993,7 @@ impl ObsRecordingOperations {
         )?;
 
         log::info!(
-            "Stopped recording session {} at {} (duration: {}s)",
-            session_id,
-            now,
-            duration_seconds
+            "Stopped recording session {session_id} at {now} (duration: {duration_seconds}s)"
         );
         Ok(())
     }
@@ -4023,7 +4007,7 @@ impl ObsRecordingOperations {
             conn.prepare("SELECT * FROM obs_recording_sessions ORDER BY created DESC LIMIT ?")?;
 
         let sessions = stmt
-            .query_map([limit], |row| ObsRecordingSession::from_row(row))?
+            .query_map([limit], ObsRecordingSession::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(sessions)
@@ -4059,7 +4043,7 @@ impl OvrOperations {
     pub fn get_providers(conn: &Connection) -> DatabaseResult<Vec<OvrProvider>> {
         let mut stmt = conn.prepare("SELECT * FROM ovr_providers ORDER BY name")?;
         let res = stmt
-            .query_map([], |row| OvrProvider::from_row(row))?
+            .query_map([], OvrProvider::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(res)
     }
@@ -4212,7 +4196,7 @@ impl OvrOperations {
         }
         if let Some(qq) = q {
             sql.push_str(" AND name LIKE ?");
-            args.push(rusqlite::types::Value::from(format!("%{}%", qq)));
+            args.push(rusqlite::types::Value::from(format!("%{qq}%")));
         }
         if let Some(f) = from {
             sql.push_str(" AND start_date >= ?");
@@ -4287,7 +4271,7 @@ impl OvrOperations {
         let mut stmt =
             conn.prepare("SELECT * FROM ovr_categories WHERE tournament_id = ? ORDER BY id")?;
         let res = stmt
-            .query_map(params![tournament_id], |row| OvrCategory::from_row(row))?
+            .query_map(params![tournament_id], OvrCategory::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(res)
     }
@@ -4302,7 +4286,7 @@ impl OvrOperations {
         let ovr: OvrTournament = tx.query_row(
             "SELECT * FROM ovr_tournaments WHERE id = ?",
             params![ovr_tournament_id],
-            |r| OvrTournament::from_row(r),
+            OvrTournament::from_row,
         )?;
         let t_name = local_name.unwrap_or(&ovr.name);
         // Insert directly within this transaction to avoid connection borrowing issues
@@ -4315,8 +4299,8 @@ impl OvrOperations {
 					overv(ovr.city),
 					overv(ovr.country),
 					"pending",
-					overv_dt(ovr.start_date.clone()),
-					overv_dt(ovr.end_date.clone()),
+					overv_dt(ovr.start_date),
+					overv_dt(ovr.end_date),
 					Utc::now().to_rfc3339(),
 					Utc::now().to_rfc3339(),
 					crate::utils::now_unix(),
@@ -4443,7 +4427,7 @@ impl MedalCeremonyOperations {
             "SELECT * FROM medal_ceremony_divisions WHERE ceremony_id = ?1 ORDER BY order_index ASC, created_at ASC",
         )?;
         let divisions = stmt
-            .query_map([ceremony_id], |row| MedalCeremonyDivision::from_row(row))?
+            .query_map([ceremony_id], MedalCeremonyDivision::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut details = Vec::with_capacity(divisions.len());
@@ -4472,7 +4456,7 @@ impl MedalCeremonyOperations {
             "SELECT * FROM medal_ceremonies ORDER BY datetime(created_at) DESC, name ASC",
         )?;
         let items = stmt
-            .query_map([], |row| MedalCeremony::from_row(row))?
+            .query_map([], MedalCeremony::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(items)
     }
@@ -4483,7 +4467,7 @@ impl MedalCeremonyOperations {
     ) -> DatabaseResult<Option<MedalCeremonyDetail>> {
         let mut stmt = conn.prepare("SELECT * FROM medal_ceremonies WHERE id = ?1 LIMIT 1")?;
         let ceremony = stmt
-            .query_row([ceremony_id], |row| MedalCeremony::from_row(row))
+            .query_row([ceremony_id], MedalCeremony::from_row)
             .optional()?;
 
         if let Some(ceremony) = ceremony {
@@ -4664,7 +4648,7 @@ impl MedalCeremonyOperations {
             .optional()?;
 
         let version = current_version.ok_or_else(|| {
-            DatabaseError::Config(format!("Medal ceremony {} not found", ceremony_id))
+            DatabaseError::Config(format!("Medal ceremony {ceremony_id} not found"))
         })?;
 
         tx.execute(
@@ -4691,7 +4675,7 @@ impl MedalCeremonyOperations {
             .optional()?;
 
         let ceremony_id = ceremony_id.ok_or_else(|| {
-            DatabaseError::Config(format!("Medal ceremony division {} not found", division_id))
+            DatabaseError::Config(format!("Medal ceremony division {division_id} not found"))
         })?;
 
         tx.execute(
@@ -4748,7 +4732,7 @@ impl MedalCeremonyOperations {
              ORDER BY ioc_code ASC, file_name ASC",
         )?;
         let assets = stmt
-            .query_map([], |row| OvrFlagAnimationAsset::from_row(row))?
+            .query_map([], OvrFlagAnimationAsset::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(assets)
     }
@@ -4857,7 +4841,7 @@ impl MedalCeremonyOperations {
         let mut stmt =
             conn.prepare("SELECT * FROM ovr_anthems ORDER BY ioc_code ASC, file_name ASC")?;
         let assets = stmt
-            .query_map([], |row| OvrAnthemAsset::from_row(row))?
+            .query_map([], OvrAnthemAsset::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(assets)
     }

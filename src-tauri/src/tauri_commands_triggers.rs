@@ -46,16 +46,18 @@ pub async fn triggers_list_obs_scenes(
                     }
                 }
                 Err(e) => {
-                    log::warn!("Failed to fetch obws scenes for '{}': {}", name, e);
+                    log::warn!("Failed to fetch obws scenes for '{name}': {e}");
                 }
             }
         }
-        return Ok(out);
+        Ok(out)
     }
 
     // 3) If obws feature is off, return empty
     #[cfg(not(feature = "obs-obws"))]
-    return Ok(Vec::new());
+    {
+        Ok(Vec::new())
+    }
 }
 
 // ---------------- OVERLAYS ----------------

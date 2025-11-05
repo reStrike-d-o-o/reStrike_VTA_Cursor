@@ -31,7 +31,7 @@ impl OvrScraperPlugin {
                 .get_connection()
                 .await
                 .map_err(|e| e.to_string())?;
-            crate::database::operations::OvrOperations::get_providers(&*conn)
+            crate::database::operations::OvrOperations::get_providers(&conn)
                 .map_err(|e| e.to_string())?
         };
         let mut updated = 0usize;
@@ -46,7 +46,7 @@ impl OvrScraperPlugin {
                         .map_err(|_| ())
                         .and_then(|mut c| {
                             crate::database::operations::OvrOperations::set_provider_refresh_status(
-                                &mut *c,
+                                &mut c,
                                 p.id.unwrap_or_default(),
                                 Some("error"),
                                 Some(&e),
@@ -71,7 +71,7 @@ impl OvrScraperPlugin {
             let mut stmt = conn
                 .prepare("SELECT * FROM ovr_providers WHERE id = ?")
                 .map_err(|e| e.to_string())?;
-            stmt.query_row([provider_id], |row| OvrProvider::from_row(row))
+            stmt.query_row([provider_id], OvrProvider::from_row)
                 .map_err(|e| e.to_string())?
         };
 
@@ -82,8 +82,8 @@ impl OvrScraperPlugin {
                 .get_connection()
                 .await
                 .map_err(|e| e.to_string())?;
-            let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
-                &mut *connw,
+            crate::database::operations::OvrOperations::set_provider_refresh_status(
+                &mut connw,
                 provider_id,
                 Some("fetching"),
                 None,
@@ -133,11 +133,11 @@ impl OvrScraperPlugin {
             .await
             .map_err(|e| e.to_string())?;
         for t in tournaments {
-            let _ = crate::database::operations::OvrOperations::upsert_tournament(&mut *connw, &t)
+            let _ = crate::database::operations::OvrOperations::upsert_tournament(&mut connw, &t)
                 .map_err(|e| e.to_string())?;
         }
-        let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
-            &mut *connw,
+        crate::database::operations::OvrOperations::set_provider_refresh_status(
+            &mut connw,
             provider_id,
             Some("ok"),
             None,
@@ -169,7 +169,7 @@ impl OvrScraperPlugin {
                         break;
                     }
                 }
-                ok.ok_or_else(|| e)?
+                ok.ok_or(e)?
             }
             Err(e) => return Err(e),
         };
@@ -205,7 +205,7 @@ impl OvrScraperPlugin {
             "/liveresults.asp?AR=2",
             "/Results.asp?YR=All",
         ] {
-            let url = format!("{}{}", base, path);
+            let url = format!("{base}{path}");
             if let Ok(html) = self.fetch_html_rl(&url, rate_limit_ms).await {
                 let parsed = self.parse_tpss_html(provider_id, &html, &base);
                 // Enrich from detail page
@@ -298,7 +298,7 @@ impl OvrScraperPlugin {
     }
 
     fn parse_jsonld_block(&self, provider_id: i64, body: &str) -> Vec<OvrTournament> {
-        let jsons = Self::extract_jsonld(&body);
+        let jsons = Self::extract_jsonld(body);
         let now = Utc::now();
         let mut out: Vec<OvrTournament> = Vec::new();
         for js in jsons {
@@ -497,9 +497,7 @@ impl OvrScraperPlugin {
         country: Option<&str>,
     ) -> Option<String> {
         // Require at least name + start for cross-provider dedupe to avoid false positives
-        if start_iso.is_none() {
-            return None;
-        }
+        start_iso.as_ref()?;
         let mut hasher = Sha256::new();
         hasher.update(Self::normalize_text(name).as_bytes());
         if let Some(s) = &start_iso {

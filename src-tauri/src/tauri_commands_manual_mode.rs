@@ -43,13 +43,13 @@ pub async fn manual_create_match(
     match_data: ManualMatchData,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, String> {
-    log::info!("Creating manual match: {:?}", match_data);
+    log::info!("Creating manual match: {match_data:?}");
 
     let sea = app.database_plugin().seaorm();
     let mut txn = sea
         .begin()
         .await
-        .map_err(|e| format!("Failed to start database transaction: {}", e))?;
+        .map_err(|e| format!("Failed to start database transaction: {e}"))?;
 
     let now = Utc::now();
     let match_code = format!("manual_{}", match_data.match_number);
@@ -72,7 +72,7 @@ pub async fn manual_create_match(
     }
     .insert(&mut txn)
     .await
-    .map_err(|e| format!("Failed to insert match: {}", e))?;
+    .map_err(|e| format!("Failed to insert match: {e}"))?;
 
     let athlete_blue = athlete::ActiveModel {
         uuid: Set(Uuid::new_v4().to_string()),
@@ -87,7 +87,7 @@ pub async fn manual_create_match(
     }
     .insert(&mut txn)
     .await
-    .map_err(|e| format!("Failed to insert athlete 1: {}", e))?;
+    .map_err(|e| format!("Failed to insert athlete 1: {e}"))?;
 
     let athlete_red = athlete::ActiveModel {
         uuid: Set(Uuid::new_v4().to_string()),
@@ -102,7 +102,7 @@ pub async fn manual_create_match(
     }
     .insert(&mut txn)
     .await
-    .map_err(|e| format!("Failed to insert athlete 2: {}", e))?;
+    .map_err(|e| format!("Failed to insert athlete 2: {e}"))?;
 
     match_participant::ActiveModel {
         match_id: Set(match_model.id),
@@ -113,7 +113,7 @@ pub async fn manual_create_match(
     }
     .insert(&mut txn)
     .await
-    .map_err(|e| format!("Failed to link athlete 1 to match: {}", e))?;
+    .map_err(|e| format!("Failed to link athlete 1 to match: {e}"))?;
 
     match_participant::ActiveModel {
         match_id: Set(match_model.id),
@@ -124,15 +124,15 @@ pub async fn manual_create_match(
     }
     .insert(&mut txn)
     .await
-    .map_err(|e| format!("Failed to link athlete 2 to match: {}", e))?;
+    .map_err(|e| format!("Failed to link athlete 2 to match: {e}"))?;
 
     txn.commit()
         .await
-        .map_err(|e| format!("Failed to commit manual match transaction: {}", e))?;
+        .map_err(|e| format!("Failed to commit manual match transaction: {e}"))?;
 
     let match_id = match_model.id as i64;
 
-    log::info!("Successfully created manual match with ID: {}", match_id);
+    log::info!("Successfully created manual match with ID: {match_id}");
 
     Ok(serde_json::json!({
         "success": true,
@@ -150,37 +150,37 @@ pub async fn manual_restore_data(app: State<'_, Arc<App>>) -> Result<serde_json:
     let conn = db_conn
         .get_connection()
         .await
-        .map_err(|e| format!("Failed to get database connection: {}", e))?;
+        .map_err(|e| format!("Failed to get database connection: {e}"))?;
 
     let sea = app.database_plugin().seaorm();
     let latest_match = match matches::Entity::find()
         .order_by_desc(matches::Column::CreatedAt)
         .one(&sea)
         .await
-        .map_err(|e| format!("Failed to get latest match: {}", e))?
+        .map_err(|e| format!("Failed to get latest match: {e}"))?
     {
         Some(model) => Some(
             serialize_match_json(&sea, model)
                 .await
-                .map_err(|err| format!("Failed to serialize match: {}", err))?,
+                .map_err(|err| format!("Failed to serialize match: {err}"))?,
         ),
         None => None,
     };
 
     // Get OBS connections
-    let obs_connections = PssUdpOperations::get_obs_connections(&*conn)
-        .map_err(|e| format!("Failed to get OBS connections: {}", e))?;
+    let obs_connections = PssUdpOperations::get_obs_connections(&conn)
+        .map_err(|e| format!("Failed to get OBS connections: {e}"))?;
 
     // Get UDP server configs via SeaORM-backed plugin helper
     let udp_configs = app
         .database_plugin()
         .get_udp_server_configs()
         .await
-        .map_err(|e| format!("Failed to get UDP configs: {}", e))?;
+        .map_err(|e| format!("Failed to get UDP configs: {e}"))?;
 
     // Get settings
-    let settings = PssUdpOperations::get_all_settings(&*conn)
-        .map_err(|e| format!("Failed to get settings: {}", e))?;
+    let settings = PssUdpOperations::get_all_settings(&conn)
+        .map_err(|e| format!("Failed to get settings: {e}"))?;
 
     let restore_data = serde_json::json!({
         "success": true,
@@ -207,11 +207,11 @@ pub async fn manual_get_statistics(app: State<'_, Arc<App>>) -> Result<serde_jso
 
     let manual_matches = fetch_matches_by_creation_mode(&sea, "Manual")
         .await
-        .map_err(|e| format!("Failed to get manual matches: {}", e))?;
+        .map_err(|e| format!("Failed to get manual matches: {e}"))?;
 
     let automatic_matches = fetch_matches_by_creation_mode(&sea, "Automatic")
         .await
-        .map_err(|e| format!("Failed to get automatic matches: {}", e))?;
+        .map_err(|e| format!("Failed to get automatic matches: {e}"))?;
 
     let manual_count = manual_matches.len();
     let automatic_count = automatic_matches.len();

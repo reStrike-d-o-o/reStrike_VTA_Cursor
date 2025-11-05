@@ -164,7 +164,7 @@ pub async fn security_verify_migration(
         .await
         .map_err(TauriSecurityError::from)?;
 
-    log::info!("Migration verification result: {}", is_verified);
+    log::info!("Migration verification result: {is_verified}");
     Ok(is_verified)
 }
 

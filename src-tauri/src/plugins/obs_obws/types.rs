@@ -5,17 +5,14 @@ use std::collections::HashMap;
 
 /// OBS connection role
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum ObsConnectionRole {
     Recording,
     Streaming,
+    #[default]
     None,
 }
 
-impl Default for ObsConnectionRole {
-    fn default() -> Self {
-        ObsConnectionRole::None
-    }
-}
 
 /// OBS connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

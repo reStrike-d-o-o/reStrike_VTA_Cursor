@@ -378,7 +378,7 @@ impl AdvancedAnalytics {
                 if let Err(e) =
                     Self::update_tournament_analytics(&cache, &tournament_analytics).await
                 {
-                    log::warn!("Failed to update tournament analytics: {}", e);
+                    log::warn!("Failed to update tournament analytics: {e}");
                 }
             }
 
@@ -387,18 +387,18 @@ impl AdvancedAnalytics {
                 if let Err(e) =
                     Self::update_performance_analytics(&cache, &performance_analytics).await
                 {
-                    log::warn!("Failed to update performance analytics: {}", e);
+                    log::warn!("Failed to update performance analytics: {e}");
                 }
             }
 
             // Update athlete analytics
             if let Err(e) = Self::update_athlete_analytics(&cache, &athlete_analytics).await {
-                log::warn!("Failed to update athlete analytics: {}", e);
+                log::warn!("Failed to update athlete analytics: {e}");
             }
 
             // Update match analytics
             if let Err(e) = Self::update_match_analytics(&cache, &match_analytics).await {
-                log::warn!("Failed to update match analytics: {}", e);
+                log::warn!("Failed to update match analytics: {e}");
             }
 
             // Store analytics snapshot
@@ -412,7 +412,7 @@ impl AdvancedAnalytics {
             )
             .await
             {
-                log::warn!("Failed to store analytics snapshot: {}", e);
+                log::warn!("Failed to store analytics snapshot: {e}");
             }
         }
     }

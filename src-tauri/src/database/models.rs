@@ -196,7 +196,7 @@ impl ObsRecordingSession {
                             .ok()
                             .map(|dt| dt.timestamp())
                     })
-                    .unwrap_or_else(|| crate::utils::now_unix())
+                    .unwrap_or_else(crate::utils::now_unix)
             }),
             updated: row.get("updated").unwrap_or_else(|_| {
                 // Fallback to parsing updated_at if updated doesn't exist
@@ -208,7 +208,7 @@ impl ObsRecordingSession {
                             .ok()
                             .map(|dt| dt.timestamp())
                     })
-                    .unwrap_or_else(|| crate::utils::now_unix())
+                    .unwrap_or_else(crate::utils::now_unix)
             }),
         })
     }

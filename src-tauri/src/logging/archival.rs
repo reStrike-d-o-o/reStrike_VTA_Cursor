@@ -112,7 +112,7 @@ impl LogArchiver {
                                         let subsystem_name = self.extract_subsystem_name(subsystem);
                                         files_to_archive
                                             .entry(subsystem_name)
-                                            .or_insert_with(Vec::new)
+                                            .or_default()
                                             .push(path.clone());
                                     }
                                 }
@@ -131,9 +131,9 @@ impl LogArchiver {
                 // Delete original files after successful archiving
                 for file_path in files {
                     if let Err(e) = fs::remove_file(&file_path) {
-                        eprintln!("Failed to delete archived log file {:?}: {}", file_path, e);
+                        eprintln!("Failed to delete archived log file {file_path:?}: {e}");
                     } else {
-                        log::info!("Archived and deleted old log file: {:?}", file_path);
+                        log::info!("Archived and deleted old log file: {file_path:?}");
                     }
                 }
             }
@@ -156,7 +156,7 @@ impl LogArchiver {
 
     fn archive_subsystem_files(&self, subsystem: &str, files: &[PathBuf]) -> io::Result<()> {
         let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
-        let archive_filename = format!("{}_{}_archive.zip", subsystem, timestamp);
+        let archive_filename = format!("{subsystem}_{timestamp}_archive.zip");
         let archive_path = Path::new(&self.archive_dir).join(&archive_filename);
 
         // Create ZIP archive
@@ -180,7 +180,7 @@ impl LogArchiver {
         }
 
         zip.finish()?;
-        log::info!("Created archive: {:?}", archive_path);
+        log::info!("Created archive: {archive_path:?}");
 
         Ok(())
     }
@@ -258,7 +258,7 @@ impl LogArchiver {
             }
         }
 
-        log::info!("Extracted archive {:?} to {:?}", archive_path, extract_dir);
+        log::info!("Extracted archive {archive_path:?} to {extract_dir:?}");
         Ok(())
     }
 
@@ -287,7 +287,7 @@ impl LogArchiver {
         fs::create_dir_all(archive_path)?;
 
         let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
-        let archive_filename = format!("complete_logs_archive_{}.zip", timestamp);
+        let archive_filename = format!("complete_logs_archive_{timestamp}.zip");
         let archive_file_path = archive_path.join(&archive_filename);
 
         // Create ZIP archive
@@ -329,10 +329,7 @@ impl LogArchiver {
         zip.finish()?;
 
         log::info!(
-            "Created complete log archive: {} ({} files, {} bytes)",
-            archive_filename,
-            file_count,
-            total_size
+            "Created complete log archive: {archive_filename} ({file_count} files, {total_size} bytes)"
         );
 
         Ok(archive_file_path)
@@ -389,7 +386,7 @@ impl LogArchiver {
         }
 
         fs::remove_file(&archive_path)?;
-        log::info!("Deleted archive: {}", archive_name);
+        log::info!("Deleted archive: {archive_name}");
         Ok(())
     }
 
@@ -408,7 +405,7 @@ impl LogArchiver {
             .as_secs();
 
         let modified_iso = chrono::DateTime::from_timestamp(modified as i64, 0)
-            .unwrap_or_else(|| Utc::now())
+            .unwrap_or_else(Utc::now)
             .to_rfc3339();
 
         Ok(ArchiveInfo {

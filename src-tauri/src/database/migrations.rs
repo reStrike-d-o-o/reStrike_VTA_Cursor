@@ -885,13 +885,11 @@ impl Migration for Migration3 {
             }
 
             log::info!(
-                "Successfully populated flag_mappings table with {} IOC entries",
-                ioc_flags_count
+                "Successfully populated flag_mappings table with {ioc_flags_count} IOC entries"
             );
         } else {
             log::info!(
-                "flag_mappings table already contains {} entries, skipping population",
-                mapping_count
+                "flag_mappings table already contains {mapping_count} entries, skipping population"
             );
         }
 
@@ -1877,8 +1875,8 @@ impl Migration for Migration7 {
         ];
 
         for index in &indexes {
-            if let Err(e) = conn.execute(&format!("DROP INDEX IF EXISTS {}", index), []) {
-                log::warn!("Failed to drop index {}: {}", index, e);
+            if let Err(e) = conn.execute(&format!("DROP INDEX IF EXISTS {index}"), []) {
+                log::warn!("Failed to drop index {index}: {e}");
             }
         }
 
@@ -3227,6 +3225,12 @@ impl Migration for Migration23 {
     }
 }
 
+impl Default for MigrationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {
@@ -3312,23 +3316,19 @@ impl MigrationManager {
 
         if current_version == target_version {
             log::info!(
-                "Database schema is up to date (version {})",
-                current_version
+                "Database schema is up to date (version {current_version})"
             );
             return Ok(());
         }
 
         if current_version > target_version {
             return Err(DatabaseError::SchemaVersion(format!(
-                "Schema version mismatch: expected {}, actual {}",
-                target_version, current_version
+                "Schema version mismatch: expected {target_version}, actual {current_version}"
             )));
         }
 
         log::info!(
-            "Migrating database from version {} to {}",
-            current_version,
-            target_version
+            "Migrating database from version {current_version} to {target_version}"
         );
 
         // Apply migrations in order
@@ -3375,16 +3375,13 @@ impl MigrationManager {
 
         if current_version <= target_version {
             log::info!(
-                "Database is already at or below target version {}",
-                target_version
+                "Database is already at or below target version {target_version}"
             );
             return Ok(());
         }
 
         log::info!(
-            "Rolling back database from version {} to {}",
-            current_version,
-            target_version
+            "Rolling back database from version {current_version} to {target_version}"
         );
 
         // Rollback migrations in reverse order
@@ -3431,7 +3428,7 @@ impl MigrationManager {
         let mut stmt = conn.prepare(
             "SELECT id, version, applied_at, description FROM schema_version ORDER BY version",
         )?;
-        let rows = stmt.query_map([], |row| SchemaVersion::from_row(row))?;
+        let rows = stmt.query_map([], SchemaVersion::from_row)?;
 
         let mut history = Vec::new();
         for row in rows {
@@ -3864,7 +3861,7 @@ impl Migration for Migration18 {
             ddl: &str,
         ) -> SqliteResult<()> {
             let mut has_col = false;
-            let mut stmt = conn.prepare(&format!("PRAGMA table_info('{}')", table))?;
+            let mut stmt = conn.prepare(&format!("PRAGMA table_info('{table}')"))?;
             let mut rows = stmt.query([])?;
             while let Some(row) = rows.next()? {
                 let name: String = row.get(1)?;
@@ -3875,7 +3872,7 @@ impl Migration for Migration18 {
             }
             if !has_col {
                 let _ = conn.execute(
-                    &format!("ALTER TABLE {} ADD COLUMN {} {}", table, col, ddl),
+                    &format!("ALTER TABLE {table} ADD COLUMN {col} {ddl}"),
                     [],
                 );
             }
@@ -5012,12 +5009,10 @@ impl Migration for Migration35 {
         let events_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_pss_events_v2 AS
              SELECT id, session_id, match_id, round_id, event_type_id, timestamp, raw_data, parsed_data, event_sequence, processing_time_ms, is_valid, error_message, recognition_status, protocol_version, parser_confidence, validation_errors,
-                    {tournament_id_expr} AS tournament_id,
-                    {tournament_day_expr} AS tournament_day_id,
+                    {events_tournament_id_expr} AS tournament_id,
+                    {events_tournament_day_expr} AS tournament_day_id,
                     created_at, created
-             FROM pss_events_v2",
-            tournament_id_expr = events_tournament_id_expr,
-            tournament_day_expr = events_tournament_day_expr
+             FROM pss_events_v2"
         );
 
         conn.execute(&events_select, [])?;
@@ -5086,12 +5081,10 @@ impl Migration for Migration35 {
         let recorded_select = format!(
             "CREATE TABLE IF NOT EXISTS _tmp_recorded_videos AS
              SELECT id, match_id, event_id,
-                    {tournament_id_expr} AS tournament_id,
-                    {tournament_day_expr} AS tournament_day_id,
+                    {recorded_tournament_id_expr} AS tournament_id,
+                    {recorded_tournament_day_expr} AS tournament_day_id,
                     video_type, file_path, record_directory, filename_formatting, start_time, duration_seconds, file_size, checksum, created_at, created
-             FROM recorded_videos",
-            tournament_id_expr = recorded_tournament_id_expr,
-            tournament_day_expr = recorded_tournament_day_expr
+             FROM recorded_videos"
         );
 
         conn.execute(&recorded_select, [])?;

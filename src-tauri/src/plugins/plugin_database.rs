@@ -71,12 +71,11 @@ impl DatabasePlugin {
         // Initialise SeaORM connection against the same SQLite database.
         let db_path = DatabaseConnection::get_database_path().map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to resolve database path: {}",
-                e
+                "Failed to resolve database path: {e}"
             ))
         })?;
         let seaorm_connection = seaorm_connect(&db_path).await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("SeaORM connection failed: {}", e))
+            crate::types::AppError::ConfigError(format!("SeaORM connection failed: {e}"))
         })?;
 
         let plugin = Self {
@@ -89,15 +88,14 @@ impl DatabasePlugin {
 
         // Run database migrations using the connection pool
         if let Err(e) = Self::run_migrations_with_pool(plugin.connection_pool.clone()).await {
-            log::error!("Failed to run database migrations: {}", e);
+            log::error!("Failed to run database migrations: {e}");
             return Err(crate::types::AppError::ConfigError(format!(
-                "Database migration failed: {}",
-                e
+                "Database migration failed: {e}"
             )));
         }
 
         if let Err(err) = plugin.ensure_canonical_pss_schema().await {
-            log::error!("Failed to ensure canonical SeaORM schema: {}", err);
+            log::error!("Failed to ensure canonical SeaORM schema: {err}");
             return Err(err);
         }
 
@@ -110,8 +108,7 @@ impl DatabasePlugin {
     ) -> AppResult<()> {
         let mut conn = connection_pool.get_connection().map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to get database connection for migrations: {}",
-                e
+                "Failed to get database connection for migrations: {e}"
             ))
         })?;
 
@@ -141,20 +138,20 @@ impl DatabasePlugin {
     /// Initialize UI settings in database
     pub async fn initialize_ui_settings(&self) -> AppResult<()> {
         let mut conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        UiSettingsOperations::initialize_ui_settings(&mut *conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to initialize UI settings: {}", e))
+        UiSettingsOperations::initialize_ui_settings(&mut conn).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to initialize UI settings: {e}"))
         })
     }
 
     /// Get UI setting from database
     pub async fn get_ui_setting(&self, key: &str) -> AppResult<Option<String>> {
         let conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        UiSettingsOperations::get_ui_setting(&*conn, key).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get UI setting: {}", e))
+        UiSettingsOperations::get_ui_setting(&conn, key).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to get UI setting: {e}"))
         })
     }
 
@@ -167,11 +164,11 @@ impl DatabasePlugin {
         change_reason: Option<&str>,
     ) -> AppResult<()> {
         let mut conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        UiSettingsOperations::set_ui_setting(&mut *conn, key, value, changed_by, change_reason)
+        UiSettingsOperations::set_ui_setting(&mut conn, key, value, changed_by, change_reason)
             .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to set UI setting: {}", e))
+                crate::types::AppError::ConfigError(format!("Failed to set UI setting: {e}"))
             })
     }
 
@@ -180,10 +177,10 @@ impl DatabasePlugin {
         &self,
     ) -> AppResult<std::collections::HashMap<String, String>> {
         let conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        let settings_vec = UiSettingsOperations::get_all_ui_settings(&*conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get all UI settings: {}", e))
+        let settings_vec = UiSettingsOperations::get_all_ui_settings(&conn).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to get all UI settings: {e}"))
         })?;
 
         // Convert Vec<(String, String)> to HashMap<String, String>
@@ -211,7 +208,7 @@ impl DatabasePlugin {
     pub fn get_file_size(&self) -> AppResult<u64> {
         // Use the connection pool to get database statistics
         self.connection.get_file_size().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database file size: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database file size: {e}"))
         })
     }
 
@@ -220,18 +217,18 @@ impl DatabasePlugin {
         crate::database::connection::DatabaseConnection::get_database_path()
             .map(|path| path.to_string_lossy().to_string())
             .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to get database path: {}", e))
+                crate::types::AppError::ConfigError(format!("Failed to get database path: {e}"))
             })
     }
 
     /// Migrate JSON settings to database
     pub async fn migrate_json_to_database(&self) -> AppResult<MigrationResult> {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
 
         self.migration_strategy
-            .migrate_json_to_database(&mut *conn)
+            .migrate_json_to_database(&mut conn)
             .await
     }
 
@@ -283,7 +280,7 @@ impl DatabasePlugin {
         &self,
     ) -> AppResult<tokio::sync::MutexGuard<'_, rusqlite::Connection>> {
         self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })
     }
 
@@ -299,10 +296,10 @@ impl DatabasePlugin {
         &self,
     ) -> AppResult<Vec<crate::database::models::NetworkInterface>> {
         let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        crate::database::operations::PssUdpOperations::get_network_interfaces(&*conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get network interfaces: {}", e))
+        crate::database::operations::PssUdpOperations::get_network_interfaces(&conn).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to get network interfaces: {e}"))
         })
     }
 
@@ -311,13 +308,12 @@ impl DatabasePlugin {
         &self,
     ) -> AppResult<Option<crate::database::models::NetworkInterface>> {
         let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        crate::database::operations::PssUdpOperations::get_recommended_interface(&*conn).map_err(
+        crate::database::operations::PssUdpOperations::get_recommended_interface(&conn).map_err(
             |e| {
                 crate::types::AppError::ConfigError(format!(
-                    "Failed to get recommended interface: {}",
-                    e
+                    "Failed to get recommended interface: {e}"
                 ))
             },
         )
@@ -329,15 +325,14 @@ impl DatabasePlugin {
         interface: &crate::database::models::NetworkInterface,
     ) -> AppResult<i64> {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
         crate::database::operations::PssUdpOperations::upsert_network_interface(
-            &mut *conn, interface,
+            &mut conn, interface,
         )
         .map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to upsert network interface: {}",
-                e
+                "Failed to upsert network interface: {e}"
             ))
         })
     }
@@ -349,7 +344,7 @@ impl DatabasePlugin {
             .order_by_asc(udp_server_config::Column::Name)
             .all(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server configs: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server configs: {e}")))?;
 
         let configs = records
             .into_iter()
@@ -365,7 +360,7 @@ impl DatabasePlugin {
         let record = udp_server_config::Entity::find_by_id(config_id as i32)
             .one(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server config: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server config: {e}")))?;
 
         record
             .map(map_udp_server_config_model)
@@ -394,7 +389,7 @@ impl DatabasePlugin {
             active
                 .update(&sea)
                 .await
-                .map_err(|e| AppError::ConfigError(format!("Failed to update UDP server config: {}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Failed to update UDP server config: {e}")))?;
             Ok(id)
         } else {
             let now = Utc::now();
@@ -416,7 +411,7 @@ impl DatabasePlugin {
             let inserted = active
                 .insert(&sea)
                 .await
-                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP server config: {}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP server config: {e}")))?;
             Ok(inserted.id as i64)
         }
     }
@@ -447,7 +442,7 @@ impl DatabasePlugin {
         let model = active
             .insert(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to create UDP server session: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to create UDP server session: {e}")))?;
 
         Ok(model.id as i64)
     }
@@ -483,7 +478,7 @@ impl DatabasePlugin {
         }
         .update(&sea)
         .await
-        .map_err(|e| AppError::ConfigError(format!("Failed to update UDP session stats: {}", e)))?;
+        .map_err(|e| AppError::ConfigError(format!("Failed to update UDP session stats: {e}")))?;
 
         Ok(())
     }
@@ -507,7 +502,7 @@ impl DatabasePlugin {
         }
         .update(&sea)
         .await
-        .map_err(|e| AppError::ConfigError(format!("Failed to end UDP server session: {}", e)))?;
+        .map_err(|e| AppError::ConfigError(format!("Failed to end UDP server session: {e}")))?;
 
         Ok(())
     }
@@ -521,7 +516,7 @@ impl DatabasePlugin {
         let record = udp_server_session::Entity::find_by_id(session_id as i32)
             .one(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server session: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server session: {e}")))?;
 
         record
             .map(map_udp_server_session_model)
@@ -540,7 +535,7 @@ impl DatabasePlugin {
             .all(&sea)
             .await
             .map_err(|e| {
-                AppError::ConfigError(format!("Failed to get recent UDP server sessions: {}", e))
+                AppError::ConfigError(format!("Failed to get recent UDP server sessions: {e}"))
             })?;
 
         let sessions = records
@@ -569,7 +564,7 @@ impl DatabasePlugin {
             .update(&sea)
             .await
             .map_err(|e| {
-                AppError::ConfigError(format!("Failed to update UDP client connection: {}", e))
+                AppError::ConfigError(format!("Failed to update UDP client connection: {e}"))
             })?;
             Ok(id)
         } else {
@@ -590,7 +585,7 @@ impl DatabasePlugin {
             let inserted = active
                 .insert(&sea)
                 .await
-                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP client: {}", e)))?;
+                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP client: {e}")))?;
             Ok(inserted.id as i64)
         }
     }
@@ -608,7 +603,7 @@ impl DatabasePlugin {
             .all(&sea)
             .await
             .map_err(|e| {
-                AppError::ConfigError(format!("Failed to get active client connections: {}", e))
+                AppError::ConfigError(format!("Failed to get active client connections: {e}"))
             })?;
 
         let clients = records
@@ -628,7 +623,7 @@ impl DatabasePlugin {
             .order_by_asc(event_type::Column::Code)
             .all(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event types: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event types: {e}")))?;
 
         let mut items = Vec::with_capacity(records.len());
         for record in records {
@@ -647,7 +642,7 @@ impl DatabasePlugin {
             .filter(event_type::Column::Code.eq(event_code))
             .one(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event type: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event type: {e}")))?;
 
         record.map(map_event_type_model).transpose()
     }
@@ -671,7 +666,7 @@ impl DatabasePlugin {
             }
             .update(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS event type: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS event type: {e}")))?;
             Ok(id)
         } else {
             let inserted = event_type::ActiveModel {
@@ -685,7 +680,7 @@ impl DatabasePlugin {
             }
             .insert(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS event type: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS event type: {e}")))?;
 
             Ok(inserted.id as i64)
         }
@@ -695,7 +690,7 @@ impl DatabasePlugin {
     pub async fn get_or_create_pss_match(&self, match_id: &str) -> AppResult<i64> {
         sea_catalog::get_or_create_match(&self.seaorm_connection, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get/create match: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get/create match: {e}")))
     }
 
     /// Update PSS match information
@@ -706,7 +701,7 @@ impl DatabasePlugin {
     ) -> AppResult<()> {
         sea_catalog::update_match(&self.seaorm_connection, match_id, match_data)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS match: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to update PSS match: {e}")))
     }
 
     /// Fetch match metadata by database id
@@ -716,7 +711,7 @@ impl DatabasePlugin {
     ) -> AppResult<Option<DbPssMatch>> {
         sea_catalog::get_match_by_id(&self.seaorm_connection, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to load match {}: {}", match_id, e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to load match {match_id}: {e}")))
     }
 
     /// Fetch match metadata by match_code
@@ -726,7 +721,7 @@ impl DatabasePlugin {
     ) -> AppResult<Option<DbPssMatch>> {
         sea_catalog::get_match_by_code(&self.seaorm_connection, match_code)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to load match {}: {}", match_code, e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to load match {match_code}: {e}")))
     }
 
     /// List recent matches
@@ -736,7 +731,7 @@ impl DatabasePlugin {
     ) -> AppResult<Vec<DbPssMatch>> {
         sea_catalog::get_matches(&self.seaorm_connection, limit)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to list PSS matches: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to list PSS matches: {e}")))
     }
 
     /// Insert a new match row
@@ -746,7 +741,7 @@ impl DatabasePlugin {
     ) -> AppResult<i64> {
         sea_catalog::insert_match(&self.seaorm_connection, match_data)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS match: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to insert PSS match: {e}")))
     }
 
     /// Rename match identifier
@@ -757,7 +752,7 @@ impl DatabasePlugin {
     ) -> AppResult<()> {
         sea_catalog::rename_match_id(&self.seaorm_connection, match_db_id, new_match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to rename match {}: {}", match_db_id, e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to rename match {match_db_id}: {e}")))
     }
 
     /// Attach tournament context
@@ -768,7 +763,7 @@ impl DatabasePlugin {
     ) -> AppResult<()> {
         sea_catalog::set_match_tournament_context(&self.seaorm_connection, match_db_id, tournament_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to set match tournament context: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to set match tournament context: {e}")))
     }
 
     /// Reassign events from one match to another
@@ -779,7 +774,7 @@ impl DatabasePlugin {
     ) -> AppResult<usize> {
         sea_catalog::reassign_events_between_matches(&self.seaorm_connection, from_match_id, to_match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to reassign events: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to reassign events: {e}")))
     }
 
     /// Fetch match participants and associated athletes
@@ -789,7 +784,7 @@ impl DatabasePlugin {
     ) -> AppResult<Vec<(DbPssMatchAthlete, DbPssAthlete)>> {
         sea_catalog::get_match_athletes(&self.seaorm_connection, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get match athletes: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get match athletes: {e}")))
     }
 
     /// Link an athlete to a match
@@ -799,7 +794,7 @@ impl DatabasePlugin {
     ) -> AppResult<i64> {
         sea_catalog::insert_match_athlete(&self.seaorm_connection, match_athlete)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to insert match athlete: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to insert match athlete: {e}")))
     }
 
     /// Get or create PSS athlete
@@ -813,7 +808,7 @@ impl DatabasePlugin {
             .filter(athlete::Column::PssCode.eq(Some(athlete_code.to_string())))
             .one(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to lookup athlete: {}", e)))?
+            .map_err(|e| AppError::ConfigError(format!("Failed to lookup athlete: {e}")))?
         {
             return Ok(existing.id as i64);
         }
@@ -832,7 +827,7 @@ impl DatabasePlugin {
         let inserted = active
             .insert(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to create athlete: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to create athlete: {e}")))?;
 
         Ok(inserted.id as i64)
     }
@@ -847,8 +842,8 @@ impl DatabasePlugin {
         let existing = athlete::Entity::find_by_id(athlete_id as i32)
             .one(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to load athlete {}: {}", athlete_id, e)))?
-            .ok_or_else(|| AppError::ConfigError(format!("Athlete {} not found", athlete_id)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to load athlete {athlete_id}: {e}")))?
+            .ok_or_else(|| AppError::ConfigError(format!("Athlete {athlete_id} not found")))?;
 
         let mut active: athlete::ActiveModel = existing.into();
         active.pss_code = Set(Some(athlete_data.athlete_code.clone()));
@@ -862,7 +857,7 @@ impl DatabasePlugin {
         active
             .update(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to update athlete: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to update athlete: {e}")))?;
 
         Ok(())
     }
@@ -875,7 +870,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::insert_event(&sea, event)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event: {e}")))
     }
 
     /// Get PSS events for a session
@@ -887,7 +882,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_events_for_session(&sea, session_id, limit)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for session: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for session: {e}")))
     }
 
     /// Get PSS events for a match
@@ -899,7 +894,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_events_for_match(&sea, match_id, limit)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for match: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS events for match: {e}")))
     }
 
     /// Store PSS event details
@@ -911,7 +906,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::insert_event_details(&sea, event_id, details)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event details: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event details: {e}")))
     }
 
     /// Get PSS event details
@@ -922,7 +917,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_event_details(&sea, event_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event details: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get PSS event details: {e}")))
     }
 
     /// Store PSS score
@@ -933,7 +928,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::insert_score(&sea, score)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS score: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS score: {e}")))
     }
 
     /// Get current scores for a match
@@ -944,7 +939,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_current_scores_for_match(&sea, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get current scores for match: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get current scores for match: {e}")))
     }
 
     /// Store PSS warning
@@ -955,7 +950,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::insert_warning(&sea, warning)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS warning: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS warning: {e}")))
     }
 
     /// Get current warnings for a match
@@ -966,7 +961,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_pss::get_current_warnings_for_match(&sea, match_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get current warnings for match: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get current warnings for match: {e}")))
     }
 
     /// Get UDP server statistics
@@ -975,26 +970,26 @@ impl DatabasePlugin {
         let total_sessions = udp_server_session::Entity::find()
             .count(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to count UDP sessions: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to count UDP sessions: {e}")))?;
         let active_sessions = udp_server_session::Entity::find()
             .filter(udp_server_session::Column::Status.eq("running"))
             .count(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to count active sessions: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to count active sessions: {e}")))?;
         let total_events = event::Entity::find()
             .count(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to count events: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to count events: {e}")))?;
         let total_matches = matches::Entity::find()
             .count(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to count matches: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to count matches: {e}")))?;
         let threshold = Utc::now() - ChronoDuration::hours(24);
         let recent_events = event::Entity::find()
             .filter(event::Column::CreatedAt.gt(threshold))
             .count(&sea)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to count recent events: {}", e)))?;
+            .map_err(|e| AppError::ConfigError(format!("Failed to count recent events: {e}")))?;
 
         Ok(serde_json::json!({
             "total_sessions": total_sessions,
@@ -1015,7 +1010,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::store_event_with_status(&sea, event)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event with status: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store PSS event with status: {e}")))
     }
 
     /// Update event recognition status and record history
@@ -1029,7 +1024,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::update_event_recognition_status(&sea, event_id, new_status, changed_by, change_reason)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to update event recognition status: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to update event recognition status: {e}")))
     }
 
     /// Store unknown event
@@ -1040,7 +1035,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::store_unknown_event(&sea, unknown_event)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store unknown event: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store unknown event: {e}")))
     }
 
     /// Get validation rules for an event type
@@ -1052,7 +1047,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_validation_rules(&sea, event_code, protocol_version)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get validation rules: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get validation rules: {e}")))
     }
 
     /// Store validation result
@@ -1063,7 +1058,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::store_validation_result(&sea, validation_result)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to store validation result: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to store validation result: {e}")))
     }
 
     /// Update event statistics
@@ -1083,7 +1078,7 @@ impl DatabasePlugin {
             processing_time_ms,
         )
         .await
-        .map_err(|e| AppError::ConfigError(format!("Failed to update event statistics: {}", e)))
+        .map_err(|e| AppError::ConfigError(format!("Failed to update event statistics: {e}")))
     }
 
     /// Get event statistics for a session
@@ -1094,7 +1089,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_session_statistics(&sea, session_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get session statistics: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get session statistics: {e}")))
     }
 
     /// Get unknown events for analysis
@@ -1106,7 +1101,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_unknown_events(&sea, session_id, limit)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get unknown events: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get unknown events: {e}")))
     }
 
     /// Get recognition history for an event
@@ -1117,7 +1112,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_event_recognition_history(&sea, event_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get event recognition history: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get event recognition history: {e}")))
     }
 
     /// Get events by recognition status
@@ -1130,7 +1125,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_events_by_status(&sea, session_id, recognition_status, limit)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get events by status: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get events by status: {e}")))
     }
 
     /// Get comprehensive event statistics with status breakdown
@@ -1141,7 +1136,7 @@ impl DatabasePlugin {
         let sea = self.seaorm_connection.clone();
         sea_status::get_comprehensive_event_statistics(&sea, session_id)
             .await
-            .map_err(|e| AppError::ConfigError(format!("Failed to get comprehensive event statistics: {}", e)))
+            .map_err(|e| AppError::ConfigError(format!("Failed to get comprehensive event statistics: {e}")))
     }
 
     // Phase 2: Data Archival Operations
@@ -1149,13 +1144,13 @@ impl DatabasePlugin {
     /// Archive events older than specified days
     pub async fn archive_old_events(&self, days_old: i64) -> AppResult<usize> {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
         crate::database::operations::DataArchivalOperations::archive_old_events(
-            &mut *conn, days_old,
+            &mut conn, days_old,
         )
         .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to archive old events: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to archive old events: {e}"))
         })
     }
 
@@ -1164,13 +1159,12 @@ impl DatabasePlugin {
         &self,
     ) -> AppResult<crate::database::operations::ArchiveStatistics> {
         let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        crate::database::operations::DataArchivalOperations::get_archive_statistics(&*conn).map_err(
+        crate::database::operations::DataArchivalOperations::get_archive_statistics(&conn).map_err(
             |e| {
                 crate::types::AppError::ConfigError(format!(
-                    "Failed to get archive statistics: {}",
-                    e
+                    "Failed to get archive statistics: {e}"
                 ))
             },
         )
@@ -1179,39 +1173,38 @@ impl DatabasePlugin {
     /// Restore events from archive
     pub async fn restore_from_archive(&self, start_date: &str, end_date: &str) -> AppResult<usize> {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
         crate::database::operations::DataArchivalOperations::restore_from_archive(
-            &mut *conn, start_date, end_date,
+            &mut conn, start_date, end_date,
         )
         .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to restore from archive: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to restore from archive: {e}"))
         })
     }
 
     /// Clean up old archive data
     pub async fn cleanup_old_archive_data(&self, days_old: i64) -> AppResult<usize> {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
         crate::database::operations::DataArchivalOperations::cleanup_old_archive_data(
-            &mut *conn, days_old,
+            &mut conn, days_old,
         )
         .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to cleanup archive data: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to cleanup archive data: {e}"))
         })
     }
 
     /// Optimize archive tables
     pub async fn optimize_archive_tables(&self) -> AppResult<()> {
         let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
-        crate::database::operations::DataArchivalOperations::optimize_archive_tables(&mut *conn)
+        crate::database::operations::DataArchivalOperations::optimize_archive_tables(&mut conn)
             .map_err(|e| {
                 crate::types::AppError::ConfigError(format!(
-                    "Failed to optimize archive tables: {}",
-                    e
+                    "Failed to optimize archive tables: {e}"
                 ))
             })
     }
@@ -1224,21 +1217,18 @@ impl DatabasePlugin {
     async fn ensure_canonical_pss_schema(&self) -> AppResult<()> {
         let conn = self.connection.get_connection().await.map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to get database connection: {}",
-                e
+                "Failed to get database connection: {e}"
             ))
         })?;
 
-        let has_match = table_exists(&*conn, "match").map_err(|e| {
+        let has_match = table_exists(&conn, "match").map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to inspect schema for canonical match table: {}",
-                e
+                "Failed to inspect schema for canonical match table: {e}"
             ))
         })?;
-        let has_event = table_exists(&*conn, "event").map_err(|e| {
+        let has_event = table_exists(&conn, "event").map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to inspect schema for canonical event table: {}",
-                e
+                "Failed to inspect schema for canonical event table: {e}"
             ))
         })?;
 
@@ -1246,24 +1236,20 @@ impl DatabasePlugin {
             return Ok(());
         }
 
-        let legacy_matches = table_exists(&*conn, "pss_matches").map_err(|e| {
+        let legacy_matches = table_exists(&conn, "pss_matches").map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to inspect legacy match schema: {}",
-                e
+                "Failed to inspect legacy match schema: {e}"
             ))
         })?;
-        let legacy_events = table_exists(&*conn, "pss_events").map_err(|e| {
+        let legacy_events = table_exists(&conn, "pss_events").map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to inspect legacy event schema: {}",
-                e
+                "Failed to inspect legacy event schema: {e}"
             ))
         })?;
 
         if !(legacy_matches && legacy_events) {
             log::warn!(
-                "Legacy PSS tables not found; skipping canonical schema migration (matches={}, events={})",
-                legacy_matches,
-                legacy_events
+                "Legacy PSS tables not found; skipping canonical schema migration (matches={legacy_matches}, events={legacy_events})"
             );
             return Ok(());
         }
@@ -1271,8 +1257,7 @@ impl DatabasePlugin {
         log::info!("Migrating legacy PSS data into canonical SeaORM schema");
         conn.execute_batch(SCHEMA_UNIFICATION_SQL).map_err(|e| {
             crate::types::AppError::ConfigError(format!(
-                "Failed to execute schema unification migration: {}",
-                e
+                "Failed to execute schema unification migration: {e}"
             ))
         })?;
         log::info!("Canonical SeaORM schema migration completed successfully");
@@ -1283,15 +1268,15 @@ impl DatabasePlugin {
     /// Internal method to run database migrations
     async fn run_migrations_internal(connection: Arc<DatabaseConnection>) -> AppResult<()> {
         let mut conn = connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
         })?;
 
         // Import the migration manager
         use crate::database::migrations::MigrationManager;
 
         let migration_manager = MigrationManager::new();
-        migration_manager.migrate(&mut *conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to run database migrations: {}", e))
+        migration_manager.migrate(&mut conn).map_err(|e| {
+            crate::types::AppError::ConfigError(format!("Failed to run database migrations: {e}"))
         })?;
 
         log::info!("Database migrations completed successfully");
@@ -1305,7 +1290,7 @@ impl DatabasePlugin {
 
         let migration_manager = MigrationManager::new();
         migration_manager.migrate(conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to run database migrations: {}", e))
+            crate::types::AppError::ConfigError(format!("Failed to run database migrations: {e}"))
         })?;
 
         log::info!("Database migrations completed successfully");
@@ -1329,7 +1314,7 @@ fn map_udp_server_config_model(model: udp_server_config::Model) -> AppResult<DbU
         updated_at,
     } = model;
 
-    let port_u16 = u16::try_from(port).map_err(|e| AppError::ConfigError(format!("Invalid UDP port value {}: {}", port, e)))?;
+    let port_u16 = u16::try_from(port).map_err(|e| AppError::ConfigError(format!("Invalid UDP port value {port}: {e}")))?;
 
     Ok(DbUdpServerConfig {
         id: Some(id as i64),
@@ -1409,7 +1394,7 @@ fn map_udp_client_connection_model(
     } = model;
 
     let port_u16 = u16::try_from(client_port)
-        .map_err(|e| AppError::ConfigError(format!("Invalid UDP client port {}: {}", client_port, e)))?;
+        .map_err(|e| AppError::ConfigError(format!("Invalid UDP client port {client_port}: {e}")))?;
     let first_seen_dt = parse_rfc3339(&first_seen, "first_seen")?;
     let last_seen_dt = parse_rfc3339(&last_seen, "last_seen")?;
     let total_bytes = convert_i64_to_i32(total_bytes_received, "total_bytes_received")?;
@@ -1430,12 +1415,12 @@ fn map_udp_client_connection_model(
 fn parse_rfc3339(value: &str, field: &str) -> AppResult<chrono::DateTime<Utc>> {
     chrono::DateTime::parse_from_rfc3339(value)
         .map(|dt| dt.with_timezone(&Utc))
-        .map_err(|e| AppError::ConfigError(format!("Invalid {} value '{}': {}", field, value, e)))
+        .map_err(|e| AppError::ConfigError(format!("Invalid {field} value '{value}': {e}")))
 }
 
 fn convert_i64_to_i32(value: i64, field: &str) -> AppResult<i32> {
     i32::try_from(value)
-        .map_err(|e| AppError::ConfigError(format!("{} out of range ({}): {}", field, value, e)))
+        .map_err(|e| AppError::ConfigError(format!("{field} out of range ({value}): {e}")))
 }
 
 fn map_event_type_model(model: event_type::Model) -> AppResult<DbPssEventType> {

@@ -19,7 +19,7 @@ use std::sync::Arc;
 use tauri::{Error as TauriError, State};
 
 fn map_db_error(context: &str, err: impl std::fmt::Display) -> TauriError {
-    TauriError::from(anyhow!("{}: {}", context, err))
+    TauriError::from(anyhow!("{context}: {err}"))
 }
 
 fn parse_optional_datetime(value: &Option<String>) -> Option<DateTime<Utc>> {
@@ -67,8 +67,7 @@ fn resolve_asset_path(
             let base = PathBuf::from(ancestor);
             candidates.push(base.join(&normalized));
 
-            if normalized.starts_with("ui/") {
-                let trimmed_ui = &normalized["ui/".len()..];
+            if let Some(trimmed_ui) = normalized.strip_prefix("ui/") {
                 candidates.push(base.join("ui").join(trimmed_ui));
             }
 
@@ -453,7 +452,7 @@ pub async fn medal_ceremony_list_divisions(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let options = MedalCeremonyOperations::list_division_options(&*conn)
+    let options = MedalCeremonyOperations::list_division_options(&conn)
         .map_err(|e| map_db_error("Failed to load division options", e))?;
     Ok(options.iter().map(division_option_to_dto).collect())
 }
@@ -467,7 +466,7 @@ pub async fn medal_ceremony_list_athletes(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let options = MedalCeremonyOperations::list_athlete_options(&*conn, &division)
+    let options = MedalCeremonyOperations::list_athlete_options(&conn, &division)
         .map_err(|e| map_db_error("Failed to load athlete options", e))?;
     Ok(options.iter().map(athlete_option_to_dto).collect())
 }
@@ -480,7 +479,7 @@ pub async fn medal_ceremony_list(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let ceremonies = MedalCeremonyOperations::list_ceremonies(&*conn)
+    let ceremonies = MedalCeremonyOperations::list_ceremonies(&conn)
         .map_err(|e| map_db_error("Failed to load medal ceremonies", e))?;
     Ok(ceremonies
         .iter()
@@ -497,7 +496,7 @@ pub async fn medal_ceremony_get(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let detail = MedalCeremonyOperations::get_ceremony_detail(&*conn, &ceremony_id)
+    let detail = MedalCeremonyOperations::get_ceremony_detail(&conn, &ceremony_id)
         .map_err(|e| map_db_error("Failed to load medal ceremony", e))?;
     Ok(detail.as_ref().map(detail_to_dto))
 }
@@ -512,7 +511,7 @@ pub async fn medal_ceremony_save(
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
     let detail = dto_to_ceremony_detail(&payload);
-    let id = MedalCeremonyOperations::upsert_ceremony(&mut *conn, &detail)
+    let id = MedalCeremonyOperations::upsert_ceremony(&mut conn, &detail)
         .map_err(|e| map_db_error("Failed to save medal ceremony", e))?;
     Ok(id)
 }
@@ -526,7 +525,7 @@ pub async fn medal_ceremony_delete(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::delete_ceremony(&mut *conn, &ceremony_id)
+    MedalCeremonyOperations::delete_ceremony(&mut conn, &ceremony_id)
         .map_err(|e| map_db_error("Failed to delete medal ceremony", e))?;
     Ok(())
 }
@@ -540,7 +539,7 @@ pub async fn medal_ceremony_prepare(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let divisions = MedalCeremonyOperations::prepare_playlist(&mut *conn, &ceremony_id)
+    let divisions = MedalCeremonyOperations::prepare_playlist(&mut conn, &ceremony_id)
         .map_err(|e| map_db_error("Failed to prepare medal ceremony", e))?;
     Ok(divisions.iter().map(division_to_dto).collect())
 }
@@ -554,7 +553,7 @@ pub async fn medal_ceremony_mark_division_played(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::mark_division_played(&mut *conn, &division_id)
+    MedalCeremonyOperations::mark_division_played(&mut conn, &division_id)
         .map_err(|e| map_db_error("Failed to update ceremony progress", e))?;
     Ok(())
 }
@@ -568,7 +567,7 @@ pub async fn medal_ceremony_reset_playback(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::reset_playback(&mut *conn, &ceremony_id)
+    MedalCeremonyOperations::reset_playback(&mut conn, &ceremony_id)
         .map_err(|e| map_db_error("Failed to reset ceremony playback", e))?;
     Ok(())
 }
@@ -583,7 +582,7 @@ pub async fn medal_ceremony_set_show_external(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::update_show_external(&mut *conn, &ceremony_id, enabled)
+    MedalCeremonyOperations::update_show_external(&mut conn, &ceremony_id, enabled)
         .map_err(|e| map_db_error("Failed to update external screen state", e))?;
     Ok(())
 }
@@ -596,7 +595,7 @@ pub async fn medal_ceremony_list_flag_assets(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let assets = MedalCeremonyOperations::list_flag_animations(&*conn)
+    let assets = MedalCeremonyOperations::list_flag_animations(&conn)
         .map_err(|e| map_db_error("Failed to load flag animations", e))?;
     Ok(assets.iter().map(flag_asset_to_dto).collect())
 }
@@ -611,7 +610,7 @@ pub async fn medal_ceremony_save_flag_asset(
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
     let model = dto_to_flag_asset(&asset);
-    let id = MedalCeremonyOperations::upsert_flag_animation(&mut *conn, &model)
+    let id = MedalCeremonyOperations::upsert_flag_animation(&mut conn, &model)
         .map_err(|e| map_db_error("Failed to save flag animation", e))?;
     Ok(id)
 }
@@ -625,7 +624,7 @@ pub async fn medal_ceremony_delete_flag_asset(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::delete_flag_animation(&mut *conn, &asset_id)
+    MedalCeremonyOperations::delete_flag_animation(&mut conn, &asset_id)
         .map_err(|e| map_db_error("Failed to delete flag animation", e))?;
     Ok(())
 }
@@ -638,7 +637,7 @@ pub async fn medal_ceremony_list_anthems(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let assets = MedalCeremonyOperations::list_anthems(&*conn)
+    let assets = MedalCeremonyOperations::list_anthems(&conn)
         .map_err(|e| map_db_error("Failed to load anthem assets", e))?;
     Ok(assets.iter().map(anthem_to_dto).collect())
 }
@@ -653,7 +652,7 @@ pub async fn medal_ceremony_save_anthem(
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
     let model = dto_to_anthem(&asset);
-    let id = MedalCeremonyOperations::upsert_anthem(&mut *conn, &model)
+    let id = MedalCeremonyOperations::upsert_anthem(&mut conn, &model)
         .map_err(|e| map_db_error("Failed to save anthem asset", e))?;
     Ok(id)
 }
@@ -667,7 +666,7 @@ pub async fn medal_ceremony_delete_anthem(
         .database_plugin()
         .get_pooled_connection()
         .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::delete_anthem(&mut *conn, &asset_id)
+    MedalCeremonyOperations::delete_anthem(&mut conn, &asset_id)
         .map_err(|e| map_db_error("Failed to delete anthem asset", e))?;
     Ok(())
 }

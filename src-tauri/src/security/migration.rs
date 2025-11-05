@@ -42,6 +42,7 @@ impl Default for MigrationConfig {
 
 /// Migration statistics
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct MigrationStats {
     pub total_configs_found: u32,
     pub configs_migrated: u32,
@@ -53,20 +54,6 @@ pub struct MigrationStats {
     pub migration_duration_ms: u64,
 }
 
-impl Default for MigrationStats {
-    fn default() -> Self {
-        Self {
-            total_configs_found: 0,
-            configs_migrated: 0,
-            configs_skipped: 0,
-            configs_failed: 0,
-            credentials_migrated: 0,
-            api_keys_migrated: 0,
-            files_backed_up: 0,
-            migration_duration_ms: 0,
-        }
-    }
-}
 
 /// Configuration migration tool
 pub struct ConfigMigrationTool {
@@ -180,15 +167,15 @@ impl ConfigMigrationTool {
 
     /// Migrate a single JSON configuration file
     async fn migrate_json_file(&mut self, session_id: &str, file_path: &str) -> SecurityResult<()> {
-        log::info!("Processing configuration file: {}", file_path);
+        log::info!("Processing configuration file: {file_path}");
 
         // Read and parse the JSON file
         let content = fs::read_to_string(file_path).map_err(|e| {
-            SecurityError::InvalidInput(format!("Failed to read {}: {}", file_path, e))
+            SecurityError::InvalidInput(format!("Failed to read {file_path}: {e}"))
         })?;
 
         let config: Value =
-            serde_json::from_str(&content).map_err(|e| SecurityError::Serialization(e))?;
+            serde_json::from_str(&content).map_err(SecurityError::Serialization)?;
 
         // Backup original file if requested
         if self.migration_config.backup_originals {
@@ -223,7 +210,7 @@ impl ConfigMigrationTool {
                             connection.get("password").and_then(|v| v.as_str()),
                         ) {
                             if !password.is_empty() {
-                                let config_key = format!("obs.{}.password", name);
+                                let config_key = format!("obs.{name}.password");
 
                                 self.config_manager
                                     .set_config(
@@ -231,13 +218,13 @@ impl ConfigMigrationTool {
                                         &config_key,
                                         password,
                                         ConfigCategory::ObsCredentials,
-                                        Some(&format!("OBS WebSocket password for {}", name)),
+                                        Some(&format!("OBS WebSocket password for {name}")),
                                     )
                                     .await?;
 
                                 self.stats.credentials_migrated += 1;
 
-                                log::info!("Migrated OBS password for connection: {}", name);
+                                log::info!("Migrated OBS password for connection: {name}");
                             }
                         }
 
@@ -247,8 +234,8 @@ impl ConfigMigrationTool {
                             connection.get("host").and_then(|v| v.as_str()),
                             connection.get("port").and_then(|v| v.as_u64()),
                         ) {
-                            let host_key = format!("obs.{}.host", name);
-                            let port_key = format!("obs.{}.port", name);
+                            let host_key = format!("obs.{name}.host");
+                            let port_key = format!("obs.{name}.port");
 
                             self.config_manager
                                 .set_config(
@@ -256,7 +243,7 @@ impl ConfigMigrationTool {
                                     &host_key,
                                     host,
                                     ConfigCategory::UserPreferences,
-                                    Some(&format!("OBS host for {}", name)),
+                                    Some(&format!("OBS host for {name}")),
                                 )
                                 .await?;
 
@@ -266,7 +253,7 @@ impl ConfigMigrationTool {
                                     &port_key,
                                     &port.to_string(),
                                     ConfigCategory::UserPreferences,
-                                    Some(&format!("OBS port for {}", name)),
+                                    Some(&format!("OBS port for {name}")),
                                 )
                                 .await?;
                         }
@@ -292,7 +279,7 @@ impl ConfigMigrationTool {
             if let Some(service_config) = config.get(*service) {
                 if let Some(api_key) = service_config.get(*key_field).and_then(|v| v.as_str()) {
                     if !api_key.is_empty() {
-                        let config_key = format!("api.{}.{}", service, key_field);
+                        let config_key = format!("api.{service}.{key_field}");
 
                         self.config_manager
                             .set_config(
@@ -300,13 +287,13 @@ impl ConfigMigrationTool {
                                 &config_key,
                                 api_key,
                                 ConfigCategory::ApiKeys,
-                                Some(&format!("{} API key for {}", key_field, service)),
+                                Some(&format!("{key_field} API key for {service}")),
                             )
                             .await?;
 
                         self.stats.api_keys_migrated += 1;
 
-                        log::info!("Migrated {} API key for service: {}", key_field, service);
+                        log::info!("Migrated {key_field} API key for service: {service}");
                     }
                 }
             }
@@ -423,7 +410,7 @@ impl ConfigMigrationTool {
 
             self.stats.credentials_migrated += 1;
 
-            log::warn!("Migrated hardcoded credential: {}", key);
+            log::warn!("Migrated hardcoded credential: {key}");
         }
 
         Ok(())
@@ -509,13 +496,13 @@ impl ConfigMigrationTool {
                             &config_key,
                             &value,
                             category,
-                            Some(&format!("Environment variable: {}", env_var)),
+                            Some(&format!("Environment variable: {env_var}")),
                         )
                         .await?;
 
                     self.stats.credentials_migrated += 1;
 
-                    log::info!("Migrated environment variable: {}", env_var);
+                    log::info!("Migrated environment variable: {env_var}");
                 }
             }
         }
@@ -532,15 +519,13 @@ impl ConfigMigrationTool {
         );
 
         fs::copy(file_path, &backup_path).map_err(|e| {
-            SecurityError::InvalidInput(format!("Failed to backup {}: {}", file_path, e))
+            SecurityError::InvalidInput(format!("Failed to backup {file_path}: {e}"))
         })?;
 
         self.stats.files_backed_up += 1;
 
         log::info!(
-            "Backed up configuration file: {} -> {}",
-            file_path,
-            backup_path
+            "Backed up configuration file: {file_path} -> {backup_path}"
         );
 
         Ok(())
@@ -565,13 +550,13 @@ impl ConfigMigrationTool {
             {
                 Some(value) => {
                     if value.is_empty() {
-                        log::error!("Verification failed: {} is empty", config_key);
+                        log::error!("Verification failed: {config_key} is empty");
                         return Ok(false);
                     }
-                    log::info!("Verified migration of: {}", config_key);
+                    log::info!("Verified migration of: {config_key}");
                 }
                 None => {
-                    log::error!("Verification failed: {} not found", config_key);
+                    log::error!("Verification failed: {config_key} not found");
                     return Ok(false);
                 }
             }
