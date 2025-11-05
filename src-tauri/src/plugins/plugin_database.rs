@@ -3,6 +3,10 @@ use crate::database::{
     connection::{DatabaseConnection, DatabaseConnectionPool, PooledConnection},
     // models::*,
     // operations::*,
+    models::{
+        UdpClientConnection as DbUdpClientConnection, UdpServerConfig as DbUdpServerConfig,
+        UdpServerSession as DbUdpServerSession,
+    },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     DatabaseError,
     HybridSettingsProvider,
@@ -10,7 +14,13 @@ use crate::database::{
     MigrationStrategy,
     UiSettingsOperations,
 };
-use crate::types::AppResult;
+use crate::entity::{event, matches, udp_client_connection, udp_server_config, udp_server_session};
+use crate::types::{AppError, AppResult};
+use chrono::{Duration as ChronoDuration, TimeZone, Utc};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
+};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -314,69 +324,115 @@ impl DatabasePlugin {
     }
 
     /// Get all UDP server configurations
-    pub async fn get_udp_server_configs(
-        &self,
-    ) -> AppResult<Vec<crate::database::models::UdpServerConfig>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_udp_server_configs(&*conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get UDP server configs: {}", e))
-        })
+    pub async fn get_udp_server_configs(&self) -> AppResult<Vec<DbUdpServerConfig>> {
+        let sea = self.seaorm_connection.clone();
+        let records = udp_server_config::Entity::find()
+            .order_by_asc(udp_server_config::Column::Name)
+            .all(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server configs: {}", e)))?;
+
+        records
+            .into_iter()
+            .map(map_udp_server_config_model)
+            .collect()
     }
 
     /// Get UDP server configuration by ID
-    pub async fn get_udp_server_config(
-        &self,
-        config_id: i64,
-    ) -> AppResult<Option<crate::database::models::UdpServerConfig>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_udp_server_config(&*conn, config_id)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to get UDP server config: {}",
-                    e
-                ))
-            })
+    pub async fn get_udp_server_config(&self, config_id: i64) -> AppResult<Option<DbUdpServerConfig>> {
+        let sea = self.seaorm_connection.clone();
+        let record = udp_server_config::Entity::find_by_id(config_id as i32)
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server config: {}", e)))?;
+
+        record
+            .map(map_udp_server_config_model)
+            .transpose()
     }
 
     /// Add or update UDP server configuration
-    pub async fn upsert_udp_server_config(
-        &self,
-        config: &crate::database::models::UdpServerConfig,
-    ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::upsert_udp_server_config(&mut *conn, config)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to upsert UDP server config: {}",
-                    e
-                ))
-            })
+    pub async fn upsert_udp_server_config(&self, config: &DbUdpServerConfig) -> AppResult<i64> {
+        let sea = self.seaorm_connection.clone();
+        if let Some(id) = config.id {
+            let active = udp_server_config::ActiveModel {
+                id: Set(id as i32),
+                name: Set(config.name.clone()),
+                port: Set(i32::from(config.port)),
+                bind_address: Set(config.bind_address.clone()),
+                network_interface_id: Set(config.network_interface_id.map(|v| v as i32)),
+                enabled: Set(config.enabled),
+                auto_start: Set(config.auto_start),
+                max_packet_size: Set(config.max_packet_size),
+                buffer_size: Set(config.buffer_size),
+                timeout_ms: Set(config.timeout_ms),
+                created_at: Set(config.created_at.naive_utc()),
+                updated_at: Set(Utc::now().naive_utc()),
+            };
+
+            active
+                .update(&sea)
+                .await
+                .map_err(|e| AppError::ConfigError(format!("Failed to update UDP server config: {}", e)))?;
+            Ok(id)
+        } else {
+            let now = Utc::now();
+            let active = udp_server_config::ActiveModel {
+                name: Set(config.name.clone()),
+                port: Set(i32::from(config.port)),
+                bind_address: Set(config.bind_address.clone()),
+                network_interface_id: Set(config.network_interface_id.map(|v| v as i32)),
+                enabled: Set(config.enabled),
+                auto_start: Set(config.auto_start),
+                max_packet_size: Set(config.max_packet_size),
+                buffer_size: Set(config.buffer_size),
+                timeout_ms: Set(config.timeout_ms),
+                created_at: Set(now.naive_utc()),
+                updated_at: Set(now.naive_utc()),
+                ..Default::default()
+            };
+
+            let inserted = active
+                .insert(&sea)
+                .await
+                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP server config: {}", e)))?;
+            Ok(inserted.id as i64)
+        }
     }
 
     /// Create new UDP server session
     pub async fn create_udp_server_session(&self, server_config_id: i64) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::create_udp_server_session(
-            &mut *conn,
-            server_config_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to create UDP server session: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        let now = Utc::now();
+        let active = udp_server_session::ActiveModel {
+            server_config_id: Set(server_config_id as i32),
+            start_time: Set(now.to_rfc3339()),
+            end_time: Set(None),
+            status: Set("running".to_string()),
+            packets_received: Set(0),
+            packets_parsed: Set(0),
+            parse_errors: Set(0),
+            total_bytes_received: Set(0),
+            average_packet_size: Set(0.0),
+            max_packet_size_seen: Set(0),
+            min_packet_size_seen: Set(0),
+            unique_clients_count: Set(0),
+            error_message: Set(None),
+            created_at: Set(now.naive_utc()),
+            updated_at: Set(now.naive_utc()),
+            ..Default::default()
+        };
+
+        let model = active
+            .insert(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to create UDP server session: {}", e)))?;
+
+        Ok(model.id as i64)
     }
 
     /// Update UDP server session statistics
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_udp_server_session_stats(
         &self,
         session_id: i64,
@@ -389,27 +445,26 @@ impl DatabasePlugin {
         min_packet_size_seen: i32,
         unique_clients_count: i32,
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::update_udp_server_session_stats(
-            &mut *conn,
-            session_id,
-            packets_received,
-            packets_parsed,
-            parse_errors,
-            total_bytes_received,
-            average_packet_size,
-            max_packet_size_seen,
-            min_packet_size_seen,
-            unique_clients_count,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to update UDP server session stats: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        let now = Utc::now();
+        udp_server_session::ActiveModel {
+            id: Set(session_id as i32),
+            packets_received: Set(packets_received),
+            packets_parsed: Set(packets_parsed),
+            parse_errors: Set(parse_errors),
+            total_bytes_received: Set(i64::from(total_bytes_received)),
+            average_packet_size: Set(average_packet_size),
+            max_packet_size_seen: Set(max_packet_size_seen),
+            min_packet_size_seen: Set(min_packet_size_seen),
+            unique_clients_count: Set(unique_clients_count),
+            updated_at: Set(now.naive_utc()),
+            ..Default::default()
+        }
+        .update(&sea)
+        .await
+        .map_err(|e| AppError::ConfigError(format!("Failed to update UDP session stats: {}", e)))?;
+
+        Ok(())
     }
 
     /// End UDP server session
@@ -419,90 +474,124 @@ impl DatabasePlugin {
         status: &str,
         error_message: Option<&str>,
     ) -> AppResult<()> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::end_udp_server_session(
-            &mut *conn,
-            session_id,
-            status,
-            error_message,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to end UDP server session: {}", e))
-        })
+        let sea = self.seaorm_connection.clone();
+        let now = Utc::now();
+        udp_server_session::ActiveModel {
+            id: Set(session_id as i32),
+            end_time: Set(Some(now.to_rfc3339())),
+            status: Set(status.to_string()),
+            error_message: Set(error_message.map(|s| s.to_string())),
+            updated_at: Set(now.naive_utc()),
+            ..Default::default()
+        }
+        .update(&sea)
+        .await
+        .map_err(|e| AppError::ConfigError(format!("Failed to end UDP server session: {}", e)))?;
+
+        Ok(())
     }
 
     /// Get UDP server session by ID
     pub async fn get_udp_server_session(
         &self,
         session_id: i64,
-    ) -> AppResult<Option<crate::database::models::UdpServerSession>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_udp_server_session(&*conn, session_id)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to get UDP server session: {}",
-                    e
-                ))
-            })
+    ) -> AppResult<Option<DbUdpServerSession>> {
+        let sea = self.seaorm_connection.clone();
+        let record = udp_server_session::Entity::find_by_id(session_id as i32)
+            .one(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get UDP server session: {}", e)))?;
+
+        record
+            .map(map_udp_server_session_model)
+            .transpose()
     }
 
     /// Get recent UDP server sessions
     pub async fn get_recent_udp_server_sessions(
         &self,
         limit: i64,
-    ) -> AppResult<Vec<crate::database::models::UdpServerSession>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_recent_udp_server_sessions(&*conn, limit)
+    ) -> AppResult<Vec<DbUdpServerSession>> {
+        let sea = self.seaorm_connection.clone();
+        let records = udp_server_session::Entity::find()
+            .order_by_desc(udp_server_session::Column::StartTime)
+            .limit(limit as u64)
+            .all(&sea)
+            .await
             .map_err(|e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to get recent UDP server sessions: {}",
-                    e
-                ))
-            })
+                AppError::ConfigError(format!("Failed to get recent UDP server sessions: {}", e))
+            })?;
+
+        records
+            .into_iter()
+            .map(map_udp_server_session_model)
+            .collect()
     }
 
     /// Add or update UDP client connection
     pub async fn upsert_udp_client_connection(
         &self,
-        client: &crate::database::models::UdpClientConnection,
+        client: &DbUdpClientConnection,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::upsert_udp_client_connection(
-            &mut *conn, client,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to upsert UDP client connection: {}",
-                e
-            ))
-        })
+        let sea = self.seaorm_connection.clone();
+        if let Some(id) = client.id {
+            udp_client_connection::ActiveModel {
+                id: Set(id as i32),
+                last_seen: Set(client.last_seen.to_rfc3339()),
+                packets_received: Set(client.packets_received),
+                total_bytes_received: Set(i64::from(client.total_bytes_received)),
+                is_active: Set(client.is_active),
+                ..Default::default()
+            }
+            .update(&sea)
+            .await
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to update UDP client connection: {}", e))
+            })?;
+            Ok(id)
+        } else {
+            let now = Utc::now();
+            let active = udp_client_connection::ActiveModel {
+                server_session_id: Set(client.session_id as i32),
+                client_address: Set(client.client_address.clone()),
+                client_port: Set(i32::from(client.client_port)),
+                first_seen: Set(client.first_seen.to_rfc3339()),
+                last_seen: Set(client.last_seen.to_rfc3339()),
+                packets_received: Set(client.packets_received),
+                total_bytes_received: Set(i64::from(client.total_bytes_received)),
+                is_active: Set(client.is_active),
+                created_at: Set(now.naive_utc()),
+                ..Default::default()
+            };
+
+            let inserted = active
+                .insert(&sea)
+                .await
+                .map_err(|e| AppError::ConfigError(format!("Failed to insert UDP client: {}", e)))?;
+            Ok(inserted.id as i64)
+        }
     }
 
     /// Get active client connections for a session
     pub async fn get_active_client_connections(
         &self,
         session_id: i64,
-    ) -> AppResult<Vec<crate::database::models::UdpClientConnection>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_active_client_connections(
-            &*conn, session_id,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!(
-                "Failed to get active client connections: {}",
-                e
-            ))
-        })
+    ) -> AppResult<Vec<DbUdpClientConnection>> {
+        let sea = self.seaorm_connection.clone();
+        let records = udp_client_connection::Entity::find()
+            .filter(udp_client_connection::Column::ServerSessionId.eq(session_id as i32))
+            .filter(udp_client_connection::Column::IsActive.eq(true))
+            .order_by_desc(udp_client_connection::Column::LastSeen)
+            .all(&sea)
+            .await
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to get active client connections: {}", e))
+            })?;
+
+        records
+            .into_iter()
+            .map(map_udp_client_connection_model)
+            .collect()
     }
 
     /// Get all PSS event types
@@ -775,17 +864,38 @@ impl DatabasePlugin {
 
     /// Get UDP server statistics
     pub async fn get_udp_server_statistics(&self) -> AppResult<serde_json::Value> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {}", e))
-        })?;
-        crate::database::operations::PssUdpOperations::get_udp_server_statistics(&*conn).map_err(
-            |e| {
-                crate::types::AppError::ConfigError(format!(
-                    "Failed to get UDP server statistics: {}",
-                    e
-                ))
-            },
-        )
+        let sea = self.seaorm_connection.clone();
+        let total_sessions = udp_server_session::Entity::find()
+            .count(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to count UDP sessions: {}", e)))?;
+        let active_sessions = udp_server_session::Entity::find()
+            .filter(udp_server_session::Column::Status.eq("running"))
+            .count(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to count active sessions: {}", e)))?;
+        let total_events = event::Entity::find()
+            .count(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to count events: {}", e)))?;
+        let total_matches = matches::Entity::find()
+            .count(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to count matches: {}", e)))?;
+        let threshold = Utc::now() - ChronoDuration::hours(24);
+        let recent_events = event::Entity::find()
+            .filter(event::Column::CreatedAt.gt(threshold))
+            .count(&sea)
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to count recent events: {}", e)))?;
+
+        Ok(serde_json::json!({
+            "total_sessions": total_sessions,
+            "active_sessions": active_sessions,
+            "total_events": total_events,
+            "total_matches": total_matches,
+            "recent_events_24h": recent_events
+        }))
     }
 
     // PSS Event Status Operations
@@ -1111,6 +1221,131 @@ impl DatabasePlugin {
         log::info!("Database migrations completed successfully");
         Ok(())
     }
+}
+
+fn map_udp_server_config_model(model: udp_server_config::Model) -> AppResult<DbUdpServerConfig> {
+    let udp_server_config::Model {
+        id,
+        name,
+        port,
+        bind_address,
+        network_interface_id,
+        enabled,
+        auto_start,
+        max_packet_size,
+        buffer_size,
+        timeout_ms,
+        created_at,
+        updated_at,
+    } = model;
+
+    let port_u16 = u16::try_from(port).map_err(|e| AppError::ConfigError(format!("Invalid UDP port value {}: {}", port, e)))?;
+
+    Ok(DbUdpServerConfig {
+        id: Some(id as i64),
+        name,
+        port: port_u16,
+        bind_address,
+        network_interface_id: network_interface_id.map(|v| v as i64),
+        enabled,
+        auto_start,
+        max_packet_size,
+        buffer_size,
+        timeout_ms,
+        created_at: Utc.from_utc_datetime(&created_at),
+        updated_at: Utc.from_utc_datetime(&updated_at),
+    })
+}
+
+fn map_udp_server_session_model(model: udp_server_session::Model) -> AppResult<DbUdpServerSession> {
+    let udp_server_session::Model {
+        id,
+        server_config_id,
+        start_time,
+        end_time,
+        status,
+        packets_received,
+        packets_parsed,
+        parse_errors,
+        total_bytes_received,
+        average_packet_size,
+        max_packet_size_seen,
+        min_packet_size_seen,
+        unique_clients_count,
+        error_message,
+        created_at: _,
+        updated_at: _,
+    } = model;
+
+    let start = parse_rfc3339(&start_time, "start_time")?;
+    let end = match end_time {
+        Some(value) => Some(parse_rfc3339(&value, "end_time")?),
+        None => None,
+    };
+    let total_bytes = convert_i64_to_i32(total_bytes_received, "total_bytes_received")?;
+
+    Ok(DbUdpServerSession {
+        id: Some(id as i64),
+        server_config_id: server_config_id as i64,
+        start_time: start,
+        end_time: end,
+        status,
+        packets_received,
+        packets_parsed,
+        parse_errors,
+        total_bytes_received: total_bytes,
+        average_packet_size,
+        max_packet_size_seen,
+        min_packet_size_seen,
+        unique_clients_count,
+        error_message,
+    })
+}
+
+fn map_udp_client_connection_model(
+    model: udp_client_connection::Model,
+) -> AppResult<DbUdpClientConnection> {
+    let udp_client_connection::Model {
+        id,
+        server_session_id,
+        client_address,
+        client_port,
+        first_seen,
+        last_seen,
+        packets_received,
+        total_bytes_received,
+        is_active,
+        created_at: _,
+    } = model;
+
+    let port_u16 = u16::try_from(client_port)
+        .map_err(|e| AppError::ConfigError(format!("Invalid UDP client port {}: {}", client_port, e)))?;
+    let first_seen_dt = parse_rfc3339(&first_seen, "first_seen")?;
+    let last_seen_dt = parse_rfc3339(&last_seen, "last_seen")?;
+    let total_bytes = convert_i64_to_i32(total_bytes_received, "total_bytes_received")?;
+
+    Ok(DbUdpClientConnection {
+        id: Some(id as i64),
+        session_id: server_session_id as i64,
+        client_address,
+        client_port: port_u16,
+        first_seen: first_seen_dt,
+        last_seen: last_seen_dt,
+        packets_received,
+        total_bytes_received: total_bytes,
+        is_active,
+    })
+}
+
+fn parse_rfc3339(value: &str, field: &str) -> AppResult<chrono::DateTime<Utc>> {
+    chrono::DateTime::parse_from_rfc3339(value)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|e| AppError::ConfigError(format!("Invalid {} value '{}': {}", field, value, e)))
+}
+
+fn convert_i64_to_i32(value: i64, field: &str) -> AppResult<i32> {
+    i32::try_from(value)
+        .map_err(|e| AppError::ConfigError(format!("{} out of range ({}): {}", field, value, e)))
 }
 
 /// Migration status information
