@@ -24,6 +24,7 @@ pub mod matches;
 pub mod medal_ceremony;
 pub mod medal_ceremony_division;
 pub mod medal_ceremony_medalist;
+pub mod network_interface;
 pub mod obs_connection;
 pub mod obs_recording_config;
 pub mod obs_recording_session;
@@ -75,6 +76,7 @@ pub mod prelude {
     pub use super::medal_ceremony::Entity as MedalCeremony;
     pub use super::medal_ceremony_division::Entity as MedalCeremonyDivision;
     pub use super::medal_ceremony_medalist::Entity as MedalCeremonyMedalist;
+    pub use super::network_interface::Entity as NetworkInterface;
     pub use super::obs_connection::Entity as ObsConnection;
     pub use super::obs_recording_config::Entity as ObsRecordingConfig;
     pub use super::obs_recording_session::Entity as ObsRecordingSession;

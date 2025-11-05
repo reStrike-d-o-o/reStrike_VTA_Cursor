@@ -10,8 +10,8 @@ use crate::database::{
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
-        pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status,
-        ui_settings as sea_settings,
+        network as sea_network, pss as sea_pss, pss_catalog as sea_catalog,
+        pss_status as sea_status, ui_settings as sea_settings,
     },
     DatabaseError,
     HybridSettingsProvider,
@@ -290,28 +290,26 @@ impl DatabasePlugin {
     pub async fn get_network_interfaces(
         &self,
     ) -> AppResult<Vec<crate::database::models::NetworkInterface>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        crate::database::operations::PssUdpOperations::get_network_interfaces(&conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get network interfaces: {e}"))
-        })
+        sea_network::get_network_interfaces(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to get network interfaces: {e}"
+                ))
+            })
     }
 
     /// Get recommended network interface
     pub async fn get_recommended_interface(
         &self,
     ) -> AppResult<Option<crate::database::models::NetworkInterface>> {
-        let conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        crate::database::operations::PssUdpOperations::get_recommended_interface(&conn).map_err(
-            |e| {
+        sea_network::get_recommended_interface(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
                 crate::types::AppError::ConfigError(format!(
                     "Failed to get recommended interface: {e}"
                 ))
-            },
-        )
+            })
     }
 
     /// Add or update network interface
@@ -319,15 +317,13 @@ impl DatabasePlugin {
         &self,
         interface: &crate::database::models::NetworkInterface,
     ) -> AppResult<i64> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        crate::database::operations::PssUdpOperations::upsert_network_interface(
-            &mut conn, interface,
-        )
-        .map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to upsert network interface: {e}"))
-        })
+        sea_network::upsert_network_interface(&self.seaorm_connection, interface)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to upsert network interface: {e}"
+                ))
+            })
     }
 
     /// Get all UDP server configurations

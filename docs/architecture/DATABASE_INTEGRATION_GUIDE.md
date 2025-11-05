@@ -569,7 +569,8 @@ pub struct DatabasePlugin {
 
 #### **Operations Classes**
 - `seaorm_ops::ui_settings` - UI settings management (seed, CRUD, audit history)
-- `PssUdpOperations` - PSS and UDP subsystem operations
+- `seaorm_ops::network` - Network interface catalogue (list, recommendation, upsert)
+- `PssUdpOperations` - Legacy PSS and UDP subsystem operations pending SeaORM ports
 
 ### **Key Operation Patterns**
 
@@ -592,11 +593,10 @@ tx.commit()?;
 
 #### **3. Async Operations**
 ```rust
-// Async database operations
+// Async database operations via SeaORM helpers
 pub async fn get_network_interfaces(&self) -> AppResult<Vec<NetworkInterface>> {
-    let conn = self.connection.get_connection().await
-        .map_err(|e| AppError::ConfigError(format!("Failed to get database connection: {}", e)))?;
-    PssUdpOperations::get_network_interfaces(&*conn)
+    seaorm_ops::network::get_network_interfaces(&self.seaorm_connection)
+        .await
         .map_err(|e| AppError::ConfigError(format!("Failed to get network interfaces: {}", e)))
 }
 ```
