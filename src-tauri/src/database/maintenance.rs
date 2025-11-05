@@ -80,7 +80,6 @@ impl DatabaseMaintenance {
 
         // Check if VACUUM is needed
         let page_count: i64 = db_conn
-<<<<<<< HEAD
             .read_transaction(|tx| {
                 tx.query_row("PRAGMA page_count", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
@@ -92,13 +91,6 @@ impl DatabaseMaintenance {
                 tx.query_row("PRAGMA freelist_count", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
             })
-=======
-            .read_transaction(|tx| tx.query_row("PRAGMA page_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
-            .await?;
-
-        let freelist_count: i64 = db_conn
-            .read_transaction(|tx| tx.query_row("PRAGMA freelist_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
->>>>>>> Scoreboard
             .await?;
 
         if freelist_count == 0 {
@@ -192,14 +184,10 @@ impl DatabaseMaintenance {
         log::info!("Starting database OPTIMIZE operation...");
 
         db_conn
-<<<<<<< HEAD
             .transaction(|tx| {
                 tx.execute("PRAGMA optimize", [])
                     .map_err(DatabaseError::Sqlite)
             })
-=======
-            .transaction(|tx| tx.execute("PRAGMA optimize", []).map_err(DatabaseError::Sqlite))
->>>>>>> Scoreboard
             .await?;
 
         // Update statistics
@@ -312,7 +300,6 @@ impl DatabaseMaintenance {
         db_conn: &DatabaseConnection,
     ) -> DatabaseResult<DatabaseInfo> {
         let page_count: i64 = db_conn
-<<<<<<< HEAD
             .read_transaction(|tx| {
                 tx.query_row("PRAGMA page_count", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
@@ -352,29 +339,6 @@ impl DatabaseMaintenance {
                 tx.query_row("PRAGMA synchronous", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
             })
-=======
-            .read_transaction(|tx| tx.query_row("PRAGMA page_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
-            .await?;
-
-        let page_size: i64 = db_conn
-            .read_transaction(|tx| tx.query_row("PRAGMA page_size", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
-            .await?;
-
-        let freelist_count: i64 = db_conn
-            .read_transaction(|tx| tx.query_row("PRAGMA freelist_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
-            .await?;
-
-        let cache_size: i64 = db_conn
-            .read_transaction(|tx| tx.query_row("PRAGMA cache_size", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
-            .await?;
-
-        let journal_mode: String = db_conn
-            .read_transaction(|tx| tx.query_row("PRAGMA journal_mode", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
-            .await?;
-
-        let synchronous: String = db_conn
-            .read_transaction(|tx| tx.query_row("PRAGMA synchronous", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
->>>>>>> Scoreboard
             .await?;
 
         let total_size = page_count * page_size;
