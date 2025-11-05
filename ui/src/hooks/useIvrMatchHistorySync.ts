@@ -183,51 +183,29 @@ const computeSignature = (matches: IvrMatchCard[]): string =>
     })
     .join('||');
 
-type HydrationEntry =
-  | { status: 'hydrating'; token: symbol }
-  | { status: 'hydrated'; signature: string };
-
 export const useIvrMatchHistorySync = () => {
   const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
-  const matchesForSelected = useIvrMatchHistoryStore((state) => {
-    const normalized = state.selectedDate;
-    return state.matchesByDate[normalized] ?? [];
-  });
-
-  const hydrationStateRef = useRef<Record<string, HydrationEntry>>({});
-
-  useEffect(() => {
-    const entry = hydrationStateRef.current[selectedDate];
-    if (!entry || entry.status !== 'hydrated') {
-      return;
-    }
-    const signature = computeSignature(matchesForSelected);
-    if (entry.signature !== signature) {
-      hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature };
-    }
-  }, [matchesForSelected, selectedDate]);
+  const hydratedSignatureRef = useRef<Record<string, string>>({});
+  const inflightRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!canListenTauri()) {
       return;
     }
 
-    const entry = hydrationStateRef.current[selectedDate];
-    const storeSnapshot = useIvrMatchHistoryStore.getState();
-    const currentSignature = computeSignature(storeSnapshot.getMatchesForDate(selectedDate));
-
-    if (entry) {
-      if (entry.status === 'hydrating') {
-        return;
-      }
-      if (entry.status === 'hydrated' && entry.signature === currentSignature) {
-        return;
-      }
+    if (inflightRef.current.has(selectedDate)) {
+      return;
     }
 
-    const token = Symbol(`hydrate-${selectedDate}`);
-    hydrationStateRef.current[selectedDate] = { status: 'hydrating', token };
+    const storeSnapshot = useIvrMatchHistoryStore.getState();
+    const currentSignature = computeSignature(storeSnapshot.getMatchesForDate(selectedDate));
+    const knownSignature = hydratedSignatureRef.current[selectedDate];
 
+    if (knownSignature !== undefined && knownSignature === currentSignature) {
+      return;
+    }
+
+    inflightRef.current.add(selectedDate);
     let cancelled = false;
 
     const hydrate = async () => {
@@ -237,15 +215,11 @@ export const useIvrMatchHistorySync = () => {
           { limit: 80, date: selectedDate },
         );
 
-        if (cancelled) {
-          return;
-        }
-
-        if (!result?.success || !result.data?.matches) {
-          hydrationStateRef.current[selectedDate] = {
-            status: 'hydrated',
-            signature: currentSignature,
-          };
+        if (cancelled || !result?.success || !result.data?.matches) {
+          inflightRef.current.delete(selectedDate);
+          if (!cancelled) {
+            hydratedSignatureRef.current[selectedDate] = currentSignature;
+          }
           return;
         }
 
@@ -257,13 +231,14 @@ export const useIvrMatchHistorySync = () => {
         }
         const persisted = nextStore.getMatchesForDate(selectedDate);
         const signature = computeSignature(persisted);
-        hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature };
+        hydratedSignatureRef.current[selectedDate] = signature;
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
-        hydrationStateRef.current[selectedDate] = {
-          status: 'hydrated',
-          signature: currentSignature,
-        };
+        if (!cancelled) {
+          hydratedSignatureRef.current[selectedDate] = currentSignature;
+        }
+      } finally {
+        inflightRef.current.delete(selectedDate);
       }
     };
 
@@ -271,10 +246,7 @@ export const useIvrMatchHistorySync = () => {
 
     return () => {
       cancelled = true;
-      const current = hydrationStateRef.current[selectedDate];
-      if (current && current.status === 'hydrating' && current.token === token) {
-        delete hydrationStateRef.current[selectedDate];
-      }
+      inflightRef.current.delete(selectedDate);
     };
   }, [selectedDate]);
   useEffect(() => {

@@ -97,6 +97,8 @@ const normalizeMatch = (match: IvrMatchCard): IvrMatchCard => ({
   videos: match.videos.map(normalizeVideo),
 });
 
+const EMPTY_MATCHES: IvrMatchCard[] = [];
+
 const metadataEquals = (a: IvrMatchCard, b: IvrMatchCard): boolean =>
   a.matchDbId === b.matchDbId &&
   a.matchId === b.matchId &&
@@ -330,7 +332,7 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
 
   getMatchesForDate: (date: string) => {
     const normalized = toDateKey(date);
-    return get().matchesByDate[normalized] ?? [];
+    return get().matchesByDate[normalized] ?? EMPTY_MATCHES;
   },
 }));
 
@@ -355,7 +357,7 @@ export const deriveMatchKey = (
 };
 
 export const selectMatchesForCurrentDate = (state: IvrMatchHistoryState) =>
-  state.matchesByDate[state.selectedDate] ?? [];
+  state.matchesByDate[state.selectedDate] ?? EMPTY_MATCHES;
 
 export const selectMatchesForDate = (date: string) =>
-  (state: IvrMatchHistoryState) => state.matchesByDate[toDateKey(date)] ?? [];
+  (state: IvrMatchHistoryState) => state.matchesByDate[toDateKey(date)] ?? EMPTY_MATCHES;
