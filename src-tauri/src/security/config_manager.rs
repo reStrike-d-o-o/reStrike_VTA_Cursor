@@ -228,7 +228,7 @@ impl SecureConfigManager {
         // Store session in database
         let conn = self.database.get_connection().await?;
         conn.execute(
-            "INSERT INTO security_sessions 
+            "INSERT INTO security_sessions
             (session_id, user_context, access_level, created_at, last_accessed, expires_at, is_active, source_ip, user_agent)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
@@ -396,7 +396,7 @@ impl SecureConfigManager {
         let now = Utc::now().to_rfc3339();
 
         conn.execute(
-            "INSERT OR REPLACE INTO secure_config 
+            "INSERT OR REPLACE INTO secure_config
             (config_key, encrypted_value, category, is_sensitive, salt, algorithm, kdf_params, created_at, updated_at, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
@@ -479,7 +479,7 @@ impl SecureConfigManager {
         // Get from database
         let conn = self.database.get_connection().await?;
         let mut stmt = conn.prepare(
-            "SELECT encrypted_value, category, salt, algorithm, kdf_params, access_count 
+            "SELECT encrypted_value, category, salt, algorithm, kdf_params, access_count
              FROM secure_config WHERE config_key = ?",
         )?;
 

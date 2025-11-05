@@ -273,7 +273,7 @@ impl SecurityAudit {
         let conn = self.database.get_connection().await?;
 
         let _row_id = conn.execute(
-            "INSERT INTO config_audit 
+            "INSERT INTO config_audit
             (config_key, action, user_context, source_ip, timestamp, details, success, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             params![
@@ -326,9 +326,9 @@ impl SecurityAudit {
         let conn = self.database.get_connection().await?;
 
         let query = match limit {
-            Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
+            Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
                        FROM config_audit WHERE config_key = ? ORDER BY timestamp DESC LIMIT ?",
-            None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
+            None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
                     FROM config_audit WHERE config_key = ? ORDER BY timestamp DESC",
         };
 
@@ -355,9 +355,9 @@ impl SecurityAudit {
         let conn = self.database.get_connection().await?;
 
         let query = match limit {
-            Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
+            Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
                        FROM config_audit WHERE user_context = ? ORDER BY timestamp DESC LIMIT ?",
-            None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
+            None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
                     FROM config_audit WHERE user_context = ? ORDER BY timestamp DESC",
         };
 
@@ -384,9 +384,9 @@ impl SecurityAudit {
         let conn = self.database.get_connection().await?;
 
         let query = match limit {
-            Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
+            Some(_) => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
                        FROM config_audit WHERE action = ? ORDER BY timestamp DESC LIMIT ?",
-            None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
+            None => "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
                     FROM config_audit WHERE action = ? ORDER BY timestamp DESC",
         };
 
@@ -410,8 +410,8 @@ impl SecurityAudit {
         let since = Utc::now() - chrono::Duration::hours(hours);
 
         let mut stmt = conn.prepare(
-            "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message 
-             FROM config_audit 
+            "SELECT id, config_key, action, user_context, source_ip, timestamp, details, success, error_message
+             FROM config_audit
              WHERE timestamp >= ? AND action IN ('auth_failure', 'privilege_escalation', 'suspicious_activity', 'security_violation', 'intrusion_attempt')
              ORDER BY timestamp DESC"
         )?;

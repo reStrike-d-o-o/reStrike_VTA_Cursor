@@ -960,7 +960,7 @@ pub async fn pss_get_events(
     // Convert PssEvent enum to JSON
     let event_json: Vec<serde_json::Value> = events.into_iter().map(|event| {
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
-        
+
         match event {
             crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
                 let athlete_str = match athlete {
@@ -1055,7 +1055,7 @@ pub async fn pss_get_events(
                     "athlete2_r3": athlete2_r3,
                     "round": 1, // Will be updated by WebSocket plugin
                     "time": "2:00", // Will be updated by WebSocket plugin
-                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}", 
+                    "description": format!("Scores - A1: R1={}, R2={}, R3={} | A2: R1={}, R2={}, R3={}",
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
                 })
             }
@@ -3807,7 +3807,7 @@ pub async fn get_flag_mappings_data(
                     "updated": row.get::<_, Option<i64>>(6)?
                 }))
             }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flag mappings: {e}")))?;
-            
+
             for row in rows {
                 let mapping = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get mapping data: {e}")))?;
                 mapping_data.push(mapping);
@@ -4214,7 +4214,7 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
                     "is_recognized": row.get::<_, bool>(10)?
                 }))
             }).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to query flags: {e}")))?;
-            
+
             for row in rows {
                 let flag = row.map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get flag data: {e}")))?;
                 flag_data.push(flag);
