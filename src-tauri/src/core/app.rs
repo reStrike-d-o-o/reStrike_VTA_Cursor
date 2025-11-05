@@ -220,64 +220,59 @@ impl App {
         {
             log::info!("Recording event handler initialized");
             // Load persisted automatic recording config from DB into handler so it works after restart
-            use crate::database::operations::UiSettingsOperations as UIOps;
-            if let Ok(conn) = database_plugin.get_pooled_connection() {
-                let enabled = UIOps::get_ui_setting(&conn, "obs.auto.enabled")
-                    .ok()
-                    .flatten()
-                    .map(|v| v == "true")
-                    .unwrap_or(false);
-                let obs_name = UIOps::get_ui_setting(&conn, "obs.auto.connection")
-                    .ok()
-                    .flatten()
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or_else(|| "OBS_REC".to_string());
-                let stop_on_end = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_match_end")
-                    .ok()
-                    .flatten()
-                    .map(|v| v == "true")
-                    .unwrap_or(true);
-                let stop_on_winner = UIOps::get_ui_setting(&conn, "obs.auto.stop_on_winner")
-                    .ok()
-                    .flatten()
-                    .map(|v| v == "true")
-                    .unwrap_or(true);
-                let stop_delay = UIOps::get_ui_setting(&conn, "obs.auto.stop_delay_seconds")
-                    .ok()
-                    .flatten()
-                    .and_then(|s| s.parse::<u32>().ok())
-                    .unwrap_or(30);
-                let include_rb = UIOps::get_ui_setting(&conn, "obs.auto.include_replay_buffer")
-                    .ok()
-                    .flatten()
-                    .map(|v| v == "true")
-                    .unwrap_or(true);
-                let auto_start_rec =
-                    UIOps::get_ui_setting(&conn, "obs.auto.start_recording_on_match_begin")
-                        .ok()
-                        .flatten()
+            match database_plugin.get_all_ui_settings().await {
+                Ok(settings) => {
+                    let enabled = settings
+                        .get("obs.auto.enabled")
+                        .map(|v| v == "true")
+                        .unwrap_or(false);
+                    let obs_name = settings
+                        .get("obs.auto.connection")
+                        .filter(|s| !s.is_empty())
+                        .cloned()
+                        .unwrap_or_else(|| "OBS_REC".to_string());
+                    let stop_on_end = settings
+                        .get("obs.auto.stop_on_match_end")
                         .map(|v| v == "true")
                         .unwrap_or(true);
-                let auto_start_rb =
-                    UIOps::get_ui_setting(&conn, "obs.auto.start_replay_on_match_begin")
-                        .ok()
-                        .flatten()
+                    let stop_on_winner = settings
+                        .get("obs.auto.stop_on_winner")
                         .map(|v| v == "true")
                         .unwrap_or(true);
-                let cfg = crate::plugins::obs_obws::AutomaticRecordingConfig {
-                    enabled,
-                    obs_connection_name: Some(obs_name),
-                    auto_stop_on_match_end: stop_on_end,
-                    auto_stop_on_winner: stop_on_winner,
-                    stop_delay_seconds: stop_delay,
-                    include_replay_buffer: include_rb,
-                    auto_start_recording_on_match_begin: auto_start_rec,
-                    auto_start_replay_on_match_begin: auto_start_rb,
-                };
-                if let Err(e) = recording_event_handler.update_config(cfg) {
-                    log::warn!("Failed to load automatic recording config into handler: {e}");
-                } else {
-                    log::info!("Automatic recording config loaded into handler");
+                    let stop_delay = settings
+                        .get("obs.auto.stop_delay_seconds")
+                        .and_then(|s| s.parse::<u32>().ok())
+                        .unwrap_or(30);
+                    let include_rb = settings
+                        .get("obs.auto.include_replay_buffer")
+                        .map(|v| v == "true")
+                        .unwrap_or(true);
+                    let auto_start_rec = settings
+                        .get("obs.auto.start_recording_on_match_begin")
+                        .map(|v| v == "true")
+                        .unwrap_or(true);
+                    let auto_start_rb = settings
+                        .get("obs.auto.start_replay_on_match_begin")
+                        .map(|v| v == "true")
+                        .unwrap_or(true);
+                    let cfg = crate::plugins::obs_obws::AutomaticRecordingConfig {
+                        enabled,
+                        obs_connection_name: Some(obs_name),
+                        auto_stop_on_match_end: stop_on_end,
+                        auto_stop_on_winner: stop_on_winner,
+                        stop_delay_seconds: stop_delay,
+                        include_replay_buffer: include_rb,
+                        auto_start_recording_on_match_begin: auto_start_rec,
+                        auto_start_replay_on_match_begin: auto_start_rb,
+                    };
+                    if let Err(e) = recording_event_handler.update_config(cfg) {
+                        log::warn!("Failed to load automatic recording config into handler: {e}");
+                    } else {
+                        log::info!("Automatic recording config loaded into handler");
+                    }
+                }
+                Err(err) => {
+                    log::warn!("Unable to load automatic recording settings from database: {err}");
                 }
             }
         }
@@ -866,22 +861,27 @@ impl App {
             }
             *last = now_ms;
         }
-        // Read IVR settings
-        use crate::database::operations::UiSettingsOperations as UIOps;
-        let conn = self.database_plugin().get_pooled_connection()?;
-        let mpv_path = UIOps::get_ui_setting(&conn, "ivr.replay.mpv_path")
-            .ok()
-            .flatten()
+        // Read IVR settings via SeaORM-backed helpers
+        let settings_map = match self.database_plugin().get_all_ui_settings().await {
+            Ok(map) => map,
+            Err(err) => {
+                log::warn!(
+                    "replay_round_now: falling back to defaults; failed to load UI settings: {err}"
+                );
+                std::collections::HashMap::<String, String>::new()
+            }
+        };
+        let mpv_path = settings_map
+            .get("ivr.replay.mpv_path")
+            .cloned()
             .unwrap_or_else(|| "C:/Program Files/mpv/mpv.exe".to_string());
-        let seconds_from_end: u32 = UIOps::get_ui_setting(&conn, "ivr.replay.seconds_from_end")
-            .ok()
-            .flatten()
+        let seconds_from_end: u32 = settings_map
+            .get("ivr.replay.seconds_from_end")
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(10)
             .min(20);
-        let max_wait_ms: u32 = UIOps::get_ui_setting(&conn, "ivr.replay.max_wait_ms")
-            .ok()
-            .flatten()
+        let max_wait_ms: u32 = settings_map
+            .get("ivr.replay.max_wait_ms")
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(500)
             .clamp(50, 500);
@@ -1228,18 +1228,17 @@ impl App {
         }
 
         // Resolve mpv path
-        let mpv_path: String = {
-            use crate::database::operations::UiSettingsOperations as UIOps;
-            let conn_guard = self
-                .database_plugin()
-                .get_pooled_connection()
-                .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-            let conn_ref = &conn_guard;
-            UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
-                .ok()
-                .flatten()
-                .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| "mpv".to_string())
+        let mpv_path: String = match self
+            .database_plugin()
+            .get_ui_setting("ivr.replay.mpv_path")
+            .await
+        {
+            Ok(Some(value)) if !value.is_empty() => value,
+            Ok(_) => "mpv".to_string(),
+            Err(err) => {
+                log::warn!("open_event_video: using default mpv path due to database error: {err}");
+                "mpv".to_string()
+            }
         };
 
         // Close existing mpv if any
@@ -1303,18 +1302,17 @@ impl App {
     /// Open a video file with mpv at the given positive offset (seconds)
     pub async fn open_video_at(&self, file_path: String, offset_seconds: i64) -> AppResult<()> {
         // Resolve mpv path from settings
-        let mpv_path: String = {
-            use crate::database::operations::UiSettingsOperations as UIOps;
-            let conn_guard = self
-                .database_plugin()
-                .get_pooled_connection()
-                .map_err(|e| crate::types::AppError::ConfigError(e.to_string()))?;
-            let conn_ref = &conn_guard;
-            UIOps::get_ui_setting(conn_ref, "ivr.replay.mpv_path")
-                .ok()
-                .flatten()
-                .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| "mpv".to_string())
+        let mpv_path: String = match self
+            .database_plugin()
+            .get_ui_setting("ivr.replay.mpv_path")
+            .await
+        {
+            Ok(Some(value)) if !value.is_empty() => value,
+            Ok(_) => "mpv".to_string(),
+            Err(err) => {
+                log::warn!("open_video_at: using default mpv path due to database error: {err}");
+                "mpv".to_string()
+            }
         };
 
         // Close any running mpv first
@@ -1456,10 +1454,9 @@ impl App {
                         }
 
                         // Close mpv if match resumes or challenge resolved
-                        match event {
+                        match &event {
                             crate::plugins::plugin_udp::PssEvent::Clock {
-                                action: Some(ref a),
-                                ..
+                                action: Some(a), ..
                             } if a == "start" => {
                                 log::debug!("Closing mpv on clock start (resume)");
                                 if let Err(e) = app.close_mpv_if_running().await {
@@ -1469,7 +1466,7 @@ impl App {
                             crate::plugins::plugin_udp::PssEvent::Challenge {
                                 accepted, ..
                             } => {
-                                if matches!(accepted, Some(true) | Some(false)) {
+                                if matches!(*accepted, Some(true) | Some(false)) {
                                     log::debug!(
                                         "Closing mpv on challenge resolution (accepted/rejected)"
                                     );
@@ -1482,30 +1479,25 @@ impl App {
                         }
 
                         // IVR: Auto round replay on challenge if enabled
-                        if let crate::plugins::plugin_udp::PssEvent::Challenge { .. } = event {
-                            use crate::database::operations::UiSettingsOperations as UIOps;
-                            match app.database_plugin().get_pooled_connection() {
-                                Ok(conn) => {
-                                    let enabled = UIOps::get_ui_setting(
-                                        &conn,
-                                        "ivr.replay.auto_on_challenge",
-                                    )
-                                    .ok()
-                                    .flatten()
-                                    .map(|s| s == "true")
-                                    .unwrap_or(false);
-                                    if enabled {
-                                        if let Err(e) = app.replay_round_now(Some("OBS_REC")).await
-                                        {
-                                            log::warn!("Auto IVR replay failed: {e}");
-                                        } else {
-                                            log::info!(
-                                                "Auto IVR replay triggered by challenge event"
-                                            );
-                                        }
+                        if let crate::plugins::plugin_udp::PssEvent::Challenge { .. } = &event {
+                            match app
+                                .database_plugin()
+                                .get_ui_setting("ivr.replay.auto_on_challenge")
+                                .await
+                            {
+                                Ok(Some(value)) if value == "true" => {
+                                    if let Err(e) = app.replay_round_now(Some("OBS_REC")).await {
+                                        log::warn!("Auto IVR replay failed: {e}");
+                                    } else {
+                                        log::info!("Auto IVR replay triggered by challenge event");
                                     }
                                 }
-                                Err(e) => log::warn!("Failed to read IVR settings: {e}"),
+                                Ok(_) => {}
+                                Err(err) => {
+                                    log::warn!(
+                                        "Failed to read ivr.replay.auto_on_challenge setting: {err}"
+                                    );
+                                }
                             }
                         }
                     }

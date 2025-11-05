@@ -1,7 +1,7 @@
 use crate::config::manager::ConfigManager;
-use crate::database::operations::UiSettingsOperations;
-use crate::types::AppResult;
-use rusqlite::Connection;
+use crate::database::seaorm::SeaOrmConnection;
+use crate::database::seaorm_ops::ui_settings;
+use crate::types::{AppError, AppResult};
 use std::collections::HashMap;
 
 /// Migration strategy for transitioning from JSON to database settings
@@ -18,7 +18,7 @@ impl MigrationStrategy {
     /// Perform complete migration from JSON to database
     pub async fn migrate_json_to_database(
         &self,
-        conn: &mut Connection,
+        conn: &SeaOrmConnection,
     ) -> AppResult<MigrationResult> {
         log::info!("Starting JSON to database migration...");
 
@@ -39,7 +39,11 @@ impl MigrationStrategy {
         );
 
         // Step 2: Initialize database settings table
-        UiSettingsOperations::initialize_ui_settings(conn)?;
+        ui_settings::initialize_ui_settings(conn)
+            .await
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to initialize settings metadata: {e}"))
+            })?;
         log::info!("Database settings table initialized");
 
         // Step 3: Migrate each setting
@@ -149,22 +153,31 @@ impl MigrationStrategy {
     /// Migrate a single setting from JSON to database
     async fn migrate_setting(
         &self,
-        conn: &mut Connection,
+        conn: &SeaOrmConnection,
         key: &str,
         value: &str,
     ) -> AppResult<()> {
         // Check if setting already exists in database
-        let existing = UiSettingsOperations::get_ui_setting(conn, key)?;
+        let existing = ui_settings::get_ui_setting(conn, key).await.map_err(|e| {
+            AppError::ConfigError(format!(
+                "Failed to read setting '{key}' during migration: {e}"
+            ))
+        })?;
 
         if existing.is_none() {
-            // Setting doesn't exist, migrate it
-            UiSettingsOperations::set_ui_setting(
+            ui_settings::set_ui_setting(
                 conn,
                 key,
                 value,
                 "migration",
                 Some("Migrated from JSON configuration"),
-            )?;
+            )
+            .await
+            .map_err(|e| {
+                AppError::ConfigError(format!(
+                    "Failed to persist setting '{key}' during migration: {e}"
+                ))
+            })?;
         } else {
             log::debug!("Setting '{key}' already exists in database, skipping");
         }
@@ -175,13 +188,15 @@ impl MigrationStrategy {
     /// Validate the migration by comparing JSON and database settings
     async fn validate_migration(
         &self,
-        conn: &mut Connection,
+        conn: &SeaOrmConnection,
         _result: &MigrationResult,
     ) -> AppResult<()> {
         log::info!("Validating migration...");
 
         let json_settings = self.load_json_settings().await?;
-        let db_settings_vec = UiSettingsOperations::get_all_ui_settings(conn)?;
+        let db_settings_vec = ui_settings::get_all_ui_settings(conn).await.map_err(|e| {
+            AppError::ConfigError(format!("Failed to enumerate migrated settings: {e}"))
+        })?;
 
         // Convert Vec<(String, String)> to HashMap<String, String>
         let db_settings: HashMap<String, String> = db_settings_vec.into_iter().collect();
@@ -243,13 +258,15 @@ impl MigrationResult {
 /// Settings provider that can fall back to JSON if database is unavailable
 pub struct HybridSettingsProvider {
     migration_strategy: MigrationStrategy,
+    seaorm: SeaOrmConnection,
     use_database: bool,
 }
 
 impl HybridSettingsProvider {
-    pub fn new(config_manager: ConfigManager) -> Self {
+    pub fn new(config_manager: ConfigManager, seaorm: SeaOrmConnection) -> Self {
         Self {
             migration_strategy: MigrationStrategy::new(config_manager),
+            seaorm,
             use_database: true,
         }
     }
@@ -283,10 +300,12 @@ impl HybridSettingsProvider {
     }
 
     /// Get setting from database
-    async fn get_from_database(&self, _key: &str) -> AppResult<Option<String>> {
-        // This would use the database connection
-        // For now, return None to trigger fallback
-        Ok(None)
+    async fn get_from_database(&self, key: &str) -> AppResult<Option<String>> {
+        ui_settings::get_ui_setting(&self.seaorm, key)
+            .await
+            .map_err(|e| {
+                AppError::ConfigError(format!("Failed to read setting '{key}' from database: {e}"))
+            })
     }
 
     /// Get setting from JSON
@@ -296,10 +315,18 @@ impl HybridSettingsProvider {
     }
 
     /// Set setting in database
-    async fn set_in_database(&self, _key: &str, _value: &str) -> AppResult<()> {
-        // This would use the database connection
-        // For now, return success
-        Ok(())
+    async fn set_in_database(&self, key: &str, value: &str) -> AppResult<()> {
+        ui_settings::set_ui_setting(
+            &self.seaorm,
+            key,
+            value,
+            "hybrid_provider",
+            Some("Updated via HybridSettingsProvider"),
+        )
+        .await
+        .map_err(|e| {
+            AppError::ConfigError(format!("Failed to write setting '{key}' to database: {e}"))
+        })
     }
 
     /// Enable/disable database mode

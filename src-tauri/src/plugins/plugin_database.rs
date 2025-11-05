@@ -9,12 +9,14 @@ use crate::database::{
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
-    seaorm_ops::{pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status},
+    seaorm_ops::{
+        pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status,
+        ui_settings as sea_settings,
+    },
     DatabaseError,
     HybridSettingsProvider,
     MigrationResult,
     MigrationStrategy,
-    UiSettingsOperations,
 };
 use crate::entity::{
     athlete, event, event_type, matches, udp_client_connection, udp_server_config,
@@ -57,11 +59,6 @@ impl DatabasePlugin {
         let config_dir = Path::new("config");
         let config_manager = ConfigManager::new(config_dir).await?;
 
-        let migration_strategy = MigrationStrategy::new(config_manager.clone());
-        let hybrid_provider = Arc::new(Mutex::new(HybridSettingsProvider::new(
-            config_manager.clone(),
-        )));
-
         // Create a database connection that uses the pool
         let connection = Arc::new(DatabaseConnection::new_from_pool(connection_pool.clone()));
 
@@ -72,6 +69,12 @@ impl DatabasePlugin {
         let seaorm_connection = seaorm_connect(&db_path).await.map_err(|e| {
             crate::types::AppError::ConfigError(format!("SeaORM connection failed: {e}"))
         })?;
+
+        let migration_strategy = MigrationStrategy::new(config_manager.clone());
+        let hybrid_provider = Arc::new(Mutex::new(HybridSettingsProvider::new(
+            config_manager.clone(),
+            seaorm_connection.clone(),
+        )));
 
         let plugin = Self {
             connection_pool,
@@ -132,22 +135,22 @@ impl DatabasePlugin {
 
     /// Initialize UI settings in database
     pub async fn initialize_ui_settings(&self) -> AppResult<()> {
-        let mut conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        UiSettingsOperations::initialize_ui_settings(&mut conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to initialize UI settings: {e}"))
-        })
+        sea_settings::initialize_ui_settings(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to initialize UI settings: {e}"
+                ))
+            })
     }
 
     /// Get UI setting from database
     pub async fn get_ui_setting(&self, key: &str) -> AppResult<Option<String>> {
-        let conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        UiSettingsOperations::get_ui_setting(&conn, key).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get UI setting: {e}"))
-        })
+        sea_settings::get_ui_setting(&self.seaorm_connection, key)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to get UI setting: {e}"))
+            })
     }
 
     /// Set UI setting in database
@@ -158,25 +161,26 @@ impl DatabasePlugin {
         changed_by: &str,
         change_reason: Option<&str>,
     ) -> AppResult<()> {
-        let mut conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        UiSettingsOperations::set_ui_setting(&mut conn, key, value, changed_by, change_reason)
-            .map_err(|e| {
-                crate::types::AppError::ConfigError(format!("Failed to set UI setting: {e}"))
-            })
+        sea_settings::set_ui_setting(
+            &self.seaorm_connection,
+            key,
+            value,
+            changed_by,
+            change_reason,
+        )
+        .await
+        .map_err(|e| crate::types::AppError::ConfigError(format!("Failed to set UI setting: {e}")))
     }
 
     /// Get all UI settings from database
     pub async fn get_all_ui_settings(
         &self,
     ) -> AppResult<std::collections::HashMap<String, String>> {
-        let conn = self.get_pooled_connection().map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-        let settings_vec = UiSettingsOperations::get_all_ui_settings(&conn).map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get all UI settings: {e}"))
-        })?;
+        let settings_vec = sea_settings::get_all_ui_settings(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to get all UI settings: {e}"))
+            })?;
 
         // Convert Vec<(String, String)> to HashMap<String, String>
         let settings_map: std::collections::HashMap<String, String> =
@@ -218,12 +222,8 @@ impl DatabasePlugin {
 
     /// Migrate JSON settings to database
     pub async fn migrate_json_to_database(&self) -> AppResult<MigrationResult> {
-        let mut conn = self.connection.get_connection().await.map_err(|e| {
-            crate::types::AppError::ConfigError(format!("Failed to get database connection: {e}"))
-        })?;
-
         self.migration_strategy
-            .migrate_json_to_database(&mut conn)
+            .migrate_json_to_database(&self.seaorm_connection)
             .await
     }
 

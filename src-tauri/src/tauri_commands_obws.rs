@@ -33,24 +33,26 @@ pub struct ObsObwsConnectionResponse {
 pub async fn ivr_get_replay_settings(
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let conn = app.database_plugin().get_connection().await?;
-    use crate::database::operations::UiSettingsOperations as UIOps;
-    let mpv_path = UIOps::get_ui_setting(&conn, "ivr.replay.mpv_path")
-        .ok()
-        .flatten();
-    let seconds_from_end = UIOps::get_ui_setting(&conn, "ivr.replay.seconds_from_end")
-        .ok()
-        .flatten()
+    let settings = match app.database_plugin().get_all_ui_settings().await {
+        Ok(map) => map,
+        Err(err) => {
+            log::warn!(
+                "ivr_get_replay_settings: failed to load UI settings; returning defaults: {err}"
+            );
+            std::collections::HashMap::<String, String>::new()
+        }
+    };
+    let mpv_path = settings.get("ivr.replay.mpv_path").cloned();
+    let seconds_from_end = settings
+        .get("ivr.replay.seconds_from_end")
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(10);
-    let max_wait_ms = UIOps::get_ui_setting(&conn, "ivr.replay.max_wait_ms")
-        .ok()
-        .flatten()
+    let max_wait_ms = settings
+        .get("ivr.replay.max_wait_ms")
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(500);
-    let auto_on_challenge = UIOps::get_ui_setting(&conn, "ivr.replay.auto_on_challenge")
-        .ok()
-        .flatten()
+    let auto_on_challenge = settings
+        .get("ivr.replay.auto_on_challenge")
         .map(|s| s == "true")
         .unwrap_or(false);
     Ok(ObsObwsConnectionResponse {
@@ -73,64 +75,94 @@ pub async fn ivr_save_replay_settings(
     auto_on_challenge: bool,
     app: State<'_, Arc<App>>,
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await?;
-    use crate::database::operations::UiSettingsOperations as UIOps;
-    // Ensure keys exist before setting values so updates don't fail silently
-    let _ = UIOps::ensure_key(&conn, "ivr.replay.mpv_path", "MPV Path", "string", None);
-    let _ = UIOps::ensure_key(
-        &conn,
-        "ivr.replay.seconds_from_end",
-        "IVR Seconds From End",
-        "integer",
-        Some("10"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
-        "ivr.replay.max_wait_ms",
-        "IVR Max Wait (ms)",
-        "integer",
-        Some("500"),
-    );
-    let _ = UIOps::ensure_key(
-        &conn,
-        "ivr.replay.auto_on_challenge",
-        "IVR Auto on Challenge",
-        "boolean",
-        Some("false"),
-    );
+    use crate::database::seaorm_ops::ui_settings as sea_ui_settings;
+
+    let sea = app.database_plugin().seaorm();
+    let ensure_specs = [
+        ("ivr.replay.mpv_path", "MPV Path", "string", None),
+        (
+            "ivr.replay.seconds_from_end",
+            "IVR Seconds From End",
+            "integer",
+            Some("10"),
+        ),
+        (
+            "ivr.replay.max_wait_ms",
+            "IVR Max Wait (ms)",
+            "integer",
+            Some("500"),
+        ),
+        (
+            "ivr.replay.auto_on_challenge",
+            "IVR Auto on Challenge",
+            "boolean",
+            Some("false"),
+        ),
+    ];
+
+    for (key, display, data_type, default) in ensure_specs {
+        if let Err(err) = sea_ui_settings::ensure_key(&sea, key, display, data_type, default).await
+        {
+            log::warn!("Failed to ensure UI setting '{key}': {err}");
+        }
+    }
 
     let secs = seconds_from_end.min(20);
     let wait = max_wait_ms.clamp(50, 500);
+
     if let Some(path) = mpv_path {
-        let _ = UIOps::set_ui_setting(
-            &mut conn,
-            "ivr.replay.mpv_path",
-            &path,
-            "user",
-            Some("update mpv path"),
-        );
+        if let Err(err) = app
+            .database_plugin()
+            .set_ui_setting(
+                "ivr.replay.mpv_path",
+                &path,
+                "user",
+                Some("update mpv path"),
+            )
+            .await
+        {
+            log::warn!("Failed to persist ivr.replay.mpv_path: {err}");
+        }
     }
-    let _ = UIOps::set_ui_setting(
-        &mut conn,
-        "ivr.replay.seconds_from_end",
-        &secs.to_string(),
-        "user",
-        Some("update ivr seconds"),
-    );
-    let _ = UIOps::set_ui_setting(
-        &mut conn,
-        "ivr.replay.max_wait_ms",
-        &wait.to_string(),
-        "user",
-        Some("update ivr wait"),
-    );
-    let _ = UIOps::set_ui_setting(
-        &mut conn,
-        "ivr.replay.auto_on_challenge",
-        if auto_on_challenge { "true" } else { "false" },
-        "user",
-        Some("update ivr auto"),
-    );
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "ivr.replay.seconds_from_end",
+            &secs.to_string(),
+            "user",
+            Some("update ivr seconds"),
+        )
+        .await
+    {
+        log::warn!("Failed to persist ivr.replay.seconds_from_end: {err}");
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "ivr.replay.max_wait_ms",
+            &wait.to_string(),
+            "user",
+            Some("update ivr wait"),
+        )
+        .await
+    {
+        log::warn!("Failed to persist ivr.replay.max_wait_ms: {err}");
+    }
+
+    if let Err(err) = app
+        .database_plugin()
+        .set_ui_setting(
+            "ivr.replay.auto_on_challenge",
+            if auto_on_challenge { "true" } else { "false" },
+            "user",
+            Some("update ivr auto"),
+        )
+        .await
+    {
+        log::warn!("Failed to persist ivr.replay.auto_on_challenge: {err}");
+    }
     Ok(ObsObwsConnectionResponse {
         success: true,
         data: Some(serde_json::json!({"message":"IVR replay settings saved"})),
