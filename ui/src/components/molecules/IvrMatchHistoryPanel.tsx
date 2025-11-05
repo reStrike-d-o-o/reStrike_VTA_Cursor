@@ -217,8 +217,10 @@ const MatchCard: React.FC<{ match: IvrMatchCard }> = ({ match }) => {
   );
 };
 
+type HydrationStatus = 'idle' | 'hydrating' | 'hydrated' | 'error';
+
 export const IvrMatchHistoryPanel: React.FC = () => {
-  const hydrationStatusRef = useRef<Map<string, 'hydrating' | 'hydrated'>>(new Map());
+  const hydrationStatusRef = useRef<Map<string, HydrationStatus>>(new Map());
   const inflightDatesRef = useRef<Set<string>>(new Set());
   const [loadingDate, setLoadingDate] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -249,10 +251,13 @@ export const IvrMatchHistoryPanel: React.FC = () => {
   const loadMatchesForDate = useCallback(
     async (date: string, force = false) => {
       if (!canListenTauri()) {
+        hydrationStatusRef.current.set(date, 'error');
+        setLoadError('Snapshot loading is only available in the desktop app.');
         return;
       }
 
-      if (!force && hydrationStatusRef.current.get(date) === 'hydrated') {
+      const status = hydrationStatusRef.current.get(date);
+      if (!force && (status === 'hydrating' || status === 'hydrated')) {
         return;
       }
 
@@ -280,7 +285,7 @@ export const IvrMatchHistoryPanel: React.FC = () => {
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
         setLoadError('Failed to load match history snapshot.');
-        hydrationStatusRef.current.delete(date);
+        hydrationStatusRef.current.set(date, 'error');
       } finally {
         inflightDatesRef.current.delete(date);
         setLoadingDate((current) => (current === date ? null : current));
@@ -290,14 +295,24 @@ export const IvrMatchHistoryPanel: React.FC = () => {
   );
 
   useEffect(() => {
-    if (hydrationStatusRef.current.get(selectedDate) !== 'hydrated') {
+    const status = hydrationStatusRef.current.get(selectedDate);
+    if (status === 'hydrated' || status === 'hydrating' || status === 'error') {
+      return;
+    }
+
+    if (matches.length > 0) {
+      hydrationStatusRef.current.set(selectedDate, 'hydrated');
+      return;
+    }
+
+    if (!status || status === 'idle') {
       void loadMatchesForDate(selectedDate);
     }
-  }, [selectedDate, loadMatchesForDate]);
+  }, [selectedDate, loadMatchesForDate, matches.length]);
 
   const handleDateChange = useCallback(
     (value: string) => {
-      hydrationStatusRef.current.delete(value);
+      hydrationStatusRef.current.set(value, 'idle');
       setSelectedDate(value);
       void loadMatchesForDate(value);
     },
@@ -305,7 +320,7 @@ export const IvrMatchHistoryPanel: React.FC = () => {
   );
 
   const handleManualReload = useCallback(() => {
-    hydrationStatusRef.current.delete(selectedDate);
+    hydrationStatusRef.current.set(selectedDate, 'idle');
     void loadMatchesForDate(selectedDate, true);
   }, [selectedDate, loadMatchesForDate]);
 
