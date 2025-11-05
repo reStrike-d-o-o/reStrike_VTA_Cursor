@@ -885,13 +885,11 @@ impl Migration for Migration3 {
             }
 
             log::info!(
-                "Successfully populated flag_mappings table with {} IOC entries",
-                ioc_flags_count
+                "Successfully populated flag_mappings table with {ioc_flags_count} IOC entries"
             );
         } else {
             log::info!(
-                "flag_mappings table already contains {} entries, skipping population",
-                mapping_count
+                "flag_mappings table already contains {mapping_count} entries, skipping population"
             );
         }
 
@@ -1877,8 +1875,8 @@ impl Migration for Migration7 {
         ];
 
         for index in &indexes {
-            if let Err(e) = conn.execute(&format!("DROP INDEX IF EXISTS {}", index), []) {
-                log::warn!("Failed to drop index {}: {}", index, e);
+            if let Err(e) = conn.execute(&format!("DROP INDEX IF EXISTS {index}"), []) {
+                log::warn!("Failed to drop index {index}: {e}");
             }
         }
 
@@ -3099,7 +3097,6 @@ impl Migration for Migration22 {
         let _ = _conn.execute("DROP TABLE IF EXISTS look_round_configs", []);
         let _ = _conn.execute("DROP TABLE IF EXISTS look_weight_classes", []);
         let _ = _conn.execute("DROP TABLE IF EXISTS look_divisions", []);
-        let _conn = _conn;
         _conn.execute("DROP TABLE IF EXISTS look_age_groups", [])?;
         _conn.execute("DROP TABLE IF EXISTS look_disciplines", [])?;
         _conn.execute("DROP TABLE IF EXISTS look_genders", [])?;
@@ -3230,52 +3227,53 @@ impl Migration for Migration23 {
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {
-        let mut migrations: Vec<Box<dyn Migration>> = Vec::new();
-        migrations.push(Box::new(Migration1));
-        migrations.push(Box::new(Migration2));
-        migrations.push(Box::new(Migration3));
-        migrations.push(Box::new(Migration4));
-        migrations.push(Box::new(Migration5));
-        migrations.push(Box::new(Migration6));
-        migrations.push(Box::new(Migration7));
-        migrations.push(Box::new(Migration8));
-        migrations.push(Box::new(Migration9)); // Trigger system migration
-        migrations.push(Box::new(Migration10)); // Add columns action, target_type, delay_ms
-        migrations.push(Box::new(Migration11)); // Add url column to overlay_templates
-        migrations.push(Box::new(Migration12)); // Add status and error columns to obs_connections
-        migrations.push(Box::new(Migration13)); // Add creation_mode field to pss_matches
-        migrations.push(Box::new(Migration14)); // Change match_number from INTEGER to TEXT
-        migrations.push(Box::new(Migration15)); // Secure configuration storage with SHA256 encryption
-        migrations.push(Box::new(Migration16)); // OBS recording configuration and session management
-        migrations.push(Box::new(Migration17)); // Ensure folder_pattern column exists on obs_recording_config
-        migrations.push(Box::new(Migration18)); // Triggers v2: conditions, action_kind, connection targeting
-        migrations.push(Box::new(Migration19)); // Remove UNIQUE from pss_matches.match_id
-        migrations.push(Box::new(Migration20)); // Recorded videos table for IVR playback
-        migrations.push(Box::new(Migration21)); // recorded_video_events + file metadata
-        migrations.push(Box::new(Migration22)); // Manual match lookups and pss_matches extensions
-        migrations.push(Box::new(Migration23)); // OVR provider/tournament/category
-        migrations.push(Box::new(Migration24)); // Settings tables: created/updated unix ints
-        migrations.push(Box::new(Migration25)); // Rename FKs to table_id convention (settings)
-        migrations.push(Box::new(Migration26)); // Flag mappings: UUID TEXT id + int timestamps
-        migrations.push(Box::new(Migration28)); // Add integer created/updated to many tables
-        migrations.push(Box::new(Migration29)); // DB triggers for created/updated auto-population
-        migrations.push(Box::new(Migration30)); // Add uuid columns to tournaments and tournament_days
-        migrations.push(Box::new(Migration31)); // Add *_uuid FKs for tournament context and backfill
-        migrations.push(Box::new(Migration32)); // Add *_uuid to rounds/scores/warnings/match_athletes/event_details
-        migrations.push(Box::new(Migration33)); // Add uuid to pss_matches and re-backfill match_uuid
-        migrations.push(Box::new(Migration34)); // Rename int FKs to *_int and add TEXT *_id from UUIDs
-        migrations.push(Box::new(Migration35)); // Recreate core tables with TEXT *_id and drop legacy *_uuid/*_int/*_text
-        migrations.push(Box::new(Migration36)); // Add TEXT *_id columns to scores/warnings (staged)
-        migrations.push(Box::new(Migration37)); // Rename pss_events_v2 to pss_events and drop legacy pss_events
-        migrations.push(Box::new(Migration38)); // Drop tournament_days and remove tournament_day_id columns
-        migrations.push(Box::new(Migration39)); // Drop tournament_day_id from event_triggers and obs_recording_sessions
-        migrations.push(Box::new(Migration40)); // Add integer created/updated to obs_recording_sessions and backfill
-        migrations.push(Box::new(Migration41)); // Medal ceremony schema and OVR asset registries
-        migrations.push(Box::new(Migration42)); // Animation library table seeded from flags
-        migrations.push(Box::new(Migration43)); // Seed WT divisions and weight classes
-        migrations.push(Box::new(Migration44)); // Extend round configs with golden and kyeshi durations
-        migrations.push(Box::new(Migration45));
-        migrations.push(Box::new(Migration46)); // Tournament schema expansion (rankings, octagons, athletes)
+        let migrations: Vec<Box<dyn Migration>> = vec![
+            Box::new(Migration1),
+            Box::new(Migration2),
+            Box::new(Migration3),
+            Box::new(Migration4),
+            Box::new(Migration5),
+            Box::new(Migration6),
+            Box::new(Migration7),
+            Box::new(Migration8),
+            Box::new(Migration9),  // Trigger system migration
+            Box::new(Migration10), // Add columns action, target_type, delay_ms
+            Box::new(Migration11), // Add url column to overlay_templates
+            Box::new(Migration12), // Add status and error columns to obs_connections
+            Box::new(Migration13), // Add creation_mode field to pss_matches
+            Box::new(Migration14), // Change match_number from INTEGER to TEXT
+            Box::new(Migration15), // Secure configuration storage with SHA256 encryption
+            Box::new(Migration16), // OBS recording configuration and session management
+            Box::new(Migration17), // Ensure folder_pattern column exists on obs_recording_config
+            Box::new(Migration18), // Triggers v2: conditions, action_kind, connection targeting
+            Box::new(Migration19), // Remove UNIQUE from pss_matches.match_id
+            Box::new(Migration20), // Recorded videos table for IVR playback
+            Box::new(Migration21), // recorded_video_events + file metadata
+            Box::new(Migration22), // Manual match lookups and pss_matches extensions
+            Box::new(Migration23), // OVR provider/tournament/category
+            Box::new(Migration24), // Settings tables: created/updated unix ints
+            Box::new(Migration25), // Rename FKs to table_id convention (settings)
+            Box::new(Migration26), // Flag mappings: UUID TEXT id + int timestamps
+            Box::new(Migration28), // Add integer created/updated to many tables
+            Box::new(Migration29), // DB triggers for created/updated auto-population
+            Box::new(Migration30), // Add uuid columns to tournaments and tournament_days
+            Box::new(Migration31), // Add *_uuid FKs for tournament context and backfill
+            Box::new(Migration32), // Add *_uuid to rounds/scores/warnings/match_athletes/event_details
+            Box::new(Migration33), // Add uuid to pss_matches and re-backfill match_uuid
+            Box::new(Migration34), // Rename int FKs to *_int and add TEXT *_id from UUIDs
+            Box::new(Migration35), // Recreate core tables with TEXT *_id and drop legacy *_uuid/*_int/*_text
+            Box::new(Migration36), // Add TEXT *_id columns to scores/warnings (staged)
+            Box::new(Migration37), // Rename pss_events_v2 to pss_events and drop legacy pss_events
+            Box::new(Migration38), // Drop tournament_days and remove tournament_day_id columns
+            Box::new(Migration39), // Drop tournament_day_id from event_triggers and obs_recording_sessions
+            Box::new(Migration40), // Add integer created/updated to obs_recording_sessions and backfill
+            Box::new(Migration41), // Medal ceremony schema and OVR asset registries
+            Box::new(Migration42), // Animation library table seeded from flags
+            Box::new(Migration43), // Seed WT divisions and weight classes
+            Box::new(Migration44), // Extend round configs with golden and kyeshi durations
+            Box::new(Migration45),
+            Box::new(Migration46), // Tournament schema expansion (rankings, octagons, athletes)
+        ];
 
         Self { migrations }
     }
@@ -3439,6 +3437,12 @@ impl MigrationManager {
         }
 
         Ok(history)
+    }
+}
+
+impl Default for MigrationManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

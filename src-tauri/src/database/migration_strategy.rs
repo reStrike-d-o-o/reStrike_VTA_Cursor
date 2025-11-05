@@ -34,8 +34,8 @@ impl MigrationStrategy {
         result.total_settings = json_settings.len();
 
         log::info!(
-            "Found {} settings in JSON configuration",
-            result.total_settings
+            "Found {total_settings} settings in JSON configuration",
+            total_settings = result.total_settings
         );
 
         // Step 2: Initialize database settings table
@@ -47,14 +47,14 @@ impl MigrationStrategy {
             match self.migrate_setting(conn, &key, &value).await {
                 Ok(_) => {
                     result.migrated_settings += 1;
-                    log::debug!("Migrated setting: {}", key);
+                    log::debug!("Migrated setting: {key}");
                 }
                 Err(e) => {
                     result.failed_settings += 1;
                     result
                         .errors
-                        .push(format!("Failed to migrate '{}': {}", key, e));
-                    log::warn!("Failed to migrate setting '{}': {}", key, e);
+                        .push(format!("Failed to migrate '{key}': {e}"));
+                    log::warn!("Failed to migrate setting '{key}': {e}");
                 }
             }
         }
@@ -63,9 +63,9 @@ impl MigrationStrategy {
         self.validate_migration(conn, &result).await?;
 
         log::info!(
-            " Migration completed: {}/{} settings migrated successfully",
-            result.migrated_settings,
-            result.total_settings
+            " Migration completed: {migrated}/{total} settings migrated successfully",
+            migrated = result.migrated_settings,
+            total = result.total_settings
         );
 
         Ok(result)
@@ -166,7 +166,7 @@ impl MigrationStrategy {
                 Some("Migrated from JSON configuration"),
             )?;
         } else {
-            log::debug!("Setting '{}' already exists in database, skipping", key);
+            log::debug!("Setting '{key}' already exists in database, skipping");
         }
 
         Ok(())
@@ -192,26 +192,23 @@ impl MigrationStrategy {
             if let Some(db_value) = db_settings.get(&key) {
                 if json_value != *db_value {
                     validation_errors.push(format!(
-                        "Value mismatch for '{}': JSON='{}', DB='{}'",
-                        key, json_value, db_value
+                        "Value mismatch for '{key}': JSON='{json_value}', DB='{db_value}'"
                     ));
                 }
             } else {
-                validation_errors.push(format!("Setting '{}' not found in database", key));
+                validation_errors.push(format!("Setting '{key}' not found in database"));
             }
         }
 
         if !validation_errors.is_empty() {
-            log::warn!(
-                "Migration validation found {} issues:",
-                validation_errors.len()
-            );
+            let issue_count = validation_errors.len();
+            log::warn!("Migration validation found {issue_count} issues:");
             for error in &validation_errors {
-                log::warn!(" - {}", error);
+                log::warn!(" - {error}");
             }
+            let error_count = validation_errors.len();
             return Err(crate::types::AppError::ConfigError(format!(
-                "Migration validation failed: {} errors",
-                validation_errors.len()
+                "Migration validation failed: {error_count} errors"
             )));
         }
 
@@ -265,9 +262,7 @@ impl HybridSettingsProvider {
                 Ok(value) => Ok(value),
                 Err(e) => {
                     log::warn!(
-                        "Database lookup failed for '{}', falling back to JSON: {}",
-                        key,
-                        e
+                        "Database lookup failed for '{key}', falling back to JSON: {e}"
                     );
                     self.get_from_json(key).await
                 }
@@ -312,9 +307,7 @@ impl HybridSettingsProvider {
     /// Enable/disable database mode
     pub fn set_database_mode(&mut self, enabled: bool) {
         self.use_database = enabled;
-        log::info!(
-            "Database mode {}",
-            if enabled { "enabled" } else { "disabled" }
-        );
+        let mode = if enabled { "enabled" } else { "disabled" };
+        log::info!("Database mode {mode}");
     }
 }

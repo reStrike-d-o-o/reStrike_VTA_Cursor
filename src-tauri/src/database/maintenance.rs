@@ -80,17 +80,11 @@ impl DatabaseMaintenance {
 
         // Check if VACUUM is needed
         let page_count: i64 = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA page_count", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA page_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let freelist_count: i64 = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA freelist_count", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA freelist_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         if freelist_count == 0 {
@@ -100,18 +94,12 @@ impl DatabaseMaintenance {
 
         let fragmentation_percentage = (freelist_count as f64 / page_count as f64) * 100.0;
         log::info!(
-            "Fragmentation detected: {:.2}% ({} free pages out of {} total)",
-            fragmentation_percentage,
-            freelist_count,
-            page_count
+            "Fragmentation detected: {fragmentation_percentage:.2}% ({freelist_count} free pages out of {page_count} total)"
         );
 
         // Run VACUUM operation
         db_conn
-            .transaction(|tx| {
-                tx.execute("VACUUM", [])
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .transaction(|tx| tx.execute("VACUUM", []).map_err(DatabaseError::Sqlite))
             .await?;
 
         // Update statistics
@@ -122,7 +110,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
 
-        log::info!("Database VACUUM completed successfully in {:.2?}", duration);
+        log::info!("Database VACUUM completed successfully in {duration:.2?}");
         Ok(())
     }
 
@@ -138,7 +126,7 @@ impl DatabaseMaintenance {
         let integrity_ok: String = db_conn
             .read_transaction(|tx| {
                 tx.query_row("PRAGMA integrity_check", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
+                    .map_err(DatabaseError::Sqlite)
             })
             .await?;
 
@@ -153,9 +141,9 @@ impl DatabaseMaintenance {
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
 
         if is_ok {
-            log::info!("Database integrity check passed in {:.2?}", duration);
+            log::info!("Database integrity check passed in {duration:.2?}");
         } else {
-            log::error!("Database integrity check failed: {}", integrity_ok);
+            log::error!("Database integrity check failed: {integrity_ok}");
         }
 
         Ok(is_ok)
@@ -168,10 +156,7 @@ impl DatabaseMaintenance {
         log::info!("Starting database ANALYZE operation...");
 
         db_conn
-            .transaction(|tx| {
-                tx.execute("ANALYZE", [])
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .transaction(|tx| tx.execute("ANALYZE", []).map_err(DatabaseError::Sqlite))
             .await?;
 
         // Update statistics
@@ -182,10 +167,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
 
-        log::info!(
-            "Database ANALYZE completed successfully in {:.2?}",
-            duration
-        );
+        log::info!("Database ANALYZE completed successfully in {duration:.2?}");
         Ok(())
     }
 
@@ -196,10 +178,7 @@ impl DatabaseMaintenance {
         log::info!("Starting database OPTIMIZE operation...");
 
         db_conn
-            .transaction(|tx| {
-                tx.execute("PRAGMA optimize", [])
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .transaction(|tx| tx.execute("PRAGMA optimize", []).map_err(DatabaseError::Sqlite))
             .await?;
 
         // Update statistics
@@ -210,10 +189,7 @@ impl DatabaseMaintenance {
         self.total_maintenance_time += duration;
         self.stats.total_maintenance_time_secs = self.total_maintenance_time.as_secs();
 
-        log::info!(
-            "Database OPTIMIZE completed successfully in {:.2?}",
-            duration
-        );
+        log::info!("Database OPTIMIZE completed successfully in {duration:.2?}");
         Ok(())
     }
 
@@ -251,10 +227,7 @@ impl DatabaseMaintenance {
 
         let total_duration = start_time.elapsed();
 
-        log::info!(
-            "Full database maintenance completed in {:.2?}",
-            total_duration
-        );
+        log::info!("Full database maintenance completed in {total_duration:.2?}");
 
         Ok(MaintenanceResult {
             integrity_check_passed,
@@ -318,45 +291,27 @@ impl DatabaseMaintenance {
         db_conn: &DatabaseConnection,
     ) -> DatabaseResult<DatabaseInfo> {
         let page_count: i64 = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA page_count", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA page_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let page_size: i64 = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA page_size", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA page_size", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let freelist_count: i64 = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA freelist_count", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA freelist_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let cache_size: i64 = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA cache_size", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA cache_size", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let journal_mode: String = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA journal_mode", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA journal_mode", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let synchronous: String = db_conn
-            .read_transaction(|tx| {
-                tx.query_row("PRAGMA synchronous", [], |row| row.get(0))
-                    .map_err(|e| DatabaseError::Sqlite(e))
-            })
+            .read_transaction(|tx| tx.query_row("PRAGMA synchronous", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
             .await?;
 
         let total_size = page_count * page_size;
@@ -429,35 +384,38 @@ pub struct DatabaseInfo {
 
 impl std::fmt::Display for DatabaseInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Database Info:\n")?;
-        write!(
+        writeln!(f, "Database Info:")?;
+        let total_mb = self.total_size as f64 / 1024.0 / 1024.0;
+        let used_mb = self.used_size as f64 / 1024.0 / 1024.0;
+        let free_mb = self.free_size as f64 / 1024.0 / 1024.0;
+        writeln!(
             f,
-            "  Total Size: {} bytes ({:.2} MB)\n",
-            self.total_size,
-            self.total_size as f64 / 1024.0 / 1024.0
+            "  Total Size: {total_bytes} bytes ({total_mb:.2} MB)",
+            total_bytes = self.total_size,
+            total_mb = total_mb
         )?;
-        write!(
+        writeln!(
             f,
-            "  Used Size: {} bytes ({:.2} MB)\n",
-            self.used_size,
-            self.used_size as f64 / 1024.0 / 1024.0
+            "  Used Size: {used_bytes} bytes ({used_mb:.2} MB)",
+            used_bytes = self.used_size,
+            used_mb = used_mb
         )?;
-        write!(
+        writeln!(
             f,
-            "  Free Size: {} bytes ({:.2} MB)\n",
-            self.free_size,
-            self.free_size as f64 / 1024.0 / 1024.0
+            "  Free Size: {free_bytes} bytes ({free_mb:.2} MB)",
+            free_bytes = self.free_size,
+            free_mb = free_mb
         )?;
-        write!(
+        writeln!(
             f,
-            "  Fragmentation: {:.2}%\n",
-            self.fragmentation_percentage
+            "  Fragmentation: {fragmentation:.2}%",
+            fragmentation = self.fragmentation_percentage
         )?;
-        write!(f, "  Page Count: {}\n", self.page_count)?;
-        write!(f, "  Page Size: {} bytes\n", self.page_size)?;
-        write!(f, "  Free List Count: {}\n", self.freelist_count)?;
-        write!(f, "  Cache Size: {} pages\n", self.cache_size)?;
-        write!(f, "  Journal Mode: {}\n", self.journal_mode)?;
+        writeln!(f, "  Page Count: {}", self.page_count)?;
+        writeln!(f, "  Page Size: {} bytes", self.page_size)?;
+        writeln!(f, "  Free List Count: {}", self.freelist_count)?;
+        writeln!(f, "  Cache Size: {} pages", self.cache_size)?;
+        writeln!(f, "  Journal Mode: {}", self.journal_mode)?;
         write!(f, "  Synchronous: {}", self.synchronous)?;
         Ok(())
     }
