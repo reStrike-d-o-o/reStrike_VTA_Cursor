@@ -101,14 +101,14 @@ impl DatabasePlugin {
     async fn run_migrations_with_pool(
         connection_pool: Arc<DatabaseConnectionPool>,
     ) -> AppResult<()> {
-        let mut conn = connection_pool.get_connection().map_err(|e| {
+        let conn = connection_pool.get_connection().map_err(|e| {
             crate::types::AppError::ConfigError(format!(
                 "Failed to get database connection for migrations: {e}"
             ))
         })?;
 
         // Run migrations using the pooled connection
-        Self::run_migrations_internal_with_pooled(&mut conn).await?;
+        Self::run_migrations_internal_with_pooled(&conn).await?;
 
         Ok(())
     }
@@ -1286,12 +1286,12 @@ impl DatabasePlugin {
     }
 
     /// Internal method to run database migrations using a pooled connection
-    async fn run_migrations_internal_with_pooled(conn: &mut PooledConnection) -> AppResult<()> {
+    async fn run_migrations_internal_with_pooled(conn: &PooledConnection) -> AppResult<()> {
         // Import the migration manager
         use crate::database::migrations::MigrationManager;
 
         let migration_manager = MigrationManager::new();
-        migration_manager.migrate(&*conn).map_err(|e| {
+        migration_manager.migrate(conn).map_err(|e| {
             crate::types::AppError::ConfigError(format!("Failed to run database migrations: {e}"))
         })?;
 

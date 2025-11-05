@@ -613,6 +613,7 @@ pub struct SettingsKey {
 
 impl SettingsKey {
     /// Create a new settings key
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         category_id: String,
         key_name: String,
