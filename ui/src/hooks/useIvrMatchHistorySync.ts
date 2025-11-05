@@ -183,30 +183,52 @@ const computeSignature = (matches: IvrMatchCard[]): string =>
     })
     .join('||');
 
+type HydrationEntry =
+  | { status: 'hydrating'; token: symbol }
+  | { status: 'hydrated'; signature: string };
+
 export const useIvrMatchHistorySync = () => {
   const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
-  const hydrationStateRef = useRef<Record<string, { status: 'hydrating' | 'hydrated'; signature?: string }>>({});
+  const matchesForSelected = useIvrMatchHistoryStore((state) => {
+    const normalized = state.selectedDate;
+    return state.matchesByDate[normalized] ?? [];
+  });
+
+  const hydrationStateRef = useRef<Record<string, HydrationEntry>>({});
+
+  useEffect(() => {
+    const entry = hydrationStateRef.current[selectedDate];
+    if (!entry || entry.status !== 'hydrated') {
+      return;
+    }
+    const signature = computeSignature(matchesForSelected);
+    if (entry.signature !== signature) {
+      hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature };
+    }
+  }, [matchesForSelected, selectedDate]);
 
   useEffect(() => {
     if (!canListenTauri()) {
       return;
     }
 
+    const entry = hydrationStateRef.current[selectedDate];
     const storeSnapshot = useIvrMatchHistoryStore.getState();
-    const existingMatches = storeSnapshot.getMatchesForDate(selectedDate);
-    const existingSignature = computeSignature(existingMatches);
+    const currentSignature = computeSignature(storeSnapshot.getMatchesForDate(selectedDate));
 
-    const existingState = hydrationStateRef.current[selectedDate];
-    if (existingState?.status === 'hydrated' && existingState.signature === existingSignature) {
-      return;
+    if (entry) {
+      if (entry.status === 'hydrating') {
+        return;
+      }
+      if (entry.status === 'hydrated' && entry.signature === currentSignature) {
+        return;
+      }
     }
 
-    if (existingState?.status === 'hydrating') {
-      return;
-    }
+    const token = Symbol(`hydrate-${selectedDate}`);
+    hydrationStateRef.current[selectedDate] = { status: 'hydrating', token };
 
     let cancelled = false;
-    hydrationStateRef.current[selectedDate] = { status: 'hydrating' };
 
     const hydrate = async () => {
       try {
@@ -214,10 +236,16 @@ export const useIvrMatchHistorySync = () => {
           'ivr_match_history_snapshot',
           { limit: 80, date: selectedDate },
         );
-        if (cancelled || !result?.success || !result.data?.matches) {
-          if (cancelled) {
-            delete hydrationStateRef.current[selectedDate];
-          }
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result?.success || !result.data?.matches) {
+          hydrationStateRef.current[selectedDate] = {
+            status: 'hydrated',
+            signature: currentSignature,
+          };
           return;
         }
 
@@ -232,7 +260,10 @@ export const useIvrMatchHistorySync = () => {
         hydrationStateRef.current[selectedDate] = { status: 'hydrated', signature };
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
-        delete hydrationStateRef.current[selectedDate];
+        hydrationStateRef.current[selectedDate] = {
+          status: 'hydrated',
+          signature: currentSignature,
+        };
       }
     };
 
@@ -240,8 +271,8 @@ export const useIvrMatchHistorySync = () => {
 
     return () => {
       cancelled = true;
-      const state = hydrationStateRef.current[selectedDate];
-      if (state?.status === 'hydrating') {
+      const current = hydrationStateRef.current[selectedDate];
+      if (current && current.status === 'hydrating' && current.token === token) {
         delete hydrationStateRef.current[selectedDate];
       }
     };
