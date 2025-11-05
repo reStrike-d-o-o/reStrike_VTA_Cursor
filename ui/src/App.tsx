@@ -7,6 +7,8 @@ import { usePssEvents } from './hooks/usePssEvents';
 import { useLiveDataEvents } from './hooks/useLiveDataEvents';
 import { useEnvironmentObs } from './hooks/useEnvironmentObs';
 import { invoke } from '@tauri-apps/api/core';
+import { listenTauri, canListenTauri } from './utils/tauriBridge';
+import { ObsHealthSnapshot, PssStatsSnapshot } from './types';
 
 import { useTriggersStore } from './stores/triggersStore';
 import PausedOverlay from './components/molecules/PausedOverlay';
@@ -18,6 +20,8 @@ const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
   const windowSettings = useAppStore((state) => state.windowSettings);
   const loadWindowSettings = useAppStore((state) => state.loadWindowSettings);
+  const updateObsHealth = useAppStore((state) => state.updateObsHealth);
+  const updatePssStats = useAppStore((state) => state.updatePssStats);
   const { tauriAvailable, environment, isLoading } = useEnvironment();
   
   const paused = useTriggersStore((s) => s.paused);
@@ -51,6 +55,59 @@ const App: React.FC = () => {
     // console.log('  - Window Tauri:', typeof window !== 'undefined' ? window.__TAURI__ : 'N/A');
   }, [tauriAvailable, environment, isLoading]);
 
+  React.useEffect(() => {
+    if (!tauriAvailable || !canListenTauri()) {
+      return;
+    }
+
+    let unlistenHealth: (() => void) | undefined;
+    let unlistenPss: (() => void) | undefined;
+
+    const setup = async () => {
+      try {
+        unlistenHealth = await listenTauri('obs_health', (event: any) => {
+          const connections: unknown = event?.payload?.connections;
+          if (Array.isArray(connections)) {
+            updateObsHealth(connections as ObsHealthSnapshot[]);
+          } else {
+            updateObsHealth([]);
+          }
+        });
+      } catch (error) {
+        console.error('Failed to listen for obs_health events:', error);
+      }
+
+      try {
+        unlistenPss = await listenTauri('pss_stats', (event: any) => {
+          const snapshot: unknown = event?.payload?.stats;
+          if (snapshot) {
+            updatePssStats(snapshot as PssStatsSnapshot);
+          }
+        });
+      } catch (error) {
+        console.error('Failed to listen for pss_stats events:', error);
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (unlistenHealth) {
+        try {
+          unlistenHealth();
+        } catch (error) {
+          console.warn('Failed to unlisten obs_health:', error);
+        }
+      }
+      if (unlistenPss) {
+        try {
+          unlistenPss();
+        } catch (error) {
+          console.warn('Failed to unlisten pss_stats:', error);
+        }
+      }
+    };
+  }, [tauriAvailable, updateObsHealth, updatePssStats]);
   // Debug live data connection
   React.useEffect(() => {
     console.log('📡 Live Data Events Status:', { 

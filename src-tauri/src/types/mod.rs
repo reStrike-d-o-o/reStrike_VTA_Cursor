@@ -153,6 +153,15 @@ pub enum AppView {
     ObsManager,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PssStatsSnapshot {
+    pub total_bytes_received: u64,
+    pub packets_received: u64,
+    pub packets_parsed: u64,
+    pub parse_errors: u64,
+    pub timestamp: String,
+}
+
 // ============================================================================
 // Error Types
 // ============================================================================

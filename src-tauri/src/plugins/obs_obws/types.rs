@@ -197,6 +197,30 @@ pub struct ObsStatus {
     pub stats: Option<ObsStats>,
 }
 
+/// Snapshot of connection health metrics emitted to the frontend.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsConnectionHealth {
+    pub connection: String,
+    pub role: ObsConnectionRole,
+    pub cpu_usage: f64,
+    pub active_fps: f64,
+    pub skipped_frames: u32,
+    pub total_frames: u32,
+    pub congestion: f32,
+    pub bytes: u64,
+    pub duration_ms: u64,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObsStreamOutputStats {
+    pub congestion: f32,
+    pub bytes: u64,
+    pub duration: u64,
+    pub skipped_frames: u32,
+    pub total_frames: u32,
+}
+
 /// OBS event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ObsEvent {

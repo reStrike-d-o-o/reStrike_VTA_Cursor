@@ -528,7 +528,6 @@ async fn main() -> AppResult<()> {
             tauri_commands::obs_get_connections,
             tauri_commands::obs_emit_event,
             tauri_commands::obs_setup_status_listener,
-            tauri_commands::cpu_setup_stats_listener,
             // Recording Path and Filename Commands (obws-backed where applicable)
             tauri_commands::obs_get_recording_path_settings,
             tauri_commands::obs_set_recording_path,
@@ -832,3 +831,4 @@ async fn main() -> AppResult<()> {
 
     Ok(())
 }
+

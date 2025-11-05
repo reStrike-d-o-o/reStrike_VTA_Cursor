@@ -961,6 +961,16 @@ pub async fn obs_obws_setup_status_listener(
 ) -> Result<ObsObwsConnectionResponse, TauriError> {
     log::info!("OBS obws setup status listener called");
 
+    let app_arc = app.inner().clone();
+    app_arc
+        .ensure_obs_health_task()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    app_arc
+        .ensure_pss_stats_task()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+
     match app.obs_obws_plugin().setup_status_listener().await {
         Ok(_) => Ok(ObsObwsConnectionResponse {
             success: true,

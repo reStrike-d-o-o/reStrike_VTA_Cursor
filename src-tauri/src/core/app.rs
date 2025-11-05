@@ -10,7 +10,7 @@ use crate::plugins::{
     EventStreamProcessor, LicensePlugin, PlaybackPlugin, ProtocolManager, StorePlugin,
     TournamentPlugin, UdpPlugin, WebSocketPlugin,
 };
-use crate::types::{AppResult, AppState, AppView};
+use crate::types::{AppResult, AppState, AppView, PssStatsSnapshot};
 // Legacy ObsPluginManager removed
 use crate::config::ConfigManager;
 use crate::logging::LogManager;
@@ -18,7 +18,11 @@ use crate::logging::LogManager;
 use crate::plugins::obs_obws::manager::ObsManager as ObsObwsManager; // Use new obws-based OBS manager
 #[cfg(feature = "obs-obws")]
 use crate::plugins::obs_obws::ObsRecordingEventHandler; // Use new recording event handler
+#[cfg(feature = "obs-obws")]
+use crate::plugins::obs_obws::types::ObsConnectionHealth;
+use chrono::Utc;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::Child;
@@ -95,6 +99,8 @@ pub struct App {
     shutdown_prompted: Arc<AtomicBool>,
     pss_websocket_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
     udp_event_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    obs_health_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    pss_stats_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl App {
@@ -367,6 +373,8 @@ impl App {
             shutdown_prompted: Arc::new(AtomicBool::new(false)),
             pss_websocket_task: Arc::new(tokio::sync::Mutex::new(None)),
             udp_event_task: Arc::new(tokio::sync::Mutex::new(None)),
+            obs_health_task: Arc::new(tokio::sync::Mutex::new(None)),
+            pss_stats_task: Arc::new(tokio::sync::Mutex::new(None)),
         })
     }
 
@@ -435,6 +443,132 @@ impl App {
         Ok(())
     }
 
+    pub async fn ensure_obs_health_task(self: &Arc<Self>) -> AppResult<()> {
+        #[cfg(feature = "obs-obws")]
+        {
+            let mut guard = self.obs_health_task.lock().await;
+            if guard.is_some() {
+                return Ok(());
+            }
+            let app = Arc::clone(self);
+            *guard = Some(tokio::spawn(async move {
+                if let Err(err) = app.run_obs_health_dispatcher().await {
+                    log::warn!("OBS health dispatcher terminated: {}", err);
+                }
+            }));
+        }
+
+        Ok(())
+    }
+
+    pub async fn ensure_pss_stats_task(self: &Arc<Self>) -> AppResult<()> {
+        let mut guard = self.pss_stats_task.lock().await;
+        if guard.is_some() {
+            return Ok(());
+        }
+        let app = Arc::clone(self);
+        *guard = Some(tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(std::time::Duration::from_secs(1));
+            loop {
+                ticker.tick().await;
+                if let Err(err) = app.emit_pss_stats_snapshot().await {
+                    log::warn!("Failed to emit PSS stats snapshot: {}", err);
+                }
+            }
+        }));
+
+        Ok(())
+    }
+
+    #[cfg(feature = "obs-obws")]
+    async fn run_obs_health_dispatcher(self: Arc<Self>) -> AppResult<()> {
+        let manager = self.obs_obws_manager.clone();
+        if let Err(err) = manager.ensure_health_watchers().await {
+            log::debug!("Failed to ensure OBS health watchers: {}", err);
+        }
+
+        let mut receiver = manager.subscribe_health();
+        let mut snapshots: HashMap<String, ObsConnectionHealth> = HashMap::new();
+        let mut ticker = tokio::time::interval(std::time::Duration::from_millis(1000));
+
+        loop {
+            tokio::select! {
+                event = receiver.recv() => {
+                    match event {
+                        Ok(snapshot) => {
+                            snapshots.insert(snapshot.connection.clone(), snapshot);
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                            log::warn!("OBS health channel lagged; skipped {} updates", skipped);
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                            log::info!("OBS health channel closed; stopping dispatcher");
+                            break;
+                        }
+                    }
+                }
+                _ = ticker.tick() => {
+                    if let Some(app_handle) = TAURI_APP_HANDLE.get() {
+                        let connections: Vec<ObsConnectionHealth> =
+                            snapshots.values().cloned().collect();
+                        if let Err(err) = app_handle.emit(
+                            "obs_health",
+                            serde_json::json!({ "connections": connections }),
+                        ) {
+                            log::error!("Failed to emit obs_health event: {}", err);
+                        }
+
+                        match manager.get_status(None).await {
+                            Ok(status) => {
+                                let status_payload = serde_json::json!({
+                                    "recording_status": format!("{:?}", status.recording_status),
+                                    "streaming_status": format!("{:?}", status.streaming_status),
+                                    "replay_buffer_status": format!("{:?}", status.replay_buffer_status),
+                                    "virtual_camera_status": format!("{:?}", status.virtual_camera_status),
+                                    "current_scene": status.current_scene,
+                                    "scenes": status.scenes,
+                                    "stats": status.stats,
+                                });
+                                if let Err(err) = app_handle.emit("obs_status", status_payload) {
+                                    log::error!("Failed to emit obs_status event: {}", err);
+                                }
+                            }
+                            Err(err) => {
+                                log::trace!("Unable to fetch OBS status: {}", err);
+                            }
+                        }
+                    }
+
+                    // Ensure newly-added connections also have watchers
+                    if let Err(err) = manager.ensure_health_watchers().await {
+                        log::trace!("Failed to refresh OBS health watchers: {}", err);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn emit_pss_stats_snapshot(&self) -> AppResult<()> {
+        let stats = self.udp_plugin().get_stats();
+        let snapshot = PssStatsSnapshot {
+            total_bytes_received: stats.total_bytes_received,
+            packets_received: stats.packets_received,
+            packets_parsed: stats.packets_parsed,
+            parse_errors: stats.parse_errors,
+            timestamp: Utc::now().to_rfc3339(),
+        };
+
+        if let Some(app_handle) = TAURI_APP_HANDLE.get() {
+            if let Err(err) = app_handle.emit("pss_stats", serde_json::json!({ "stats": snapshot })) {
+                log::error!("Failed to emit pss_stats event: {}", err);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Stop the application
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping application...");
@@ -448,6 +582,20 @@ impl App {
 
         {
             let mut task_guard = self.udp_event_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
+        }
+
+        {
+            let mut task_guard = self.obs_health_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
+        }
+
+        {
+            let mut task_guard = self.pss_stats_task.lock().await;
             if let Some(task) = task_guard.take() {
                 task.abort();
             }

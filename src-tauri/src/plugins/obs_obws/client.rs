@@ -2,8 +2,8 @@
 
 use super::types::{
     ObsConnectionConfig, ObsConnectionStatus, ObsEvent, ObsRecordingStatus, ObsReplayBufferStatus,
-    ObsScene, ObsSource, ObsStats, ObsStatus, ObsStreamingStatus, ObsStudioModeStatus, ObsVersion,
-    ObsVirtualCameraStatus,
+    ObsScene, ObsSource, ObsStats, ObsStatus, ObsStreamOutputStats, ObsStreamingStatus,
+    ObsStudioModeStatus, ObsVersion, ObsVirtualCameraStatus,
 };
 use crate::types::{AppError, AppResult};
 use futures_util::StreamExt;
@@ -223,6 +223,26 @@ impl ObsClient {
             true => Ok(ObsStreamingStatus::Streaming),
             false => Ok(ObsStreamingStatus::Stopped),
         }
+    }
+
+    /// Get raw stream output statistics (includes frames/bytes information)
+    pub async fn get_stream_output_stats(&self) -> AppResult<ObsStreamOutputStats> {
+        let client = self.get_client()?;
+        let status = client
+            .streaming()
+            .status()
+            .await
+            .map_err(|e| AppError::ConfigError(format!("Failed to get stream stats: {}", e)))?;
+
+        let duration_ms = status.duration.whole_milliseconds();
+
+        Ok(ObsStreamOutputStats {
+            congestion: status.congestion,
+            bytes: status.bytes,
+            duration: if duration_ms.is_negative() { 0 } else { duration_ms as u64 },
+            skipped_frames: status.skipped_frames,
+            total_frames: status.total_frames,
+        })
     }
 
     /// Start replay buffer
@@ -802,21 +822,12 @@ impl ObsClient {
 
     /// Get studio mode status
     pub async fn get_studio_mode_status(&self) -> AppResult<ObsStudioModeStatus> {
-        let client = self.get_client()?;
+        static LOG_ONCE: std::sync::Once = std::sync::Once::new();
+        LOG_ONCE.call_once(|| {
+            log::debug!("Studio mode status requested - obws crate does not expose studio mode information; defaulting to Disabled");
+        });
 
-        // Check if studio mode is enabled using the general API
-        // Note: obws may not directly support studio mode, so we'll check the general status
-        match client.general().stats().await {
-            Ok(_stats) => {
-                // For now, we'll assume studio mode is disabled since obws doesn't expose it directly
-                log::debug!("Studio mode status requested - obws doesn't expose studio mode status directly");
-                Ok(ObsStudioModeStatus::Disabled)
-            }
-            Err(e) => {
-                log::warn!("Failed to get studio mode status: {}", e);
-                Ok(ObsStudioModeStatus::Disabled) // Default to disabled on error
-            }
-        }
+        Ok(ObsStudioModeStatus::Disabled)
     }
 
     /// Get OBS version information

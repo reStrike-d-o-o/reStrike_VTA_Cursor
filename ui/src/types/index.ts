@@ -14,12 +14,35 @@ export interface ObsConnection {
   error?: string;
 }
 
+export type ObsConnectionRole = 'Recording' | 'Streaming' | 'None';
+
+export interface ObsHealthSnapshot {
+  connection: string;
+  role: ObsConnectionRole;
+  cpu_usage: number;
+  active_fps: number;
+  skipped_frames: number;
+  total_frames: number;
+  congestion: number;
+  bytes: number;
+  duration_ms: number;
+  timestamp: string;
+}
+
 export interface ObsStatusInfo {
   is_recording: boolean;
   is_streaming: boolean;
   cpu_usage: number;
   recording_connection?: string;
   streaming_connection?: string;
+}
+
+export interface PssStatsSnapshot {
+  total_bytes_received: number;
+  packets_received: number;
+  packets_parsed: number;
+  parse_errors: number;
+  timestamp: string;
 }
 
 // ============================================================================

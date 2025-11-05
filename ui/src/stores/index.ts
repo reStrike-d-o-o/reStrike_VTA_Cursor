@@ -20,6 +20,29 @@ export interface ObsStatusInfo {
   streaming_connection?: string;
 }
 
+export type ObsConnectionRole = 'Recording' | 'Streaming' | 'None';
+
+export interface ObsHealthSnapshot {
+  connection: string;
+  role: ObsConnectionRole;
+  cpu_usage: number;
+  active_fps: number;
+  skipped_frames: number;
+  total_frames: number;
+  congestion: number;
+  bytes: number;
+  duration_ms: number;
+  timestamp: string;
+}
+
+export interface PssStatsSnapshot {
+  total_bytes_received: number;
+  packets_received: number;
+  packets_parsed: number;
+  parse_errors: number;
+  timestamp: string;
+}
+
 export interface OverlaySettings {
   opacity: number;
   position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
@@ -36,12 +59,13 @@ export interface VideoClip {
   timestamp: Date;
   tags: string[];
 }
-
 export interface AppState {
   // OBS Connections
   obsConnections: ObsConnection[];
   activeObsConnection: string | null;
   obsStatus: ObsStatusInfo | null;
+  obsHealth: Record<string, ObsHealthSnapshot>;
+  pssStats: PssStatsSnapshot | null;
   
   // Overlay Settings
   overlaySettings: OverlaySettings;
@@ -79,6 +103,8 @@ export interface AppActions {
   updateObsConnectionStatus: (name: string, status: ObsConnection['status'], error?: string) => void;
   setActiveObsConnection: (name: string | null) => void;
   updateObsStatus: (status: ObsStatusInfo) => void;
+  updateObsHealth: (snapshots: ObsHealthSnapshot[]) => void;
+  updatePssStats: (snapshot: PssStatsSnapshot) => void;
   
   // Overlay Actions
   updateOverlaySettings: (settings: Partial<OverlaySettings>) => void;
@@ -137,6 +163,8 @@ const initialState: AppState = {
   ],
   activeObsConnection: null,
   obsStatus: null,
+  obsHealth: {},
+  pssStats: null,
   overlaySettings: {
     opacity: 0.9,
     position: 'bottom-right',
@@ -200,6 +228,20 @@ export const useAppStore = create<AppStore>()(
 
       updateObsStatus: (status) => {
         set({ obsStatus: status });
+      },
+
+      updateObsHealth: (snapshots) => {
+        set(() => {
+          const next: Record<string, ObsHealthSnapshot> = {};
+          snapshots.forEach((snapshot) => {
+            next[snapshot.connection] = snapshot;
+          });
+          return { obsHealth: next };
+        });
+      },
+
+      updatePssStats: (snapshot) => {
+        set({ pssStats: snapshot });
       },
 
       // Overlay Actions

@@ -1,6 +1,6 @@
 // Tauri command utilities for reStrike VTA
 
-import { TauriCommandResponse, ObsConnection, VideoClip, PssEvent, OpenApiStateResponse, OpenApiSaveResponse, OpenApiUploadResponse, OpenApiValidateResponse, SchemaFormat, MedalCeremonySummary, MedalCeremonyDetail, FlagAnimationAsset, AnthemAsset, MedalCeremonyDivision, MedalCeremonyDivisionOption, MedalCeremonyAthleteOption } from '../types';
+import { TauriCommandResponse, PssEvent, OpenApiStateResponse, OpenApiSaveResponse, OpenApiUploadResponse, OpenApiValidateResponse, SchemaFormat, MedalCeremonySummary, MedalCeremonyDetail, FlagAnimationAsset, AnthemAsset, MedalCeremonyDivision, MedalCeremonyDivisionOption, MedalCeremonyAthleteOption } from '../types';
 
 // Tauri v2 invoke function that uses the core module
 const safeInvoke = async (command: string, args?: any) => {
@@ -227,6 +227,7 @@ export const medalCeremonyCommands = {
   },
 };
 
+
 // ============================================================================
 // PSS Protocol Commands
 // ============================================================================
@@ -267,21 +268,19 @@ export const pssCommands = {
     try {
       if (isTauriAvailable()) {
         const result = await safeInvoke('pss_get_events');
-        
-        // The backend returns either Vec<serde_json::Value> or String (error)
+
         if (Array.isArray(result)) {
           return {
             success: true,
             data: result || [],
           };
-        } else {
-          // If result is a string, it's an error message
-          return { 
-            success: false, 
-            error: typeof result === 'string' ? result : 'Unknown error', 
-            data: [] 
-          };
         }
+
+        return {
+          success: false,
+          error: typeof result === 'string' ? result : 'Unknown error',
+          data: [],
+        };
       }
       return { success: false, error: 'Tauri not available', data: [] };
     } catch (error) {
@@ -332,9 +331,9 @@ export const pssCommands = {
   },
 };
 
+
 // ============================================================================
-// CPU Monitor Commands
-// ============================================================================
+
 
 export const cpuCommands = {
   async setupStatsListener(): Promise<TauriCommandResponse> {
@@ -743,3 +742,10 @@ export const executeTauriCommand = async <T = any>(
     return { success: false, error: `Command failed: ${errorMessage}` };
   }
 }; 
+
+
+
+
+
+
+

@@ -2811,78 +2811,34 @@ pub async fn obs_setup_status_listener(
     window: tauri::Window,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    log::info!("Setting up OBS status listener for frontend - COMMAND CALLED");
-
-    let window_clone = window.clone();
+    log::info!("Ensuring OBS health monitoring tasks are running");
     let app_arc = app.inner().clone();
-    // Spawn background task (using cloned Arc<App>)
-    tokio::spawn(async move {
-        log::info!("OBS status listener background task started");
-        let mut last_payload = serde_json::Value::Null;
-        loop {
-            // Fetch current status
-            log::debug!("Fetching OBS status...");
-            let status_result = app_arc.obs_obws_plugin().get_status(None).await;
-            if let Ok(status) = status_result {
-                let payload = serde_json::json!({
-                    "recording_status": format!("{:?}", status.recording_status),
-                    "streaming_status": format!("{:?}", status.streaming_status),
-                    "replay_buffer_status": format!("{:?}", status.replay_buffer_status),
-                    "virtual_camera_status": format!("{:?}", status.virtual_camera_status),
-                    "current_scene": status.current_scene,
-                    "scenes": status.scenes,
-                    "stats": status.stats,
-                });
-                // Emit only if changed
-                if payload != last_payload {
-                    log::info!("Emitting OBS status update: {:?}", payload);
-                    if let Err(e) = window_clone.emit("obs_status", payload.clone()) {
-                        log::error!("Failed to emit obs_status: {}", e);
-                    }
-                    last_payload = payload;
-                }
-            } else if let Err(e) = status_result {
-                log::error!("OBS status fetch error: {}", e);
-            }
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
-    });
+    app_arc
+        .ensure_obs_health_task()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
+    app_arc
+        .ensure_pss_stats_task()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("{}", e)))?;
 
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn cpu_setup_stats_listener(
-    window: tauri::Window,
-    app: State<'_, Arc<App>>,
-) -> Result<(), TauriError> {
-    log::info!("Setting up CPU stats listener for frontend");
-
-    let window_clone = window.clone();
-    let cpu_plugin = app.inner().cpu_monitor_plugin().clone();
-
-    tokio::spawn(async move {
-        let mut last_payload = serde_json::Value::Null;
-        loop {
-            let processes = cpu_plugin.get_process_cpu_data().await;
-            let system = cpu_plugin.get_system_cpu_data().await;
-
-            // Build JSON payload
+    #[cfg(feature = "obs-obws")]
+    {
+        if let Ok(status) = app_arc.obs_obws_plugin().get_status(None).await {
             let payload = serde_json::json!({
-                "processes": processes,
-                "system": system,
+                "recording_status": format!("{:?}", status.recording_status),
+                "streaming_status": format!("{:?}", status.streaming_status),
+                "replay_buffer_status": format!("{:?}", status.replay_buffer_status),
+                "virtual_camera_status": format!("{:?}", status.virtual_camera_status),
+                "current_scene": status.current_scene,
+                "scenes": status.scenes,
+                "stats": status.stats,
             });
-
-            if payload != last_payload {
-                if let Err(e) = window_clone.emit("cpu_stats", payload.clone()) {
-                    log::error!("Failed to emit cpu_stats: {}", e);
-                }
-                last_payload = payload;
+            if let Err(e) = window.emit("obs_status", payload) {
+                log::error!("Failed to emit initial obs_status payload: {}", e);
             }
-
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
-    });
+    }
 
     Ok(())
 }
@@ -8470,3 +8426,5 @@ pub async fn ovr_promote_tournament(
         Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
+
+

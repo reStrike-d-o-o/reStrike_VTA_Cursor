@@ -2,47 +2,183 @@
 
 use super::client::ObsClient;
 use super::types::{
-    ObsConnectionConfig, ObsConnectionInfo, ObsConnectionStatus, ObsEvent, ObsStatus,
+    ObsConnectionConfig, ObsConnectionHealth, ObsConnectionInfo, ObsConnectionStatus, ObsEvent,
+    ObsStatus,
 };
 use crate::types::{AppError, AppResult};
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{broadcast, Mutex};
+use tokio::task::JoinHandle;
+use tokio::time::{sleep, Duration};
 
 /// OBS Manager for handling multiple OBS connections
 pub struct ObsManager {
     clients: Arc<Mutex<HashMap<String, Arc<Mutex<ObsClient>>>>>,
     default_connection: Arc<Mutex<Option<String>>>,
+    health_tx: broadcast::Sender<ObsConnectionHealth>,
+    health_tasks: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
 }
 
 impl ObsManager {
     /// Create a new OBS manager
     pub fn new() -> Self {
+        let (health_tx, _) = broadcast::channel(64);
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
             default_connection: Arc::new(Mutex::new(None)),
+            health_tx,
+            health_tasks: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Subscribe to connection health snapshots.
+    pub fn subscribe_health(&self) -> broadcast::Receiver<ObsConnectionHealth> {
+        self.health_tx.subscribe()
+    }
+
+    /// Ensure health monitors are running for all known connections.
+    pub async fn ensure_health_watchers(&self) -> AppResult<()> {
+        let names = {
+            let clients = self.clients.lock().await;
+            clients.keys().cloned().collect::<Vec<_>>()
+        };
+
+        for name in names {
+            self.ensure_health_watcher(&name).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn ensure_health_watcher(&self, name: &str) -> AppResult<()> {
+        {
+            let tasks = self.health_tasks.lock().await;
+            if tasks.contains_key(name) {
+                return Ok(());
+            }
+        }
+
+        let client_arc = {
+            let clients = self.clients.lock().await;
+            clients.get(name).cloned().ok_or_else(|| {
+                AppError::ConfigError(format!("Connection '{}' not found", name))
+            })?
+        };
+
+        let mut tasks = self.health_tasks.lock().await;
+        if tasks.contains_key(name) {
+            return Ok(());
+        }
+
+        let tx = self.health_tx.clone();
+        let connection_name = name.to_string();
+        let task_name = connection_name.clone();
+        let handle = tokio::spawn(async move {
+            loop {
+                let snapshot_opt = {
+                    let client_guard = client_arc.lock().await;
+                    if !client_guard.is_connected() {
+                        None
+                    } else {
+                        let role = client_guard.get_config().role.clone();
+
+                        match client_guard.get_stats().await {
+                            Ok(stats) => {
+                                let mut snapshot = ObsConnectionHealth {
+                                    connection: task_name.clone(),
+                                    role,
+                                    cpu_usage: stats.cpu_usage,
+                                    active_fps: stats.active_fps,
+                                    skipped_frames: stats.output_skipped_frames.max(0) as u32,
+                                    total_frames: stats.output_total_frames.max(0) as u32,
+                                    congestion: 0.0,
+                                    bytes: 0,
+                                    duration_ms: 0,
+                                    timestamp: Utc::now().to_rfc3339(),
+                                };
+
+                                match client_guard.get_stream_output_stats().await {
+                                    Ok(stream_stats) => {
+                                        snapshot.congestion = stream_stats.congestion;
+                                        snapshot.bytes = stream_stats.bytes;
+                                        snapshot.duration_ms = stream_stats.duration;
+                                        snapshot.skipped_frames = stream_stats.skipped_frames;
+                                        snapshot.total_frames = stream_stats.total_frames;
+                                    }
+                                    Err(err) => {
+                                        log::trace!(
+                                            "Stream stats unavailable for {}: {}",
+                                            task_name,
+                                            err
+                                        );
+                                    }
+                                }
+
+                                Some(snapshot)
+                            }
+                            Err(err) => {
+                                log::trace!(
+                                    "OBS stats unavailable for {}: {}",
+                                    task_name,
+                                    err
+                                );
+                                None
+                            }
+                        }
+                    }
+                };
+
+                if let Some(snapshot) = snapshot_opt {
+                    let _ = tx.send(snapshot);
+                }
+
+                sleep(Duration::from_millis(1000)).await;
+            }
+        });
+
+        tasks.insert(connection_name, handle);
+        Ok(())
+    }
+
+    async fn stop_health_watcher(&self, name: &str) {
+        let mut tasks = self.health_tasks.lock().await;
+        if let Some(handle) = tasks.remove(name) {
+            handle.abort();
+        }
+    }
+
+    async fn stop_all_health_tasks(&self) {
+        let mut tasks = self.health_tasks.lock().await;
+        for (_, handle) in tasks.drain() {
+            handle.abort();
         }
     }
 
     /// Add a new OBS connection
     pub async fn add_connection(&self, config: ObsConnectionConfig) -> AppResult<()> {
-        let mut clients = self.clients.lock().await;
-        if clients.contains_key(&config.name) {
-            return Err(AppError::ConfigError(format!(
-                "Connection '{}' already exists",
-                config.name
-            )));
+        {
+            let mut clients = self.clients.lock().await;
+            if clients.contains_key(&config.name) {
+                return Err(AppError::ConfigError(format!(
+                    "Connection '{}' already exists",
+                    config.name
+                )));
+            }
+
+            let client = ObsClient::new(config.clone());
+            clients.insert(config.name.clone(), Arc::new(Mutex::new(client)));
+
+            // Set as default if it's the first connection
+            if clients.len() == 1 {
+                let mut default = self.default_connection.lock().await;
+                *default = Some(config.name.clone());
+            }
         }
 
-        let client = ObsClient::new(config.clone());
-        clients.insert(config.name.clone(), Arc::new(Mutex::new(client)));
-
-        // Set as default if it's the first connection
-        if clients.len() == 1 {
-            let mut default = self.default_connection.lock().await;
-            *default = Some(config.name.clone());
-        }
-
+        // Spawn health watcher (no-op if already running)
+        self.ensure_health_watcher(&config.name).await?;
         log::info!("Added OBS connection: {}", config.name);
         Ok(())
     }
@@ -53,50 +189,49 @@ impl ObsManager {
         old_name: &str,
         new_config: ObsConnectionConfig,
     ) -> AppResult<()> {
-        let mut clients = self.clients.lock().await;
-
-        // Check if the old connection exists
-        if !clients.contains_key(old_name) {
-            return Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                old_name
-            )));
+        {
+            let clients = self.clients.lock().await;
+            if !clients.contains_key(old_name) {
+                return Err(AppError::ConfigError(format!(
+                    "Connection '{}' not found",
+                    old_name
+                )));
+            }
+            if old_name != new_config.name && clients.contains_key(&new_config.name) {
+                return Err(AppError::ConfigError(format!(
+                    "Connection '{}' already exists",
+                    new_config.name
+                )));
+            }
         }
 
-        // If the name is being changed, check if the new name already exists
-        if old_name != new_config.name && clients.contains_key(&new_config.name) {
-            return Err(AppError::ConfigError(format!(
-                "Connection '{}' already exists",
-                new_config.name
-            )));
+        let existing_client_arc = {
+            let mut clients = self.clients.lock().await;
+            clients
+                .remove(old_name)
+                .ok_or_else(|| {
+                    AppError::ConfigError(format!("Connection '{}' not found", old_name))
+                })?
+        };
+
+        let was_connected = {
+            let existing_client = existing_client_arc.lock().await;
+            matches!(
+                existing_client.get_connection_status(),
+                ObsConnectionStatus::Connected | ObsConnectionStatus::Authenticated
+            )
+        };
+
+        self.stop_health_watcher(old_name).await;
+
+        let new_client_arc = Arc::new(Mutex::new(ObsClient::new(new_config.clone())));
+
+        {
+            let mut clients = self.clients.lock().await;
+            clients.insert(new_config.name.clone(), new_client_arc.clone());
         }
 
-        // Get the existing client to preserve its state
-        let existing_client_arc = clients.remove(old_name).unwrap();
-        let existing_client = existing_client_arc.lock().await;
-        let was_connected =
-            existing_client.get_connection_status() == ObsConnectionStatus::Connected;
-
-        // Drop the lock to avoid deadlock
-        drop(existing_client);
-        drop(existing_client_arc);
-
-        // Create new client with updated configuration
-        let new_client = ObsClient::new(new_config.clone());
-        let new_client_arc = Arc::new(Mutex::new(new_client));
-
-        // Clone the Arc for later use
-        let new_client_arc_clone = new_client_arc.clone();
-
-        // Insert the new client
-        if old_name == new_config.name {
-            // Same name, just update the configuration
-            clients.insert(new_config.name.clone(), new_client_arc);
-        } else {
-            // Different name, insert with new name
-            clients.insert(new_config.name.clone(), new_client_arc);
-
-            // Update default connection if this was the default
+        if old_name != new_config.name {
             let mut default = self.default_connection.lock().await;
             if let Some(ref default_name) = *default {
                 if default_name == old_name {
@@ -105,13 +240,14 @@ impl ObsManager {
             }
         }
 
-        // If the connection was connected, try to reconnect with new settings
         if was_connected {
-            let mut new_client = new_client_arc_clone.lock().await;
+            let mut new_client = new_client_arc.lock().await;
             if let Err(e) = new_client.connect().await {
                 log::warn!("Warning: Failed to reconnect after update: {}", e);
             }
         }
+
+        self.ensure_health_watcher(&new_config.name).await?;
 
         log::info!(
             "Updated OBS connection: {} -> {}",
@@ -123,46 +259,64 @@ impl ObsManager {
 
     /// Remove an OBS connection
     pub async fn remove_connection(&self, name: &str) -> AppResult<()> {
-        let mut clients = self.clients.lock().await;
-        if let Some(client_arc) = clients.remove(name) {
-            // Disconnect the client
+        let client_arc = {
+            let mut clients = self.clients.lock().await;
+            match clients.remove(name) {
+                Some(client) => client,
+                None => {
+                    return Err(AppError::ConfigError(format!(
+                        "Connection '{}' not found",
+                        name
+                    )))
+                }
+            }
+        };
+
+        self.stop_health_watcher(name).await;
+
+        {
             let mut client = client_arc.lock().await;
             if let Err(e) = client.disconnect().await {
                 log::warn!("Warning: Failed to disconnect client '{}': {}", name, e);
             }
+        }
 
-            // Update default connection if this was the default
+        {
             let mut default = self.default_connection.lock().await;
             if let Some(ref default_name) = *default {
                 if default_name == name {
-                    *default = clients.keys().next().cloned();
+                    let next_default = {
+                        let clients = self.clients.lock().await;
+                        clients.keys().next().cloned()
+                    };
+                    *default = next_default;
                 }
             }
-
-            log::info!("Removed OBS connection: {}", name);
-            Ok(())
-        } else {
-            Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                name
-            )))
         }
+
+        log::info!("Removed OBS connection: {}", name);
+        Ok(())
     }
 
     /// Connect to an OBS instance
     pub async fn connect(&self, name: &str) -> AppResult<()> {
-        let clients = self.clients.lock().await;
-        if let Some(client_arc) = clients.get(name) {
+        let client_arc = {
+            let clients = self.clients.lock().await;
+            clients.get(name).cloned()
+        }
+        .ok_or_else(|| {
+            AppError::ConfigError(format!("Connection '{}' not found", name))
+        })?;
+
+        {
             let mut client = client_arc.lock().await;
             client.connect().await?;
-            log::info!("Connected to OBS: {}", name);
-            Ok(())
-        } else {
-            Err(AppError::ConfigError(format!(
-                "Connection '{}' not found",
-                name
-            )))
         }
+
+        self.ensure_health_watcher(name).await?;
+
+        log::info!("Connected to OBS: {}", name);
+        Ok(())
     }
 
     /// Disconnect from an OBS instance
@@ -313,6 +467,15 @@ impl ObsManager {
         let client_arc = self.get_client_ref(connection_name).await?;
         let client = client_arc.lock().await;
         client.get_streaming_status().await
+    }
+
+    pub async fn get_stream_output_stats(
+        &self,
+        connection_name: Option<&str>,
+    ) -> AppResult<super::types::ObsStreamOutputStats> {
+        let client_arc = self.get_client_ref(connection_name).await?;
+        let client = client_arc.lock().await;
+        client.get_stream_output_stats().await
     }
 
     // Replay buffer operations
@@ -490,6 +653,8 @@ impl ObsManager {
 
     /// Shutdown all connections
     pub async fn shutdown(&self) -> AppResult<()> {
+        self.stop_all_health_tasks().await;
+
         let mut clients = self.clients.lock().await;
         for (name, client_arc) in clients.iter_mut() {
             let mut client = client_arc.lock().await;
