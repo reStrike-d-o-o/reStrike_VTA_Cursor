@@ -46,6 +46,36 @@ interface ObsCommandResponse<T = unknown> {
   error?: string | null;
 }
 
+const normalizeAthletePosition = (value: SnapshotMatchAthlete['position']): 'blue' | 'red' => {
+  if (value === null || value === undefined) {
+    return 'blue';
+  }
+
+  if (typeof value === 'number') {
+    return value === 2 ? 'red' : 'blue';
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === '2' || normalized === 'red' || normalized === 'r') {
+    return 'red';
+  }
+  return 'blue';
+};
+
+const normalizeCountryCode = (code?: string | null): string | undefined => {
+  if (!code) return undefined;
+  const trimmed = code.trim();
+  if (!trimmed) return undefined;
+  return trimmed.toUpperCase();
+};
+
+const normalizeName = (name?: string | null, short?: string | null): string | undefined => {
+  const fallback = name ?? short;
+  if (!fallback) return undefined;
+  const trimmed = fallback.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 const mapSnapshotMatches = (matches: SnapshotMatch[] | undefined): IvrMatchCard[] => {
   const snapshot = matches ?? [];
   return snapshot.map((match) => {
@@ -56,11 +86,11 @@ const mapSnapshotMatches = (matches: SnapshotMatch[] | undefined): IvrMatchCard[
       red: {},
     };
     (match.athletes ?? []).forEach((athlete) => {
-      const position = athlete.position === 2 ? 'red' : 'blue';
+      const position = normalizeAthletePosition(athlete.position);
       athleteMap[position] = {
-        name: athlete.name ?? undefined,
+        name: normalizeName(athlete.name, athlete.short_name),
         shortName: athlete.short_name ?? undefined,
-        flag: athlete.country_code ?? undefined,
+        flag: normalizeCountryCode(athlete.country_code),
       };
     });
 
@@ -396,7 +426,7 @@ export const IvrMatchHistoryPanel: React.FC = () => {
       )}
 
       <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
-        <div className="min-h-full columns-[320px] gap-6 pr-6">
+        <div className="min-h-full grid gap-6 pr-6 grid-cols-[repeat(auto-fill,minmax(320px,1fr))] auto-rows-fr">
           {filteredMatches.length === 0 ? (
             <div className="inline-flex items-center justify-center w-full h-48 text-sm text-gray-500 border border-dashed border-white/10 rounded px-4 text-center">
               <span>

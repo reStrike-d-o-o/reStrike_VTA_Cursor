@@ -15,6 +15,7 @@
 - Rust: 2021 edition; prefer async (Tokio). No blocking I/O on async paths.
 - JS/TS: TypeScript `strict`; prefer functional, memoized React.
 - DB: Prepared statements; wrap writes in transactions; WAL mode; add covering/partial indexes where needed.
+- DB schema canonical reference: `docs/database/target_model.md` (current state: `docs/database/current_state.md`). Keep data access aligned with SeaORM entities once migrations land.
 - Security: No secrets in code, no network egress without approval.
 - Output format for docs: Write a single top-level `docs/PROJECT_GUIDE.md` and keep it beginner-friendly.
 - always use log::info!, log::warning!, log::error! implemented env_logger stylings for any kinds of logs, except  file logs
