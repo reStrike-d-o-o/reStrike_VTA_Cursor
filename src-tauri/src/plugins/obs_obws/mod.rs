@@ -36,6 +36,7 @@ pub fn init() -> AppResult<()> {
 }
 
 /// Shutdown the OBS WebSocket plugin
+#[allow(clippy::await_holding_lock)]
 pub async fn shutdown() -> AppResult<()> {
     if let Some(manager) = MANAGER.get() {
         if let Ok(manager) = manager.lock() {

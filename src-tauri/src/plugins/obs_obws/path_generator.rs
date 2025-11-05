@@ -63,6 +63,7 @@ impl ObsPathGenerator {
     }
 
     /// Generate recording path for a match
+    #[allow(clippy::too_many_arguments)]
     pub fn generate_recording_path(
         &self,
         match_id: &str,

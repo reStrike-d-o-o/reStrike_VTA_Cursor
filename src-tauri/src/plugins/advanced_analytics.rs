@@ -358,6 +358,7 @@ impl AdvancedAnalytics {
     }
 
     /// Analytics update loop
+    #[allow(clippy::too_many_arguments)]
     async fn analytics_update_loop(
         cache: Arc<EventCache>,
         config: AnalyticsConfig,

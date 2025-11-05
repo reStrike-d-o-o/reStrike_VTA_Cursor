@@ -747,6 +747,7 @@ impl UdpServer {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn store_event_in_database(
         database: &DatabasePlugin,
         current_session_id: &Arc<Mutex<Option<i64>>>,
@@ -1578,9 +1579,7 @@ impl UdpServer {
 
     fn extract_event_details(
         event: &PssEvent,
-        _recent_hit_levels: &Arc<
-            Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>,
-        >,
+        _recent_hit_levels: &RecentHitMap,
     ) -> Option<Vec<(String, Option<String>, String)>> {
         match event {
             PssEvent::Points {
@@ -1904,6 +1903,7 @@ impl UdpServer {
 
     // removed unused event handlers
 
+    #[allow(clippy::too_many_arguments)]
     async fn listen_loop_async(
         socket: Arc<Mutex<Option<UdpSocket>>>,
         event_tx: mpsc::UnboundedSender<PssEvent>,
@@ -1916,9 +1916,7 @@ impl UdpServer {
         current_match_id: Arc<Mutex<Option<i64>>>,
         athlete_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
         event_type_cache: Arc<Mutex<std::collections::HashMap<String, i64>>>,
-        recent_hit_levels: Arc<
-            Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>,
-        >,
+        recent_hit_levels: RecentHitMap,
         tournament_id: Arc<Mutex<Option<i64>>>,
         websocket_server: Arc<WebSocketServer>,
     ) {
