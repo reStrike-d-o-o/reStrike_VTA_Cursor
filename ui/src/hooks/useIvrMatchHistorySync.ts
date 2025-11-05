@@ -131,31 +131,33 @@ const mapSnapshotMatches = (matches: SnapshotMatch[] | undefined): IvrMatchCard[
   });
 };
 
+const EMPTY_MATCHES: IvrMatchCard[] = [];
+
 export const useIvrMatchHistorySync = () => {
   const selectedDate = useIvrMatchHistoryStore((state) => state.selectedDate);
-  const fingerprint = useIvrMatchHistoryStore(
-    (state) => state.fingerprintsByDate[state.selectedDate],
+  const matchesForSelected = useIvrMatchHistoryStore(
+    (state) => state.matchesByDate[state.selectedDate] ?? EMPTY_MATCHES,
   );
   const inflightRef = useRef<Set<string>>(new Set());
+  const hydratedDatesRef = useRef<Set<string>>(new Set());
   const lastFailureRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    if (fingerprint !== undefined) {
-      delete lastFailureRef.current[selectedDate];
+    if (matchesForSelected.length > 0) {
+      hydratedDatesRef.current.add(selectedDate);
     }
-  }, [fingerprint, selectedDate]);
+  }, [matchesForSelected, selectedDate]);
 
   useEffect(() => {
     if (!canListenTauri()) {
       return;
     }
 
-    if (inflightRef.current.has(selectedDate)) {
+    if (hydratedDatesRef.current.has(selectedDate)) {
       return;
     }
 
-    const store = useIvrMatchHistoryStore.getState();
-    if (store.fingerprintsByDate[selectedDate] !== undefined) {
+    if (inflightRef.current.has(selectedDate)) {
       return;
     }
 
@@ -181,7 +183,9 @@ export const useIvrMatchHistorySync = () => {
         if (result?.success && result.data?.matches) {
           const matches = mapSnapshotMatches(result.data.matches);
           useIvrMatchHistoryStore.getState().setSnapshotForDate(selectedDate, matches);
-        } else if (!cancelled) {
+          hydratedDatesRef.current.add(selectedDate);
+          delete lastFailureRef.current[selectedDate];
+        } else {
           lastFailureRef.current[selectedDate] = Date.now();
         }
       } catch (error) {
