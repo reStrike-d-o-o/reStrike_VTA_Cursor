@@ -99,6 +99,25 @@ const normalizeMatch = (match: IvrMatchCard): IvrMatchCard => ({
 
 const EMPTY_MATCHES: IvrMatchCard[] = [];
 
+const computeMatchesFingerprint = (matches: IvrMatchCard[]): string =>
+  matches
+    .map((match) => {
+      const header =
+        `${match.matchKey ?? ''}|${match.matchDbId ?? ''}|${match.matchId ?? ''}|${match.matchNumber ?? ''}|` +
+        `${match.category ?? ''}|${match.weight ?? ''}|${match.division ?? ''}`;
+      const athletes = `${match.athletes.blue?.name ?? ''}|${match.athletes.blue?.flag ?? ''}|${
+        match.athletes.red?.name ?? ''
+      }|${match.athletes.red?.flag ?? ''}`;
+      const videos = match.videos
+        .map(
+          (video) =>
+            `${video.id}|${video.recordedVideoId ?? ''}|${video.type}|${video.label ?? ''}|${video.filePath ?? ''}|${video.startTime ?? ''}|${video.durationSeconds ?? ''}`,
+        )
+        .join('#');
+      return `${header}|${athletes}|${videos}`;
+    })
+    .join('||');
+
 const metadataEquals = (a: IvrMatchCard, b: IvrMatchCard): boolean =>
   a.matchDbId === b.matchDbId &&
   a.matchId === b.matchId &&
@@ -181,6 +200,7 @@ export interface AppendVideoPayload {
 
 interface IvrMatchHistoryState {
   matchesByDate: Record<string, IvrMatchCard[]>;
+  fingerprintsByDate: Record<string, string>;
   selectedDate: string;
   today: string;
   searchTerm: string;
@@ -199,6 +219,7 @@ const initialToday = todayKey();
 
 export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) => ({
   matchesByDate: {},
+  fingerprintsByDate: {},
   selectedDate: initialToday,
   today: initialToday,
   searchTerm: '',
@@ -218,6 +239,7 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
   setSnapshotForDate: (date, matches) => {
     const normalized = toDateKey(date);
     const normalizedMatches = sortMatches(matches.map(normalizeMatch));
+    const fingerprint = computeMatchesFingerprint(normalizedMatches);
     set((state) => {
       const existing = state.matchesByDate[normalized] ?? [];
       if (areMatchesEqual(existing, normalizedMatches)) {
@@ -227,6 +249,10 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
         matchesByDate: {
           ...state.matchesByDate,
           [normalized]: normalizedMatches,
+        },
+        fingerprintsByDate: {
+          ...state.fingerprintsByDate,
+          [normalized]: fingerprint,
         },
       };
     });
@@ -241,10 +267,15 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
         return state;
       }
       const next = [createMatchCard(matchKey), ...matches];
+      const fingerprint = computeMatchesFingerprint(next);
       return {
         matchesByDate: {
           ...state.matchesByDate,
           [normalized]: next,
+        },
+        fingerprintsByDate: {
+          ...state.fingerprintsByDate,
+          [normalized]: fingerprint,
         },
       };
     });
@@ -271,10 +302,15 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
 
       card.updatedAt = new Date().toISOString();
       const next = upsertMatchArray(matches, card);
+      const fingerprint = computeMatchesFingerprint(next);
       return {
         matchesByDate: {
           ...state.matchesByDate,
           [normalized]: next,
+        },
+        fingerprintsByDate: {
+          ...state.fingerprintsByDate,
+          [normalized]: fingerprint,
         },
       };
     });
@@ -292,10 +328,15 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
       };
       card.updatedAt = new Date().toISOString();
       const next = upsertMatchArray(matches, card);
+      const fingerprint = computeMatchesFingerprint(next);
       return {
         matchesByDate: {
           ...state.matchesByDate,
           [normalized]: next,
+        },
+        fingerprintsByDate: {
+          ...state.fingerprintsByDate,
+          [normalized]: fingerprint,
         },
       };
     });
@@ -321,10 +362,15 @@ export const useIvrMatchHistoryStore = create<IvrMatchHistoryState>((set, get) =
       }
       card.updatedAt = new Date().toISOString();
       const next = upsertMatchArray(matches, card);
+      const fingerprint = computeMatchesFingerprint(next);
       return {
         matchesByDate: {
           ...state.matchesByDate,
           [normalized]: next,
+        },
+        fingerprintsByDate: {
+          ...state.fingerprintsByDate,
+          [normalized]: fingerprint,
         },
       };
     });
@@ -361,3 +407,6 @@ export const selectMatchesForCurrentDate = (state: IvrMatchHistoryState) =>
 
 export const selectMatchesForDate = (date: string) =>
   (state: IvrMatchHistoryState) => state.matchesByDate[toDateKey(date)] ?? EMPTY_MATCHES;
+
+export const selectFingerprintForDate = (date: string) =>
+  (state: IvrMatchHistoryState) => state.fingerprintsByDate[toDateKey(date)];
