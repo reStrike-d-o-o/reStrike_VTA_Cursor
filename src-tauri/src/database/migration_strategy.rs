@@ -34,8 +34,8 @@ impl MigrationStrategy {
         result.total_settings = json_settings.len();
 
         log::info!(
-            "Found {} settings in JSON configuration",
-            result.total_settings
+            "Found {total_settings} settings in JSON configuration",
+            total_settings = result.total_settings
         );
 
         // Step 2: Initialize database settings table
@@ -63,9 +63,9 @@ impl MigrationStrategy {
         self.validate_migration(conn, &result).await?;
 
         log::info!(
-            " Migration completed: {}/{} settings migrated successfully",
-            result.migrated_settings,
-            result.total_settings
+            " Migration completed: {migrated}/{total} settings migrated successfully",
+            migrated = result.migrated_settings,
+            total = result.total_settings
         );
 
         Ok(result)
@@ -201,16 +201,14 @@ impl MigrationStrategy {
         }
 
         if !validation_errors.is_empty() {
-            log::warn!(
-                "Migration validation found {} issues:",
-                validation_errors.len()
-            );
+            let issue_count = validation_errors.len();
+            log::warn!("Migration validation found {issue_count} issues:");
             for error in &validation_errors {
                 log::warn!(" - {error}");
             }
+            let error_count = validation_errors.len();
             return Err(crate::types::AppError::ConfigError(format!(
-                "Migration validation failed: {} errors",
-                validation_errors.len()
+                "Migration validation failed: {error_count} errors"
             )));
         }
 
@@ -263,7 +261,13 @@ impl HybridSettingsProvider {
             match self.get_from_database(key).await {
                 Ok(value) => Ok(value),
                 Err(e) => {
+<<<<<<< HEAD
                     log::warn!("Database lookup failed for '{key}', falling back to JSON: {e}");
+=======
+                    log::warn!(
+                        "Database lookup failed for '{key}', falling back to JSON: {e}"
+                    );
+>>>>>>> Scoreboard
                     self.get_from_json(key).await
                 }
             }
@@ -307,9 +311,7 @@ impl HybridSettingsProvider {
     /// Enable/disable database mode
     pub fn set_database_mode(&mut self, enabled: bool) {
         self.use_database = enabled;
-        log::info!(
-            "Database mode {}",
-            if enabled { "enabled" } else { "disabled" }
-        );
+        let mode = if enabled { "enabled" } else { "disabled" };
+        log::info!("Database mode {mode}");
     }
 }

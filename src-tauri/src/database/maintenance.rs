@@ -80,6 +80,7 @@ impl DatabaseMaintenance {
 
         // Check if VACUUM is needed
         let page_count: i64 = db_conn
+<<<<<<< HEAD
             .read_transaction(|tx| {
                 tx.query_row("PRAGMA page_count", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
@@ -91,6 +92,13 @@ impl DatabaseMaintenance {
                 tx.query_row("PRAGMA freelist_count", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
             })
+=======
+            .read_transaction(|tx| tx.query_row("PRAGMA page_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+            .await?;
+
+        let freelist_count: i64 = db_conn
+            .read_transaction(|tx| tx.query_row("PRAGMA freelist_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+>>>>>>> Scoreboard
             .await?;
 
         if freelist_count == 0 {
@@ -184,10 +192,14 @@ impl DatabaseMaintenance {
         log::info!("Starting database OPTIMIZE operation...");
 
         db_conn
+<<<<<<< HEAD
             .transaction(|tx| {
                 tx.execute("PRAGMA optimize", [])
                     .map_err(DatabaseError::Sqlite)
             })
+=======
+            .transaction(|tx| tx.execute("PRAGMA optimize", []).map_err(DatabaseError::Sqlite))
+>>>>>>> Scoreboard
             .await?;
 
         // Update statistics
@@ -300,6 +312,7 @@ impl DatabaseMaintenance {
         db_conn: &DatabaseConnection,
     ) -> DatabaseResult<DatabaseInfo> {
         let page_count: i64 = db_conn
+<<<<<<< HEAD
             .read_transaction(|tx| {
                 tx.query_row("PRAGMA page_count", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
@@ -339,6 +352,29 @@ impl DatabaseMaintenance {
                 tx.query_row("PRAGMA synchronous", [], |row| row.get(0))
                     .map_err(DatabaseError::Sqlite)
             })
+=======
+            .read_transaction(|tx| tx.query_row("PRAGMA page_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+            .await?;
+
+        let page_size: i64 = db_conn
+            .read_transaction(|tx| tx.query_row("PRAGMA page_size", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+            .await?;
+
+        let freelist_count: i64 = db_conn
+            .read_transaction(|tx| tx.query_row("PRAGMA freelist_count", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+            .await?;
+
+        let cache_size: i64 = db_conn
+            .read_transaction(|tx| tx.query_row("PRAGMA cache_size", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+            .await?;
+
+        let journal_mode: String = db_conn
+            .read_transaction(|tx| tx.query_row("PRAGMA journal_mode", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+            .await?;
+
+        let synchronous: String = db_conn
+            .read_transaction(|tx| tx.query_row("PRAGMA synchronous", [], |row| row.get(0)).map_err(DatabaseError::Sqlite))
+>>>>>>> Scoreboard
             .await?;
 
         let total_size = page_count * page_size;
@@ -412,6 +448,7 @@ pub struct DatabaseInfo {
 impl std::fmt::Display for DatabaseInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Database Info:")?;
+<<<<<<< HEAD
         writeln!(
             f,
             "  Total Size: {} bytes ({:.2} MB)",
@@ -431,6 +468,34 @@ impl std::fmt::Display for DatabaseInfo {
             self.free_size as f64 / 1024.0 / 1024.0
         )?;
         writeln!(f, "  Fragmentation: {:.2}%", self.fragmentation_percentage)?;
+=======
+        let total_mb = self.total_size as f64 / 1024.0 / 1024.0;
+        let used_mb = self.used_size as f64 / 1024.0 / 1024.0;
+        let free_mb = self.free_size as f64 / 1024.0 / 1024.0;
+        writeln!(
+            f,
+            "  Total Size: {total_bytes} bytes ({total_mb:.2} MB)",
+            total_bytes = self.total_size,
+            total_mb = total_mb
+        )?;
+        writeln!(
+            f,
+            "  Used Size: {used_bytes} bytes ({used_mb:.2} MB)",
+            used_bytes = self.used_size,
+            used_mb = used_mb
+        )?;
+        writeln!(
+            f,
+            "  Free Size: {free_bytes} bytes ({free_mb:.2} MB)",
+            free_bytes = self.free_size,
+            free_mb = free_mb
+        )?;
+        writeln!(
+            f,
+            "  Fragmentation: {fragmentation:.2}%",
+            fragmentation = self.fragmentation_percentage
+        )?;
+>>>>>>> Scoreboard
         writeln!(f, "  Page Count: {}", self.page_count)?;
         writeln!(f, "  Page Size: {} bytes", self.page_size)?;
         writeln!(f, "  Free List Count: {}", self.freelist_count)?;

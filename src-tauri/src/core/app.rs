@@ -677,7 +677,19 @@ impl App {
                 }
                 Ok(None) => {}
                 Err(err) => {
+<<<<<<< HEAD
+<<<<<<< HEAD
                     log::warn!("Failed to load match {match_id} for shutdown context: {err}");
+=======
+                    log::warn!(
+                        "Failed to load match {} for shutdown context: {}",
+                        match_id,
+                        err
+                    );
+>>>>>>> cc4a815a (Refactor database operations in OBS recording events and UDP plugin)
+=======
+                    log::warn!("Failed to load match {match_id} for shutdown context: {err}");
+>>>>>>> e73c7e19 (Refactor database connection and maintenance code)
                 }
             }
         }
