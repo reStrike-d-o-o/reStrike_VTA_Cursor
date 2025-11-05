@@ -24,6 +24,8 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 // Re-export the main plugin type
 pub type UdpPlugin = UdpServer;
 
+type RecentHitMap = Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>;
+
 // PSS Event Types based on protocol specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PssEvent {
@@ -1180,23 +1182,9 @@ impl UdpServer {
             PssEvent::FightLoaded => "O".to_string(),    // Fight loaded (pre-match)
             PssEvent::FightReady => "O".to_string(),     // Fight ready (pre-match)
             PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy (system event)
-            PssEvent::Raw(raw_msg) => {
-                // Try to extract event code from raw messages for better categorization
-                if raw_msg.starts_with("avt;") {
-                    "O".to_string()
-                } else if raw_msg.starts_with("ref;") {
-                    "O".to_string() // Referee events -> Other (as per user request)
-                } else if raw_msg.starts_with("sup;") {
-                    "O".to_string()
-                } else if raw_msg.starts_with("rst;") {
-                    "O".to_string()
-                } else if raw_msg.starts_with("rsr;") {
-                    "O".to_string()
-                } else if raw_msg.starts_with("win;") {
-                    "O".to_string() // Winner events -> Other (as per user request)
-                } else {
-                    "O".to_string()
-                }
+            PssEvent::Raw(_raw_msg) => {
+                // Raw protocol events are treated as "Other" unless explicitly categorized elsewhere.
+                "O".to_string()
             }
         }
     }
