@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   useIvrMatchHistoryStore,
@@ -150,7 +150,6 @@ const handleOpenVideo = async (entry: IvrVideoEntry) => {
     return;
   }
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
     await invoke('ivr_open_video_file', {
       filePath: entry.filePath,
       offsetSeconds: 0,
@@ -220,6 +219,9 @@ const MatchCard: React.FC<{ match: IvrMatchCard }> = ({ match }) => {
 
 export const IvrMatchHistoryPanel: React.FC = () => {
   const hydrationStatusRef = useRef<Map<string, 'hydrating' | 'hydrated'>>(new Map());
+  const inflightDatesRef = useRef<Set<string>>(new Set());
+  const [loadingDate, setLoadingDate] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const {
     matches,
     searchTerm,
@@ -239,56 +241,73 @@ export const IvrMatchHistoryPanel: React.FC = () => {
   }));
 
   useEffect(() => {
-    if (!canListenTauri()) {
-      return;
-    }
-
-    const status = hydrationStatusRef.current.get(selectedDate);
-    if (status === 'hydrated' || status === 'hydrating') {
-      return;
-    }
-
     if (matches.length > 0) {
       hydrationStatusRef.current.set(selectedDate, 'hydrated');
-      return;
     }
+  }, [matches, selectedDate]);
 
-    hydrationStatusRef.current.set(selectedDate, 'hydrating');
-    let cancelled = false;
+  const loadMatchesForDate = useCallback(
+    async (date: string, force = false) => {
+      if (!canListenTauri()) {
+        return;
+      }
 
-    const hydrate = async () => {
+      if (!force && hydrationStatusRef.current.get(date) === 'hydrated') {
+        return;
+      }
+
+      if (inflightDatesRef.current.has(date)) {
+        return;
+      }
+
+      inflightDatesRef.current.add(date);
+      hydrationStatusRef.current.set(date, 'hydrating');
+      setLoadingDate(date);
+      setLoadError(null);
+
       try {
         const result = await invoke<ObsCommandResponse<{ matches?: SnapshotMatch[] }>>(
           'ivr_match_history_snapshot',
-          { limit: 80, date: selectedDate },
+          { limit: 80, date },
         );
-
-        if (cancelled) {
-          return;
-        }
 
         if (result?.success && result.data?.matches) {
           const parsed = mapSnapshotMatches(result.data.matches);
-          useIvrMatchHistoryStore.getState().setSnapshotForDate(selectedDate, parsed);
-          hydrationStatusRef.current.set(selectedDate, 'hydrated');
-        } else {
-          hydrationStatusRef.current.set(selectedDate, 'hydrated');
+          useIvrMatchHistoryStore.getState().setSnapshotForDate(date, parsed);
         }
+
+        hydrationStatusRef.current.set(date, 'hydrated');
       } catch (error) {
         console.warn('Failed to hydrate IVR match history snapshot:', error);
-        hydrationStatusRef.current.delete(selectedDate);
+        setLoadError('Failed to load match history snapshot.');
+        hydrationStatusRef.current.delete(date);
+      } finally {
+        inflightDatesRef.current.delete(date);
+        setLoadingDate((current) => (current === date ? null : current));
       }
-    };
+    },
+    [],
+  );
 
-    hydrate();
+  useEffect(() => {
+    if (hydrationStatusRef.current.get(selectedDate) !== 'hydrated') {
+      void loadMatchesForDate(selectedDate);
+    }
+  }, [selectedDate, loadMatchesForDate]);
 
-    return () => {
-      cancelled = true;
-      if (hydrationStatusRef.current.get(selectedDate) === 'hydrating') {
-        hydrationStatusRef.current.delete(selectedDate);
-      }
-    };
-  }, [selectedDate, matches.length]);
+  const handleDateChange = useCallback(
+    (value: string) => {
+      hydrationStatusRef.current.delete(value);
+      setSelectedDate(value);
+      void loadMatchesForDate(value);
+    },
+    [setSelectedDate, loadMatchesForDate],
+  );
+
+  const handleManualReload = useCallback(() => {
+    hydrationStatusRef.current.delete(selectedDate);
+    void loadMatchesForDate(selectedDate, true);
+  }, [selectedDate, loadMatchesForDate]);
 
   const filteredMatches = useMemo(() => {
     if (!searchTerm) {
@@ -324,7 +343,7 @@ export const IvrMatchHistoryPanel: React.FC = () => {
             <Input
               type="date"
               value={selectedDate}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSelectedDate(event.target.value)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => handleDateChange(event.target.value)}
               className="bg-slate-900/60 border-slate-700/80 text-xs w-[150px]"
             />
           </div>
@@ -336,8 +355,22 @@ export const IvrMatchHistoryPanel: React.FC = () => {
           >
             Today
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleManualReload}
+            disabled={loadingDate === selectedDate}
+          >
+            {loadingDate === selectedDate ? 'Loading…' : 'Reload'}
+          </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="text-xs text-red-400 bg-red-900/20 border border-red-800 rounded px-3 py-2">
+          {loadError}
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
         <div className="min-h-full columns-[320px] gap-6 pr-6">
