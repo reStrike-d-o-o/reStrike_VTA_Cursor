@@ -1,6 +1,7 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -27,14 +28,20 @@ impl ArchiveSchedule {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn label(&self) -> &'static str {
         match self {
-            ArchiveSchedule::Weekly => "Weekly".to_string(),
-            ArchiveSchedule::Monthly => "Monthly".to_string(),
-            ArchiveSchedule::Quarterly => "Every 3 months".to_string(),
-            ArchiveSchedule::Biannual => "Every 6 months".to_string(),
-            ArchiveSchedule::Annual => "Annually".to_string(),
+            ArchiveSchedule::Weekly => "Weekly",
+            ArchiveSchedule::Monthly => "Monthly",
+            ArchiveSchedule::Quarterly => "Every 3 months",
+            ArchiveSchedule::Biannual => "Every 6 months",
+            ArchiveSchedule::Annual => "Annually",
         }
+    }
+}
+
+impl fmt::Display for ArchiveSchedule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.label())
     }
 }
 
