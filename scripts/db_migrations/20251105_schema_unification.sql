@@ -53,6 +53,13 @@ ALTER TABLE athletes RENAME TO legacy_athlete;
 ALTER TABLE pss_athletes RENAME TO legacy_pss_athlete;
 ALTER TABLE pss_matches RENAME TO legacy_match;
 ALTER TABLE pss_match_athletes RENAME TO legacy_match_participant;
+ALTER TABLE tournament_days RENAME TO legacy_tournament_day;
+ALTER TABLE tournament_rankings RENAME TO legacy_tournament_ranking;
+ALTER TABLE tournament_champions RENAME TO legacy_tournament_champion;
+ALTER TABLE medal_ceremonies RENAME TO legacy_medal_ceremony;
+ALTER TABLE octagons RENAME TO legacy_octagon;
+ALTER TABLE medal_ceremony_divisions RENAME TO legacy_medal_ceremony_division;
+ALTER TABLE medal_ceremony_medalists RENAME TO legacy_medal_ceremony_medalist;
 
 ----------------------------------------------------------------------
 -- 3. Canonical tables
@@ -142,6 +149,121 @@ CREATE TABLE match_participant (
 CREATE INDEX idx_match_participant_match ON match_participant(match_id);
 CREATE INDEX idx_match_participant_athlete ON match_participant(athlete_id);
 
+CREATE TABLE tournament_day (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT NOT NULL UNIQUE,
+    tournament_id INTEGER NOT NULL,
+    day_number INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','ended')),
+    start_time TEXT,
+    end_time TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tournament_id) REFERENCES tournament(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_tournament_day_tournament_number
+    ON tournament_day(tournament_id, day_number);
+
+CREATE TABLE tournament_ranking (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL,
+    is_para INTEGER NOT NULL DEFAULT 0 CHECK (is_para IN (0,1)),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE tournament_champion (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER,
+    match_id INTEGER,
+    match_uuid TEXT,
+    match_code TEXT,
+    category TEXT,
+    winner_side TEXT,
+    winner_name TEXT,
+    winner_country_code TEXT,
+    blue_score INTEGER,
+    red_score INTEGER,
+    medal_type TEXT NOT NULL DEFAULT 'gold',
+    medal_rank INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tournament_id) REFERENCES tournament(id) ON DELETE SET NULL,
+    FOREIGN KEY (match_id) REFERENCES match(id) ON DELETE SET NULL
+);
+
+CREATE TABLE medal_ceremony (
+    id TEXT PRIMARY KEY,
+    tournament_id INTEGER,
+    name TEXT NOT NULL,
+    background_path TEXT,
+    break_path TEXT,
+    animation_duration INTEGER NOT NULL DEFAULT 45000,
+    animation_speed REAL NOT NULL DEFAULT 1.0,
+    photo_time INTEGER NOT NULL DEFAULT 10,
+    prepared_at TEXT,
+    prepared_version INTEGER NOT NULL DEFAULT 0,
+    show_external INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tournament_id) REFERENCES tournament(id) ON DELETE SET NULL
+);
+
+CREATE TABLE medal_ceremony_division (
+    id TEXT PRIMARY KEY,
+    ceremony_id TEXT NOT NULL,
+    division_id INTEGER,
+    division_name TEXT NOT NULL,
+    order_index INTEGER NOT NULL,
+    played_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (ceremony_id) REFERENCES medal_ceremony(id) ON DELETE CASCADE,
+    FOREIGN KEY (division_id) REFERENCES division(id) ON DELETE SET NULL,
+    UNIQUE (ceremony_id, order_index)
+);
+
+CREATE INDEX idx_medal_ceremony_division_ceremony
+    ON medal_ceremony_division(ceremony_id);
+
+CREATE TABLE medal_ceremony_medalist (
+    id TEXT PRIMARY KEY,
+    division_entry_id TEXT NOT NULL,
+    medal_type TEXT NOT NULL,
+    medal_rank INTEGER NOT NULL,
+    athlete_id INTEGER,
+    athlete_name TEXT NOT NULL,
+    athlete_short_name TEXT,
+    ioc_code TEXT,
+    flag_asset TEXT,
+    anthem_asset TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (division_entry_id) REFERENCES medal_ceremony_division(id) ON DELETE CASCADE,
+    FOREIGN KEY (athlete_id) REFERENCES athlete(id) ON DELETE SET NULL,
+    UNIQUE (division_entry_id, medal_type)
+);
+
+CREATE INDEX idx_medal_ceremony_medalist_division
+    ON medal_ceremony_medalist(division_entry_id);
+
+CREATE TABLE octagon (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER NOT NULL,
+    tournament_day_id INTEGER,
+    number TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tournament_id) REFERENCES tournament(id) ON DELETE CASCADE,
+    FOREIGN KEY (tournament_day_id) REFERENCES tournament_day(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_octagon_tournament ON octagon(tournament_id);
+CREATE INDEX idx_octagon_tournament_day ON octagon(tournament_day_id);
+
 ----------------------------------------------------------------------
 -- 4. Temporary helper mappings
 ----------------------------------------------------------------------
@@ -174,7 +296,9 @@ INSERT INTO tournament (
     banner, created_at, updated_at
 )
 SELECT
-    id, uuid, name, duration_days, city, country, country_code, logo_path, status,
+    id,
+    COALESCE(NULLIF(uuid, ''), lower(hex(randomblob(16)))),
+    name, duration_days, city, country, country_code, logo_path, status,
     start_date, end_date, ranking_id, location, contact, oc, officials,
     banner, created_at, updated_at
 FROM legacy_tournament;
@@ -382,6 +506,146 @@ LEFT JOIN tmp_athlete_map map_pss
 LEFT JOIN tmp_athlete_map map_legacy
     ON map_legacy.source = 'legacy_athlete' AND map_legacy.source_id = lmp.athlete_id
 WHERE COALESCE(map_pss.athlete_id, map_legacy.athlete_id) IS NOT NULL;
+
+----------------------------------------------------------------------
+-- Tournament scheduling & ceremonies
+----------------------------------------------------------------------
+
+-- Tournament days
+INSERT INTO tournament_day (
+    id, uuid, tournament_id, day_number, date, status,
+    start_time, end_time, created_at, updated_at
+)
+SELECT
+    ltd.id,
+    COALESCE(NULLIF(ltd.uuid, ''), lower(hex(randomblob(16)))),
+    ltd.tournament_id,
+    ltd.day_number,
+    ltd.date,
+    ltd.status,
+    ltd.start_time,
+    ltd.end_time,
+    COALESCE(ltd.created_at, datetime('now')),
+    COALESCE(ltd.updated_at, datetime('now'))
+FROM legacy_tournament_day ltd;
+
+-- Tournament rankings
+INSERT INTO tournament_ranking (
+    id, code, label, is_para, created_at, updated_at
+)
+SELECT
+    ltr.id,
+    ltr.code,
+    ltr.label,
+    ltr.is_para,
+    COALESCE(ltr.created_at, datetime('now')),
+    COALESCE(ltr.updated_at, datetime('now'))
+FROM legacy_tournament_ranking ltr;
+
+-- Tournament champions
+INSERT INTO tournament_champion (
+    id, tournament_id, match_id, match_uuid, match_code, category,
+    winner_side, winner_name, winner_country_code, blue_score, red_score,
+    medal_type, medal_rank, created_at, updated_at
+)
+SELECT
+    ltc.id,
+    t.id,
+    mm.match_id,
+    ltc.match_uuid,
+    ltc.match_id,
+    ltc.category,
+    CASE
+        WHEN ltc.winner_color IS NULL THEN NULL
+        ELSE lower(ltc.winner_color)
+    END,
+    ltc.winner_name,
+    ltc.winner_country_code,
+    ltc.blue_score,
+    ltc.red_score,
+    ltc.medal_type,
+    ltc.medal_rank,
+    COALESCE(ltc.created_at, datetime('now')),
+    COALESCE(ltc.created_at, datetime('now'))
+FROM legacy_tournament_champion ltc
+LEFT JOIN tournament t ON t.uuid = ltc.tournament_uuid
+LEFT JOIN tmp_match_map mm ON mm.uuid = ltc.match_uuid;
+
+-- Medal ceremonies
+INSERT INTO medal_ceremony (
+    id, tournament_id, name, background_path, break_path, animation_duration,
+    animation_speed, photo_time, prepared_at, prepared_version, show_external,
+    created_at, updated_at
+)
+SELECT
+    lmc.id,
+    lmc.tournament_id,
+    lmc.name,
+    lmc.background_path,
+    lmc.break_path,
+    lmc.animation_duration,
+    lmc.animation_speed,
+    lmc.photo_time,
+    lmc.prepared_at,
+    lmc.prepared_version,
+    lmc.show_external,
+    COALESCE(lmc.created_at, datetime('now')),
+    COALESCE(lmc.updated_at, lmc.created_at, datetime('now'))
+FROM legacy_medal_ceremony lmc;
+
+-- Medal ceremony divisions
+INSERT INTO medal_ceremony_division (
+    id, ceremony_id, division_id, division_name, order_index, played_at,
+    created_at, updated_at
+)
+SELECT
+    lmcd.id,
+    lmcd.ceremony_id,
+    lmcd.division_id,
+    lmcd.division_name,
+    lmcd.order_index,
+    lmcd.played_at,
+    COALESCE(lmcd.created_at, datetime('now')),
+    COALESCE(lmcd.updated_at, lmcd.created_at, datetime('now'))
+FROM legacy_medal_ceremony_division lmcd;
+
+-- Medal ceremony medalists
+INSERT INTO medal_ceremony_medalist (
+    id, division_entry_id, medal_type, medal_rank, athlete_id,
+    athlete_name, athlete_short_name, ioc_code, flag_asset, anthem_asset,
+    created_at, updated_at
+)
+SELECT
+    lmcm.id,
+    lmcm.division_entry_id,
+    lmcm.medal_type,
+    lmcm.medal_rank,
+    COALESCE(map_pss.athlete_id, map_legacy.athlete_id),
+    lmcm.athlete_name,
+    lmcm.athlete_short_name,
+    lmcm.ioc_code,
+    lmcm.flag_asset,
+    lmcm.anthem_asset,
+    COALESCE(lmcm.created_at, datetime('now')),
+    COALESCE(lmcm.updated_at, lmcm.created_at, datetime('now'))
+FROM legacy_medal_ceremony_medalist lmcm
+LEFT JOIN tmp_athlete_map map_pss
+    ON map_pss.source = 'legacy_pss_athlete' AND map_pss.source_id = lmcm.athlete_id
+LEFT JOIN tmp_athlete_map map_legacy
+    ON map_legacy.source = 'legacy_athlete' AND map_legacy.source_id = lmcm.athlete_id;
+
+-- Octagons
+INSERT INTO octagon (
+    id, tournament_id, tournament_day_id, number, created_at, updated_at
+)
+SELECT
+    lo.id,
+    lo.tournament_id,
+    lo.tournament_day_id,
+    lo.octagon_number,
+    COALESCE(lo.created_at, datetime('now')),
+    COALESCE(lo.updated_at, datetime('now'))
+FROM legacy_octagon lo;
 
 ----------------------------------------------------------------------
 ----------------------------------------------------------------------
@@ -1287,6 +1551,20 @@ SELECT 'tournament', IFNULL(MAX(id), 0) FROM tournament;
 
 PRAGMA recursive_triggers = OFF;
 
+DROP TRIGGER IF EXISTS trg_tournament_update_timestamp;
+CREATE TRIGGER trg_tournament_update_timestamp
+AFTER UPDATE ON tournament
+BEGIN
+    UPDATE tournament SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_tournament_day_update_timestamp;
+CREATE TRIGGER trg_tournament_day_update_timestamp
+AFTER UPDATE ON tournament_day
+BEGIN
+    UPDATE tournament_day SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
 DROP TRIGGER IF EXISTS trg_athlete_update_timestamp;
 CREATE TRIGGER trg_athlete_update_timestamp
 AFTER UPDATE ON athlete
@@ -1299,6 +1577,48 @@ CREATE TRIGGER trg_match_update_timestamp
 AFTER UPDATE ON match
 BEGIN
     UPDATE match SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_tournament_ranking_update_timestamp;
+CREATE TRIGGER trg_tournament_ranking_update_timestamp
+AFTER UPDATE ON tournament_ranking
+BEGIN
+    UPDATE tournament_ranking SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_tournament_champion_update_timestamp;
+CREATE TRIGGER trg_tournament_champion_update_timestamp
+AFTER UPDATE ON tournament_champion
+BEGIN
+    UPDATE tournament_champion SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_medal_ceremony_update_timestamp;
+CREATE TRIGGER trg_medal_ceremony_update_timestamp
+AFTER UPDATE ON medal_ceremony
+BEGIN
+    UPDATE medal_ceremony SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_medal_ceremony_division_update_timestamp;
+CREATE TRIGGER trg_medal_ceremony_division_update_timestamp
+AFTER UPDATE ON medal_ceremony_division
+BEGIN
+    UPDATE medal_ceremony_division SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_medal_ceremony_medalist_update_timestamp;
+CREATE TRIGGER trg_medal_ceremony_medalist_update_timestamp
+AFTER UPDATE ON medal_ceremony_medalist
+BEGIN
+    UPDATE medal_ceremony_medalist SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+DROP TRIGGER IF EXISTS trg_octagon_update_timestamp;
+CREATE TRIGGER trg_octagon_update_timestamp
+AFTER UPDATE ON octagon
+BEGIN
+    UPDATE octagon SET updated_at = datetime('now') WHERE id = NEW.id;
 END;
 
 DROP TRIGGER IF EXISTS trg_event_statistic_update_timestamp;
@@ -1381,6 +1701,119 @@ SELECT
     strftime('%s', created_at) AS created,
     strftime('%s', updated_at) AS updated
 FROM tournament;
+
+DROP VIEW IF EXISTS tournament_days;
+CREATE VIEW tournament_days AS
+SELECT
+    id,
+    uuid,
+    tournament_id,
+    day_number,
+    date,
+    status,
+    start_time,
+    end_time,
+    created_at,
+    updated_at,
+    strftime('%s', created_at) AS created,
+    strftime('%s', updated_at) AS updated
+FROM tournament_day;
+
+DROP VIEW IF EXISTS tournament_rankings;
+CREATE VIEW tournament_rankings AS
+SELECT
+    id,
+    code,
+    label,
+    is_para,
+    created_at,
+    updated_at,
+    strftime('%s', created_at) AS created,
+    strftime('%s', updated_at) AS updated
+FROM tournament_ranking;
+
+DROP VIEW IF EXISTS tournament_champions;
+CREATE VIEW tournament_champions AS
+SELECT
+    tc.id,
+    (SELECT uuid FROM tournament t WHERE t.id = tc.tournament_id) AS tournament_uuid,
+    tc.category,
+    COALESCE(tc.match_uuid, (SELECT uuid FROM match m WHERE m.id = tc.match_id)) AS match_uuid,
+    tc.match_code AS match_id,
+    CASE WHEN tc.winner_side IS NULL THEN NULL ELSE upper(tc.winner_side) END AS winner_color,
+    tc.winner_name,
+    tc.winner_country_code,
+    tc.blue_score,
+    tc.red_score,
+    tc.medal_type,
+    tc.medal_rank,
+    tc.created_at
+FROM tournament_champion tc;
+
+DROP VIEW IF EXISTS medal_ceremonies;
+CREATE VIEW medal_ceremonies AS
+SELECT
+    id,
+    tournament_id,
+    name,
+    background_path,
+    break_path,
+    animation_duration,
+    animation_speed,
+    photo_time,
+    prepared_at,
+    prepared_version,
+    show_external,
+    created_at,
+    updated_at,
+    strftime('%s', created_at) AS created,
+    strftime('%s', updated_at) AS updated
+FROM medal_ceremony;
+
+DROP VIEW IF EXISTS medal_ceremony_divisions;
+CREATE VIEW medal_ceremony_divisions AS
+SELECT
+    id,
+    ceremony_id,
+    division_id,
+    division_name,
+    order_index,
+    played_at,
+    created_at,
+    updated_at,
+    strftime('%s', created_at) AS created,
+    strftime('%s', updated_at) AS updated
+FROM medal_ceremony_division;
+
+DROP VIEW IF EXISTS medal_ceremony_medalists;
+CREATE VIEW medal_ceremony_medalists AS
+SELECT
+    id,
+    division_entry_id,
+    medal_type,
+    medal_rank,
+    athlete_id,
+    athlete_name,
+    athlete_short_name,
+    ioc_code,
+    flag_asset,
+    anthem_asset,
+    created_at,
+    updated_at,
+    strftime('%s', created_at) AS created,
+    strftime('%s', updated_at) AS updated
+FROM medal_ceremony_medalist;
+
+DROP VIEW IF EXISTS octagons;
+CREATE VIEW octagons AS
+SELECT
+    id,
+    tournament_id,
+    tournament_day_id,
+    number AS octagon_number,
+    created_at,
+    updated_at
+FROM octagon;
 
 DROP VIEW IF EXISTS pss_matches;
 CREATE VIEW pss_matches AS
@@ -1843,6 +2276,9 @@ FROM event_unknown;
 DROP TABLE IF EXISTS tmp_match_map;
 DROP TABLE IF EXISTS tmp_athlete_map;
 
+COMMIT;
+
+PRAGMA foreign_keys = ON;
 PRAGMA recursive_triggers = ON;
 
 
