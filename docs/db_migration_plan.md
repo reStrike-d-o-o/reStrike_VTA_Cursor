@@ -7,6 +7,11 @@ Global rules:
 - NOTES: if 'NO CHANGES', keep structure (still apply global rules unless explicitly contradicted).
 - DATA: save|delete|dump governs row retention and code removal for delete/dump.
 
+## Current status snapshot (SeaORM rollout)
+- SeaORM modules now back core PSS ingest paths: matches, match athletes, events, details, scores, warnings, recognition stats, UDP server config/sessions/clients, and athlete upserts.
+- Legacy rusqlite usage remains for UI settings, OBS recording/config, overlay providers and assets, network interface catalog, medal ceremony tooling, archival jobs, and secure config storage.
+- Prior to data transfer, finish the pending SeaORM modules, stage validation scripts (row counts, checksum diffs), and plan rollback steps once `database::operations` is fully retired.
+
 ## app_config
 - DATA: save | delete | dump
 - NOTES:
