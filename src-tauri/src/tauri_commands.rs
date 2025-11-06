@@ -4624,7 +4624,6 @@ pub async fn store_pss_event_cmd(
         match_id: Some(db_match_id),
         round_id,
         event_type_id,
-
         timestamp,
         raw_data: raw_data.to_string(),
         parsed_data,
@@ -4637,9 +4636,7 @@ pub async fn store_pss_event_cmd(
         parser_confidence: Some(1.0),
         validation_errors: None,
         tournament_id: None,
-
         created_at: chrono::Utc::now(),
-        created: Some(crate::utils::now_unix()),
     };
 
     match app.database_plugin().store_pss_event(&event_model).await {

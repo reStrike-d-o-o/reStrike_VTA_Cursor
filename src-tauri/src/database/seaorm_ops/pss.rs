@@ -267,7 +267,6 @@ pub(crate) fn map_event(model: event::Model) -> Result<PssEventV2, DbErr> {
         parser_confidence: model.parser_confidence,
         validation_errors: model.validation_errors,
         created_at,
-        created: Some(created_at.timestamp()),
     })
 }
 

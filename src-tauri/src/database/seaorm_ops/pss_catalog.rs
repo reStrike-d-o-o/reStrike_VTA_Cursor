@@ -33,8 +33,6 @@ fn map_match(model: matches::Model, related_tournament: Option<tournament::Model
             .unwrap_or_else(|| "Automatic".to_string()),
         created_at: Utc.from_utc_datetime(&model.created_at),
         updated_at: Utc.from_utc_datetime(&model.updated_at),
-        created: Some(model.created_at.and_utc().timestamp()),
-        updated: Some(model.updated_at.and_utc().timestamp()),
     }
 }
 
