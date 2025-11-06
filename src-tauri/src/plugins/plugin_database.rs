@@ -5,16 +5,18 @@ use crate::database::{
     // operations::*,
     models::{
         ObsConnection as DbObsConnection, ObsScene as DbObsScene,
-        OverlayTemplate as DbOverlayTemplate, OvrProvider as DbOvrProvider,
-        PssAthlete as DbPssAthlete, PssEventType as DbPssEventType, PssMatch as DbPssMatch,
-        PssMatchAthlete as DbPssMatchAthlete, UdpClientConnection as DbUdpClientConnection,
-        UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
+        OverlayTemplate as DbOverlayTemplate, OvrAnthemAsset, OvrFlagAnimationAsset,
+        OvrProvider as DbOvrProvider, PssAthlete as DbPssAthlete, PssEventType as DbPssEventType,
+        PssMatch as DbPssMatch, PssMatchAthlete as DbPssMatchAthlete,
+        UdpClientConnection as DbUdpClientConnection, UdpServerConfig as DbUdpServerConfig,
+        UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
         network as sea_network, obs as sea_obs, obs_scene as sea_obs_scene, overlay as sea_overlay,
-        overlay_provider as sea_overlay_provider, pss as sea_pss, pss_catalog as sea_catalog,
-        pss_status as sea_status, ui_settings as sea_settings,
+        overlay_assets as sea_overlay_assets, overlay_provider as sea_overlay_provider,
+        pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status,
+        ui_settings as sea_settings,
     },
     DatabaseError,
     HybridSettingsProvider,
@@ -617,6 +619,75 @@ impl DatabasePlugin {
             .map_err(|e| {
                 crate::types::AppError::ConfigError(format!(
                     "Failed to delete overlay provider {id}: {e}"
+                ))
+            })
+    }
+
+    /// Fetch all overlay flag animation assets for medal ceremonies.
+    pub async fn list_flag_animation_assets(&self) -> AppResult<Vec<OvrFlagAnimationAsset>> {
+        sea_overlay_assets::list_flag_animations(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch overlay flag animations: {e}"
+                ))
+            })
+    }
+
+    /// Insert or update a flag animation asset.
+    pub async fn upsert_flag_animation_asset(
+        &self,
+        asset: &OvrFlagAnimationAsset,
+    ) -> AppResult<OvrFlagAnimationAsset> {
+        sea_overlay_assets::upsert_flag_animation(&self.seaorm_connection, asset)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save overlay flag animation '{}': {e}",
+                    asset.file_name
+                ))
+            })
+    }
+
+    /// Remove a flag animation asset by identifier.
+    pub async fn delete_flag_animation_asset(&self, asset_id: &str) -> AppResult<()> {
+        sea_overlay_assets::delete_flag_animation(&self.seaorm_connection, asset_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to delete overlay flag animation {asset_id}: {e}"
+                ))
+            })
+    }
+
+    /// Fetch all overlay anthem assets for medal ceremonies.
+    pub async fn list_anthem_assets(&self) -> AppResult<Vec<OvrAnthemAsset>> {
+        sea_overlay_assets::list_anthems(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to fetch overlay anthems: {e}"))
+            })
+    }
+
+    /// Insert or update an anthem asset.
+    pub async fn upsert_anthem_asset(&self, asset: &OvrAnthemAsset) -> AppResult<OvrAnthemAsset> {
+        sea_overlay_assets::upsert_anthem(&self.seaorm_connection, asset)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save overlay anthem '{}': {e}",
+                    asset.file_name
+                ))
+            })
+    }
+
+    /// Remove an anthem asset by identifier.
+    pub async fn delete_anthem_asset(&self, asset_id: &str) -> AppResult<()> {
+        sea_overlay_assets::delete_anthem(&self.seaorm_connection, asset_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to delete overlay anthem {asset_id}: {e}"
                 ))
             })
     }

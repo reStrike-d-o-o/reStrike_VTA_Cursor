@@ -591,11 +591,10 @@ pub async fn medal_ceremony_set_show_external(
 pub async fn medal_ceremony_list_flag_assets(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<FlagAnimationAssetDto>, TauriError> {
-    let conn = app
+    let assets = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let assets = MedalCeremonyOperations::list_flag_animations(&conn)
+        .list_flag_animation_assets()
+        .await
         .map_err(|e| map_db_error("Failed to load flag animations", e))?;
     Ok(assets.iter().map(flag_asset_to_dto).collect())
 }
@@ -605,14 +604,13 @@ pub async fn medal_ceremony_save_flag_asset(
     asset: FlagAnimationAssetDto,
     app: State<'_, Arc<App>>,
 ) -> Result<String, TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
     let model = dto_to_flag_asset(&asset);
-    let id = MedalCeremonyOperations::upsert_flag_animation(&mut conn, &model)
+    let saved = app
+        .database_plugin()
+        .upsert_flag_animation_asset(&model)
+        .await
         .map_err(|e| map_db_error("Failed to save flag animation", e))?;
-    Ok(id)
+    Ok(saved.id)
 }
 
 #[tauri::command]
@@ -620,11 +618,9 @@ pub async fn medal_ceremony_delete_flag_asset(
     asset_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::delete_flag_animation(&mut conn, &asset_id)
+    app.database_plugin()
+        .delete_flag_animation_asset(&asset_id)
+        .await
         .map_err(|e| map_db_error("Failed to delete flag animation", e))?;
     Ok(())
 }
@@ -633,11 +629,10 @@ pub async fn medal_ceremony_delete_flag_asset(
 pub async fn medal_ceremony_list_anthems(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<AnthemAssetDto>, TauriError> {
-    let conn = app
+    let assets = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let assets = MedalCeremonyOperations::list_anthems(&conn)
+        .list_anthem_assets()
+        .await
         .map_err(|e| map_db_error("Failed to load anthem assets", e))?;
     Ok(assets.iter().map(anthem_to_dto).collect())
 }
@@ -647,14 +642,13 @@ pub async fn medal_ceremony_save_anthem(
     asset: AnthemAssetDto,
     app: State<'_, Arc<App>>,
 ) -> Result<String, TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
     let model = dto_to_anthem(&asset);
-    let id = MedalCeremonyOperations::upsert_anthem(&mut conn, &model)
+    let saved = app
+        .database_plugin()
+        .upsert_anthem_asset(&model)
+        .await
         .map_err(|e| map_db_error("Failed to save anthem asset", e))?;
-    Ok(id)
+    Ok(saved.id)
 }
 
 #[tauri::command]
@@ -662,11 +656,9 @@ pub async fn medal_ceremony_delete_anthem(
     asset_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::delete_anthem(&mut conn, &asset_id)
+    app.database_plugin()
+        .delete_anthem_asset(&asset_id)
+        .await
         .map_err(|e| map_db_error("Failed to delete anthem asset", e))?;
     Ok(())
 }
