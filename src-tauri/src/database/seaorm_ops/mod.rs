@@ -1,3 +1,4 @@
+pub mod medal_ceremony;
 pub mod network;
 pub mod obs;
 pub mod obs_scene;

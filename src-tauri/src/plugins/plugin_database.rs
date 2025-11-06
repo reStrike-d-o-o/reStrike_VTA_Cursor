@@ -4,6 +4,9 @@ use crate::database::{
     // models::*,
     // operations::*,
     models::{
+        MedalCeremony as DbMedalCeremony, MedalCeremonyAthleteOption,
+        MedalCeremonyDetail as DbMedalCeremonyDetail,
+        MedalCeremonyDivisionDetail as DbMedalCeremonyDivisionDetail, MedalCeremonyDivisionOption,
         ObsConnection as DbObsConnection, ObsScene as DbObsScene,
         OverlayTemplate as DbOverlayTemplate, OvrAnthemAsset, OvrFlagAnimationAsset,
         OvrProvider as DbOvrProvider, PssAthlete as DbPssAthlete, PssEventType as DbPssEventType,
@@ -13,10 +16,10 @@ use crate::database::{
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
-        network as sea_network, obs as sea_obs, obs_scene as sea_obs_scene, overlay as sea_overlay,
-        overlay_assets as sea_overlay_assets, overlay_provider as sea_overlay_provider,
-        pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status,
-        ui_settings as sea_settings,
+        medal_ceremony as sea_medal_ceremony, network as sea_network, obs as sea_obs,
+        obs_scene as sea_obs_scene, overlay as sea_overlay, overlay_assets as sea_overlay_assets,
+        overlay_provider as sea_overlay_provider, pss as sea_pss, pss_catalog as sea_catalog,
+        pss_status as sea_status, ui_settings as sea_settings,
     },
     DatabaseError,
     HybridSettingsProvider,
@@ -688,6 +691,130 @@ impl DatabasePlugin {
             .map_err(|e| {
                 crate::types::AppError::ConfigError(format!(
                     "Failed to delete overlay anthem {asset_id}: {e}"
+                ))
+            })
+    }
+
+    /// Retrieve available medal ceremony division options.
+    pub async fn list_medal_ceremony_division_options(
+        &self,
+    ) -> AppResult<Vec<MedalCeremonyDivisionOption>> {
+        sea_medal_ceremony::list_division_options(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to load medal ceremony division options: {e}"
+                ))
+            })
+    }
+
+    /// Retrieve athlete options for the provided division name.
+    pub async fn list_medal_ceremony_athlete_options(
+        &self,
+        division_name: &str,
+    ) -> AppResult<Vec<MedalCeremonyAthleteOption>> {
+        sea_medal_ceremony::list_athlete_options(&self.seaorm_connection, division_name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to load medal ceremony athlete options: {e}"
+                ))
+            })
+    }
+
+    /// List all medal ceremonies.
+    pub async fn list_medal_ceremonies(&self) -> AppResult<Vec<DbMedalCeremony>> {
+        sea_medal_ceremony::list_ceremonies(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to load medal ceremonies: {e}"))
+            })
+    }
+
+    /// Retrieve a medal ceremony with nested divisions and medalists.
+    pub async fn get_medal_ceremony_detail(
+        &self,
+        ceremony_id: &str,
+    ) -> AppResult<Option<DbMedalCeremonyDetail>> {
+        sea_medal_ceremony::get_ceremony_detail(&self.seaorm_connection, ceremony_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to load medal ceremony {ceremony_id}: {e}"
+                ))
+            })
+    }
+
+    /// Insert or update a medal ceremony tree and return the saved identifier.
+    pub async fn upsert_medal_ceremony(&self, detail: &DbMedalCeremonyDetail) -> AppResult<String> {
+        sea_medal_ceremony::upsert_ceremony(&self.seaorm_connection, detail)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save medal ceremony '{}': {e}",
+                    detail.ceremony.name
+                ))
+            })
+    }
+
+    /// Delete a medal ceremony and all related divisions.
+    pub async fn delete_medal_ceremony(&self, ceremony_id: &str) -> AppResult<()> {
+        sea_medal_ceremony::delete_ceremony(&self.seaorm_connection, ceremony_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to delete medal ceremony {ceremony_id}: {e}"
+                ))
+            })
+    }
+
+    /// Prepare a ceremony playlist and return the ordered divisions.
+    pub async fn prepare_medal_ceremony_playlist(
+        &self,
+        ceremony_id: &str,
+    ) -> AppResult<Vec<DbMedalCeremonyDivisionDetail>> {
+        sea_medal_ceremony::prepare_playlist(&self.seaorm_connection, ceremony_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to prepare medal ceremony {ceremony_id}: {e}"
+                ))
+            })
+    }
+
+    /// Mark a ceremony division as played.
+    pub async fn mark_medal_ceremony_division_played(&self, division_id: &str) -> AppResult<()> {
+        sea_medal_ceremony::mark_division_played(&self.seaorm_connection, division_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to update medal ceremony division {division_id}: {e}"
+                ))
+            })
+    }
+
+    /// Reset ceremony playback state.
+    pub async fn reset_medal_ceremony_playback(&self, ceremony_id: &str) -> AppResult<()> {
+        sea_medal_ceremony::reset_playback(&self.seaorm_connection, ceremony_id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to reset medal ceremony {ceremony_id}: {e}"
+                ))
+            })
+    }
+
+    /// Update the external screen visibility flag for a ceremony.
+    pub async fn update_medal_ceremony_show_external(
+        &self,
+        ceremony_id: &str,
+        enabled: bool,
+    ) -> AppResult<()> {
+        sea_medal_ceremony::update_show_external(&self.seaorm_connection, ceremony_id, enabled)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to update medal ceremony {ceremony_id} external state: {e}"
                 ))
             })
     }

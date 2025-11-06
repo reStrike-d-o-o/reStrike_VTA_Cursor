@@ -2515,6 +2515,24 @@ pub struct MedalCeremonyDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyDivisionOption {
+    pub name: String,
+    pub category: Option<String>,
+    pub gender: Option<String>,
+    pub weight_class: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MedalCeremonyAthleteOption {
+    pub id: i64,
+    pub full_name: String,
+    pub short_name: Option<String>,
+    pub country_code: Option<String>,
+    pub ioc_code: Option<String>,
+    pub athlete_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OvrFlagAnimationAsset {
     pub id: String,
     pub ioc_code: String,

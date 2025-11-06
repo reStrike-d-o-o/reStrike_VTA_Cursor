@@ -1,13 +1,9 @@
 use crate::{
     core::app::App,
-    database::{
-        models::{
-            MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision, MedalCeremonyDivisionDetail,
-            MedalCeremonyMedalist, OvrAnthemAsset, OvrFlagAnimationAsset,
-        },
-        operations::{
-            MedalCeremonyAthleteOption, MedalCeremonyDivisionOption, MedalCeremonyOperations,
-        },
+    database::models::{
+        MedalCeremony, MedalCeremonyAthleteOption, MedalCeremonyDetail, MedalCeremonyDivision,
+        MedalCeremonyDivisionDetail, MedalCeremonyDivisionOption, MedalCeremonyMedalist,
+        OvrAnthemAsset, OvrFlagAnimationAsset,
     },
 };
 use anyhow::anyhow;
@@ -448,11 +444,10 @@ fn dto_to_anthem(dto: &AnthemAssetDto) -> OvrAnthemAsset {
 pub async fn medal_ceremony_list_divisions(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<MedalCeremonyDivisionOptionDto>, TauriError> {
-    let conn = app
+    let options = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let options = MedalCeremonyOperations::list_division_options(&conn)
+        .list_medal_ceremony_division_options()
+        .await
         .map_err(|e| map_db_error("Failed to load division options", e))?;
     Ok(options.iter().map(division_option_to_dto).collect())
 }
@@ -462,11 +457,10 @@ pub async fn medal_ceremony_list_athletes(
     division: String,
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<MedalCeremonyAthleteOptionDto>, TauriError> {
-    let conn = app
+    let options = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let options = MedalCeremonyOperations::list_athlete_options(&conn, &division)
+        .list_medal_ceremony_athlete_options(&division)
+        .await
         .map_err(|e| map_db_error("Failed to load athlete options", e))?;
     Ok(options.iter().map(athlete_option_to_dto).collect())
 }
@@ -475,11 +469,10 @@ pub async fn medal_ceremony_list_athletes(
 pub async fn medal_ceremony_list(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<MedalCeremonySummaryDto>, TauriError> {
-    let conn = app
+    let ceremonies = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let ceremonies = MedalCeremonyOperations::list_ceremonies(&conn)
+        .list_medal_ceremonies()
+        .await
         .map_err(|e| map_db_error("Failed to load medal ceremonies", e))?;
     Ok(ceremonies
         .iter()
@@ -492,11 +485,10 @@ pub async fn medal_ceremony_get(
     ceremony_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<Option<MedalCeremonyDetailDto>, TauriError> {
-    let conn = app
+    let detail = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let detail = MedalCeremonyOperations::get_ceremony_detail(&conn, &ceremony_id)
+        .get_medal_ceremony_detail(&ceremony_id)
+        .await
         .map_err(|e| map_db_error("Failed to load medal ceremony", e))?;
     Ok(detail.as_ref().map(detail_to_dto))
 }
@@ -506,12 +498,11 @@ pub async fn medal_ceremony_save(
     payload: MedalCeremonyDetailDto,
     app: State<'_, Arc<App>>,
 ) -> Result<String, TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
     let detail = dto_to_ceremony_detail(&payload);
-    let id = MedalCeremonyOperations::upsert_ceremony(&mut conn, &detail)
+    let id = app
+        .database_plugin()
+        .upsert_medal_ceremony(&detail)
+        .await
         .map_err(|e| map_db_error("Failed to save medal ceremony", e))?;
     Ok(id)
 }
@@ -521,11 +512,9 @@ pub async fn medal_ceremony_delete(
     ceremony_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::delete_ceremony(&mut conn, &ceremony_id)
+    app.database_plugin()
+        .delete_medal_ceremony(&ceremony_id)
+        .await
         .map_err(|e| map_db_error("Failed to delete medal ceremony", e))?;
     Ok(())
 }
@@ -535,11 +524,10 @@ pub async fn medal_ceremony_prepare(
     ceremony_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<MedalCeremonyDivisionDto>, TauriError> {
-    let mut conn = app
+    let divisions = app
         .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    let divisions = MedalCeremonyOperations::prepare_playlist(&mut conn, &ceremony_id)
+        .prepare_medal_ceremony_playlist(&ceremony_id)
+        .await
         .map_err(|e| map_db_error("Failed to prepare medal ceremony", e))?;
     Ok(divisions.iter().map(division_to_dto).collect())
 }
@@ -549,11 +537,9 @@ pub async fn medal_ceremony_mark_division_played(
     division_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::mark_division_played(&mut conn, &division_id)
+    app.database_plugin()
+        .mark_medal_ceremony_division_played(&division_id)
+        .await
         .map_err(|e| map_db_error("Failed to update ceremony progress", e))?;
     Ok(())
 }
@@ -563,11 +549,9 @@ pub async fn medal_ceremony_reset_playback(
     ceremony_id: String,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::reset_playback(&mut conn, &ceremony_id)
+    app.database_plugin()
+        .reset_medal_ceremony_playback(&ceremony_id)
+        .await
         .map_err(|e| map_db_error("Failed to reset ceremony playback", e))?;
     Ok(())
 }
@@ -578,11 +562,9 @@ pub async fn medal_ceremony_set_show_external(
     enabled: bool,
     app: State<'_, Arc<App>>,
 ) -> Result<(), TauriError> {
-    let mut conn = app
-        .database_plugin()
-        .get_pooled_connection()
-        .map_err(|e| map_db_error("Failed to acquire database connection", e))?;
-    MedalCeremonyOperations::update_show_external(&mut conn, &ceremony_id, enabled)
+    app.database_plugin()
+        .update_medal_ceremony_show_external(&ceremony_id, enabled)
+        .await
         .map_err(|e| map_db_error("Failed to update external screen state", e))?;
     Ok(())
 }
