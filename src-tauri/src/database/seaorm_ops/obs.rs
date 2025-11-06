@@ -1,6 +1,6 @@
 use crate::database::models::ObsConnection as DbObsConnection;
 use crate::entity::obs_connection;
-use chrono::Utc;
+use chrono::{TimeZone, Utc};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, DbErr, EntityTrait,
     QueryFilter, QueryOrder,

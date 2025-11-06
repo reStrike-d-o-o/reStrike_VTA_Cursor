@@ -2,7 +2,7 @@ use crate::database::{
     models::{
         Athlete, EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
         MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsRecordingConfig,
-        ObsRecordingSession, ObsScene, Octagon, OverlayTemplate, OvrAnthemAsset, OvrCategory,
+        ObsRecordingSession, Octagon, OverlayTemplate, OvrAnthemAsset, OvrCategory,
         OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete, PssEventDetail,
         PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
         PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
@@ -2685,119 +2685,6 @@ pub struct ArchiveStatistics {
 // ============================================================================
 
 impl DatabaseConnection {
-    // ========================================================================
-    // OBS SCENE OPERATIONS
-    // ========================================================================
-
-    /// Get all OBS scenes
-    pub async fn get_obs_scenes(&self) -> DatabaseResult<Vec<ObsScene>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare("SELECT * FROM obs_scenes ORDER BY scene_name")?;
-
-        let scenes = stmt
-            .query_map([], ObsScene::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(scenes)
-    }
-
-    /// Get active OBS scenes only
-    pub async fn get_active_obs_scenes(&self) -> DatabaseResult<Vec<ObsScene>> {
-        let conn = self.get_connection().await?;
-        let mut stmt =
-            conn.prepare("SELECT * FROM obs_scenes WHERE is_active = 1 ORDER BY scene_name")?;
-
-        let scenes = stmt
-            .query_map([], ObsScene::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(scenes)
-    }
-
-    /// Get OBS scene by name
-    pub async fn get_obs_scene_by_name(
-        &self,
-        scene_name: &str,
-    ) -> DatabaseResult<Option<ObsScene>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare("SELECT * FROM obs_scenes WHERE scene_name = ?")?;
-
-        let scene = stmt
-            .query_row([scene_name], ObsScene::from_row)
-            .optional()?;
-
-        Ok(scene)
-    }
-
-    /// Insert or update OBS scene
-    pub async fn upsert_obs_scene(&self, scene: &ObsScene) -> DatabaseResult<i64> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        let id = conn.execute(
-            "INSERT OR REPLACE INTO obs_scenes (scene_name, scene_id, is_active, last_seen_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [
-                &scene.scene_name,
-                &scene.scene_id,
-                &(scene.is_active as i32).to_string(),
-                &scene.last_seen_at.to_rfc3339(),
-                &scene.created_at.to_rfc3339(),
-                &now,
-            ],
-        )?;
-
-        Ok(id as i64)
-    }
-
-    /// Mark OBS scene as inactive
-    pub async fn mark_obs_scene_inactive(&self, scene_name: &str) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        conn.execute(
-            "UPDATE obs_scenes SET is_active = 0, updated_at = ? WHERE scene_name = ?",
-            [&now, scene_name],
-        )?;
-
-        Ok(())
-    }
-
-    /// Update OBS scene last seen timestamp
-    pub async fn update_obs_scene_last_seen(&self, scene_name: &str) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        conn.execute(
-            "UPDATE obs_scenes SET last_seen_at = ?, updated_at = ? WHERE scene_name = ?",
-            [&now, &now, scene_name],
-        )?;
-
-        Ok(())
-    }
-
-    /// Sync OBS scenes from WebSocket (mark unseen scenes as inactive)
-    pub async fn sync_obs_scenes(&self, active_scene_names: &[String]) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        // Mark all scenes as inactive first
-        conn.execute(
-            "UPDATE obs_scenes SET is_active = 0, updated_at = ?",
-            [&now],
-        )?;
-
-        // Mark active scenes as active
-        for scene_name in active_scene_names {
-            conn.execute(
-                "UPDATE obs_scenes SET is_active = 1, last_seen_at = ?, updated_at = ? WHERE scene_name = ?",
-                [&now, &now, scene_name],
-            )?;
-        }
-
-        Ok(())
-    }
-
     // ========================================================================
     // OVERLAY TEMPLATE OPERATIONS
     // ========================================================================

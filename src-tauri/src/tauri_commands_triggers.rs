@@ -24,7 +24,6 @@ pub async fn triggers_list_obs_scenes(
     // 1) Try database – preferred source
     let scenes_db = app
         .database_plugin()
-        .get_database_connection()
         .get_active_obs_scenes()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;

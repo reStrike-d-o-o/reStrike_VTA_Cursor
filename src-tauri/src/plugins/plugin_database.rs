@@ -4,15 +4,15 @@ use crate::database::{
     // models::*,
     // operations::*,
     models::{
-        ObsConnection as DbObsConnection, PssAthlete as DbPssAthlete,
+        ObsConnection as DbObsConnection, ObsScene as DbObsScene, PssAthlete as DbPssAthlete,
         PssEventType as DbPssEventType, PssMatch as DbPssMatch,
         PssMatchAthlete as DbPssMatchAthlete, UdpClientConnection as DbUdpClientConnection,
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
-        network as sea_network, obs as sea_obs, pss as sea_pss, pss_catalog as sea_catalog,
-        pss_status as sea_status, ui_settings as sea_settings,
+        network as sea_network, obs as sea_obs, obs_scene as sea_obs_scene, pss as sea_pss,
+        pss_catalog as sea_catalog, pss_status as sea_status, ui_settings as sea_settings,
     },
     DatabaseError,
     HybridSettingsProvider,
@@ -410,6 +410,80 @@ impl DatabasePlugin {
             .await
             .map_err(|e| {
                 crate::types::AppError::ConfigError(format!("Failed to clear OBS connections: {e}"))
+            })
+    }
+
+    /// Fetch every OBS scene stored in the database.
+    pub async fn get_obs_scenes(&self) -> AppResult<Vec<DbObsScene>> {
+        sea_obs_scene::list_scenes(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to fetch OBS scenes: {e}"))
+            })
+    }
+
+    /// Fetch only OBS scenes currently marked as active.
+    pub async fn get_active_obs_scenes(&self) -> AppResult<Vec<DbObsScene>> {
+        sea_obs_scene::list_active_scenes(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch active OBS scenes: {e}"
+                ))
+            })
+    }
+
+    /// Look up an OBS scene by its name.
+    pub async fn get_obs_scene_by_name(&self, scene_name: &str) -> AppResult<Option<DbObsScene>> {
+        sea_obs_scene::find_scene_by_name(&self.seaorm_connection, scene_name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to lookup OBS scene '{scene_name}': {e}"
+                ))
+            })
+    }
+
+    /// Insert or update an OBS scene and return the saved record.
+    pub async fn upsert_obs_scene(&self, scene: &DbObsScene) -> AppResult<DbObsScene> {
+        sea_obs_scene::upsert_scene(&self.seaorm_connection, scene)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save OBS scene '{}': {e}",
+                    scene.scene_name
+                ))
+            })
+    }
+
+    /// Mark a particular OBS scene as inactive.
+    pub async fn mark_obs_scene_inactive(&self, scene_name: &str) -> AppResult<()> {
+        sea_obs_scene::mark_scene_inactive(&self.seaorm_connection, scene_name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to deactivate OBS scene '{scene_name}': {e}"
+                ))
+            })
+    }
+
+    /// Update the last-seen timestamp for the given OBS scene.
+    pub async fn update_obs_scene_last_seen(&self, scene_name: &str) -> AppResult<()> {
+        sea_obs_scene::update_scene_last_seen(&self.seaorm_connection, scene_name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to refresh OBS scene '{scene_name}': {e}"
+                ))
+            })
+    }
+
+    /// Synchronise scene activity against the provided list of live scene names.
+    pub async fn sync_obs_scenes(&self, active_scene_names: &[String]) -> AppResult<()> {
+        sea_obs_scene::sync_scenes(&self.seaorm_connection, active_scene_names)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to sync OBS scenes: {e}"))
             })
     }
 

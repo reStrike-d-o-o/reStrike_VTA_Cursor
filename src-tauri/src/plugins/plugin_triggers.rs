@@ -3,6 +3,7 @@ use crate::database::{
     DatabaseConnection,
 };
 use crate::plugins::obs_obws::manager::ObsManager;
+use crate::plugins::plugin_database::DatabasePlugin;
 use crate::types::AppResult;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,7 @@ pub static TRIGGER_PLUGIN_GLOBAL: OnceCell<std::sync::Arc<TriggerPlugin>> = Once
 
 pub struct TriggerPlugin {
     db: Arc<DatabaseConnection>,
+    db_plugin: Arc<DatabasePlugin>,
     obs_manager: Arc<ObsManager>,
     enabled_triggers: Arc<RwLock<HashMap<String, Vec<EventTrigger>>>>,
     current_tournament_id: Arc<RwLock<Option<i64>>>,
@@ -143,6 +145,7 @@ impl Clone for TriggerPlugin {
     fn clone(&self) -> Self {
         Self {
             db: self.db.clone(),
+            db_plugin: self.db_plugin.clone(),
             obs_manager: self.obs_manager.clone(),
             enabled_triggers: self.enabled_triggers.clone(),
             current_tournament_id: self.current_tournament_id.clone(),
@@ -159,9 +162,11 @@ impl Clone for TriggerPlugin {
 
 impl TriggerPlugin {
     /// Create a new trigger plugin
-    pub fn new(db: Arc<DatabaseConnection>, obs_manager: Arc<ObsManager>) -> Self {
+    pub fn new(db_plugin: Arc<DatabasePlugin>, obs_manager: Arc<ObsManager>) -> Self {
+        let db = db_plugin.get_database_connection();
         Self {
             db,
+            db_plugin,
             obs_manager,
             enabled_triggers: Arc::new(RwLock::new(HashMap::new())),
             current_tournament_id: Arc::new(RwLock::new(None)),
@@ -731,7 +736,7 @@ impl TriggerPlugin {
         };
 
         // Get scene details from database
-        let scenes = self.db.get_obs_scenes().await?;
+        let scenes = self.db_plugin.get_obs_scenes().await?;
         let scene = scenes
             .iter()
             .find(|s| s.id == Some(scene_id))
@@ -860,7 +865,7 @@ impl TriggerPlugin {
     /// Sync OBS scenes from WebSocket connection
     pub async fn sync_obs_scenes(&self, scene_names: Vec<String>) -> AppResult<()> {
         // Update database with current OBS scenes
-        self.db.sync_obs_scenes(&scene_names).await?;
+        self.db_plugin.sync_obs_scenes(&scene_names).await?;
 
         log::info!("Synced {} OBS scenes", scene_names.len());
         Ok(())

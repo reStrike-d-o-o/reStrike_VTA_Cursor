@@ -200,7 +200,7 @@ impl App {
 
         // Initialize trigger plugin (after database plugin)
         let trigger_plugin = Arc::new(TriggerPlugin::new(
-            database_plugin.get_database_connection(),
+            Arc::new(database_plugin.clone()),
             obs_obws_manager.clone(),
         ));
         if let Err(e) = trigger_plugin.initialize().await {

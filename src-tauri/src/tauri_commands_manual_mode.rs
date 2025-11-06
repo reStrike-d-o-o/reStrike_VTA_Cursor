@@ -168,7 +168,10 @@ pub async fn manual_restore_data(app: State<'_, Arc<App>>) -> Result<serde_json:
     };
 
     // Get OBS connections
-    let obs_connections = PssUdpOperations::get_obs_connections(&conn)
+    let obs_connections = app
+        .database_plugin()
+        .list_obs_connections()
+        .await
         .map_err(|e| format!("Failed to get OBS connections: {e}"))?;
 
     // Get UDP server configs via SeaORM-backed plugin helper
