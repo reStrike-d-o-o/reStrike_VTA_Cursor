@@ -66,7 +66,6 @@ pub async fn triggers_list_active_overlays(
 ) -> Result<Vec<OverlayTemplate>, TauriError> {
     let overlays = app
         .database_plugin()
-        .get_database_connection()
         .get_active_overlay_templates()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
