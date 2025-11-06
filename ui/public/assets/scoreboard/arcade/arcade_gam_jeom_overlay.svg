@@ -74,13 +74,13 @@
             <polygon class="cls-6" points="1128.45607 .000065 1272.095823 .000065 1300.669241 80.298665 1157.029488 80.298665 1128.45607 .000065"/>
           </g>
           <text class="cls-9" transform="translate(1314.255615 57.436035)"><tspan x="0" y="0">gam-jeom</tspan></text>
-          <text id="player2Fouls" class="cls-1" transform="translate(1167.476807 60.511719)"><tspan class="cls-7" x="0" y="0">0</tspan><tspan class="cls-2" x="40.228027" y="0">/</tspan><tspan class="cls-3" x="59.999023" y="0">5</tspan></text>
+          <text id="player2Fouls" class="cls-1" transform="translate(1167.476807 60.511719)"><tspan id="arcade_gam_jeom_player2" class="cls-7" x="0" y="0">0</tspan><tspan class="cls-2" x="40.228027" y="0">/</tspan><tspan class="cls-3" x="59.999023" y="0">5</tspan></text>
         </g>
         <g id="player1_x5F_blue">
           <polygon class="cls-5" points="260.212299 10.437581 21.145221 10.437581 -.000026 69.861151 239.067052 69.861151 260.212299 10.437581"/>
           <text class="cls-9" transform="translate(33.29248 57.445312)"><tspan x="0" y="0">gam-jeom</tspan></text>
           <polygon class="cls-4" points="404.894027 .000049 261.254275 .000049 232.680857 80.298683 376.32061 80.298683 404.894027 .000049"/>
-          <text id="player1Fouls" data-name="fouls" class="cls-1" transform="translate(271.245941 60.520752)"><tspan class="cls-7" x="0" y="0">0</tspan><tspan class="cls-2" x="40.228027" y="0">/</tspan><tspan class="cls-3" x="59.999023" y="0">5</tspan></text>
+          <text id="player1Fouls" data-name="fouls" class="cls-1" transform="translate(271.245941 60.520752)"><tspan id="arcade_gam_jeom_player1" class="cls-7" x="0" y="0">0</tspan><tspan class="cls-2" x="40.228027" y="0">/</tspan><tspan class="cls-3" x="59.999023" y="0">5</tspan></text>
         </g>
       </g>
     </g>

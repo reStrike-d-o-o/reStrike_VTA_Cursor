@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/overlays/modern/scoreboard.css">
 </head>
+
 <body>
     <div id="connection-status" class="connection-status"></div>
     <div id="scoreboard-container">
@@ -19,15 +21,268 @@
     <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
     <script src="/assets/scoreboard/scoreboard-utils.js"></script>
     <script>
-        let scoreboardInstance = null; let isConnected=false; let roundDuration=120;
-        function updateConnectionStatus(c){const e=document.getElementById('connection-status');if(c)e.classList.add('connected');else e.classList.remove('connected');}
-        function initialize(){const o=document.getElementById('scoreboard-svg');const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ if(typeof ScoreboardOverlay==='undefined'){ setTimeout(initialize,1000); return;} scoreboardInstance=new ScoreboardOverlay(d.querySelector('svg')); updateConnectionStatus(false);} else { setTimeout(initialize,1000);} }
-        function handle(e){ if(!scoreboardInstance) return; switch(e.type){ case 'athletes': if(e.athlete1?.long) scoreboardInstance.updatePlayerName('blue', e.athlete1.long); if(e.athlete2?.long) scoreboardInstance.updatePlayerName('red', e.athlete2.long); if(e.athlete1?.country) scoreboardInstance.updateCountry('blue', e.athlete1.country); if(e.athlete2?.country) scoreboardInstance.updateCountry('red', e.athlete2.country); break; case 'match_config': const d=e.raw_data?JSON.parse(e.raw_data):(e.structured_data||e); if(d.round_duration!==undefined&&d.round_duration!==null) roundDuration=parseInt(d.round_duration); if(d.weight||d.division||d.category) scoreboardInstance.updateMatchInfo(d.weight,d.division,d.category); if(d.number){ const el=scoreboardInstance.svg.getElementById('matchNumber'); if(el) el.textContent=`#${d.number}`;} break; case 'current_scores': const sc=e.raw_data?JSON.parse(e.raw_data):e; const b=sc.athlete1_score??sc?.athlete1?.score??0; const r=sc.athlete2_score??sc?.athlete2?.score??0; scoreboardInstance.updateScore('blue', b); scoreboardInstance.updateScore('red', r); break; case 'clock': if(e.time){ let m=0,s=0; if(e.time.includes(':')){const p=e.time.split(':'); m=parseInt(p[0])||0; s=parseInt(p[1])||0;} else { s=parseInt(e.time)||0;} scoreboardInstance.updateTimer(m,s);} break; case 'round': const rn=e.current_round??e.round??null; if(rn!==null){ scoreboardInstance.updateRound(rn); const m=Math.floor(roundDuration/60), s=roundDuration%60; scoreboardInstance.updateTimer(m,s);} break; }}
-        let ws=null, tries=0; const max=5, delay=2000; function connect(){ try{ const h=window.location.hostname; const w=(h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${w}:3001`; ws=new WebSocket(url); ws.onopen=()=>{updateConnectionStatus(true); tries=0;}; ws.onmessage=(ev)=>{ try{ const d=JSON.parse(ev.data); if(d.type==='pss_event') handle(d.data);}catch(_){}}; ws.onclose=()=>{updateConnectionStatus(false); if(tries<max){tries++; setTimeout(connect,delay);} }; ws.onerror=()=>updateConnectionStatus(false);}catch(_){updateConnectionStatus(false);} }
-        document.addEventListener('DOMContentLoaded',()=>{ const o=document.getElementById('scoreboard-svg'); if(window.ScoreboardFontInjector){ window.ScoreboardFontInjector.initForObject('#scoreboard-svg'); } o.addEventListener('load', initialize); connect(); if(o.contentDocument) initialize(); });
-        window.ModernScoreboard={handle};
+        const RETRY_DELAY_MS = 2000;
+        const MAX_RETRIES = 5;
+        let scoreboardInstance = null;
+        let roundDuration = 120;
+        let ws = null;
+        let retryCount = 0;
+
+        function updateConnectionStatus(connected) {
+            const el = document.getElementById('connection-status');
+            if (!el) return;
+            if (connected) {
+                el.classList.add('connected');
+            } else {
+                el.classList.remove('connected');
+            }
+        }
+
+        function resolveWebSocketUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const explicitUrl = params.get('wsUrl');
+                if (explicitUrl) {
+                    return explicitUrl;
+                }
+
+                const protocol = window.location.protocol;
+                let host = params.get('wsHost') || window.location.hostname || '127.0.0.1';
+                if (host === 'localhost' || protocol !== 'http:' && protocol !== 'https:') {
+                    host = '127.0.0.1';
+                }
+                const port = params.get('wsPort') || '3001';
+                const wsProtocol = protocol === 'https:' ? 'wss' : 'ws';
+                return `${wsProtocol}://${host}:${port}`;
+            } catch (_error) {
+                return 'ws://127.0.0.1:3001';
+            }
+        }
+
+        function initialize() {
+            const obj = document.getElementById('scoreboard-svg');
+            const doc = obj?.contentDocument || obj?.contentWindow?.document;
+            const svg = doc?.querySelector('svg');
+            if (!svg) {
+                setTimeout(initialize, 500);
+                return;
+            }
+
+            if (typeof ScoreboardOverlay === 'undefined') {
+                setTimeout(initialize, 500);
+                return;
+            }
+
+            scoreboardInstance = new ScoreboardOverlay(svg);
+            updateConnectionStatus(false);
+        }
+
+        function parseTime(value) {
+            if (!value) {
+                return { minutes: 0, seconds: 0 };
+            }
+            if (value.includes(':')) {
+                const parts = value.split(':');
+                const minutes = parseInt(parts[0] ?? '0', 10) || 0;
+                const seconds = parseInt(parts[1] ?? '0', 10) || 0;
+                return { minutes, seconds };
+            }
+            const totalSeconds = parseInt(value, 10) || 0;
+            return {
+                minutes: Math.floor(totalSeconds / 60),
+                seconds: totalSeconds % 60,
+            };
+        }
+
+        function parseMaybeJson(value) {
+            if (typeof value !== 'string') {
+                return null;
+            }
+            try {
+                return JSON.parse(value);
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        function handle(event) {
+            if (!scoreboardInstance || !event) return;
+
+            const payload = event.data && typeof event.data === 'object' ? event.data : event;
+            const eventType = typeof payload.type === 'string'
+                ? payload.type
+                : typeof payload.event_type === 'string'
+                    ? payload.event_type
+                    : '';
+
+            switch (eventType) {
+                case 'athletes': {
+                    const blue = payload.athlete1 || payload.blue || {};
+                    const red = payload.athlete2 || payload.red || {};
+                    if (blue.long) scoreboardInstance.updatePlayerName('blue', blue.long);
+                    if (red.long) scoreboardInstance.updatePlayerName('red', red.long);
+                    const blueCountry = blue.country || blue.iocCode;
+                    const redCountry = red.country || red.iocCode;
+                    if (blueCountry) scoreboardInstance.updateCountry('blue', blueCountry);
+                    if (redCountry) scoreboardInstance.updateCountry('red', redCountry);
+                    break;
+                }
+                case 'match_config': {
+                    const raw = parseMaybeJson(payload.raw_data);
+                    const structured = payload.structured_data || payload;
+                    const data = raw && typeof raw === 'object' ? raw : structured;
+                    if (data) {
+                        if (data.round_duration != null) {
+                            const parsed = parseInt(data.round_duration, 10);
+                            if (!Number.isNaN(parsed)) {
+                                roundDuration = parsed;
+                            }
+                        }
+                        if (typeof scoreboardInstance.updateMatchInfo === 'function') {
+                            scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category);
+                        }
+                        if (data.number && scoreboardInstance.svg) {
+                            const element = scoreboardInstance.svg.getElementById('matchNumber');
+                            if (element) {
+                                element.textContent = `#${data.number}`;
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 'current_scores': {
+                    const parsedRaw = parseMaybeJson(payload.raw_data);
+                    const source = parsedRaw && typeof parsedRaw === 'object' ? parsedRaw : payload;
+                    const blueScore = source.athlete1_score ?? source?.athlete1?.score ?? 0;
+                    const redScore = source.athlete2_score ?? source?.athlete2?.score ?? 0;
+                    scoreboardInstance.updateScore('blue', blueScore);
+                    scoreboardInstance.updateScore('red', redScore);
+                    break;
+                }
+                case 'clock': {
+                    if (payload.time) {
+                        const t = parseTime(payload.time);
+                        scoreboardInstance.updateTimer(t.minutes, t.seconds);
+                    }
+                    break;
+                }
+                case 'round': {
+                    const round = payload.current_round ?? payload.round;
+                    if (round != null) {
+                        scoreboardInstance.updateRound(round);
+                        const mins = Math.floor(roundDuration / 60);
+                        const secs = roundDuration % 60;
+                        scoreboardInstance.updateTimer(mins, secs);
+                    }
+                    break;
+                }
+                default: {
+                    if (payload.time) {
+                        const t = parseTime(payload.time);
+                        scoreboardInstance.updateTimer(t.minutes, t.seconds);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function teardownWebSocket() {
+            if (!ws) return;
+            ws.onopen = null;
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.onmessage = null;
+            try {
+                ws.close();
+            } catch (_error) { }
+            ws = null;
+        }
+
+        function scheduleReconnect() {
+            if (retryCount >= MAX_RETRIES) {
+                return;
+            }
+            retryCount += 1;
+            window.setTimeout(connect, RETRY_DELAY_MS);
+        }
+
+        function connect() {
+            teardownWebSocket();
+            const url = resolveWebSocketUrl();
+
+            try {
+                ws = new WebSocket(url);
+            } catch (_error) {
+                updateConnectionStatus(false);
+                scheduleReconnect();
+                return;
+            }
+
+            ws.onopen = () => {
+                retryCount = 0;
+                updateConnectionStatus(true);
+            };
+
+            ws.onerror = () => {
+                updateConnectionStatus(false);
+            };
+
+            ws.onclose = () => {
+                updateConnectionStatus(false);
+                scheduleReconnect();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed?.type === 'pss_event') {
+                        handle(parsed.data);
+                    } else if (parsed?.type === 'connection') {
+                        updateConnectionStatus(Boolean(parsed.connected));
+                    }
+                } catch (_error) { }
+            };
+        }
+
+        function attachFallbackListeners() {
+            window.addEventListener('pss-event', (event) => {
+                if (event?.detail) {
+                    handle(event.detail);
+                }
+            });
+
+            window.addEventListener('storage', (event) => {
+                if (event.key !== 'pss_event' || !event.newValue) {
+                    return;
+                }
+                try {
+                    const payload = JSON.parse(event.newValue);
+                    if (payload?.type === 'pss_event') {
+                        handle(payload.data ?? payload);
+                    }
+                } catch (_error) { }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const obj = document.getElementById('scoreboard-svg');
+            if (window.ScoreboardFontInjector) {
+                window.ScoreboardFontInjector.initForObject('#scoreboard-svg');
+            }
+            obj?.addEventListener('load', initialize);
+            if (obj?.contentDocument) {
+                initialize();
+            }
+            attachFallbackListeners();
+            connect();
+        });
+
+        window.ModernScoreboard = {
+            handle,
+            reconnect: connect,
+            resolveWebSocketUrl,
+        };
     </script>
 </body>
+
 </html>
-
-

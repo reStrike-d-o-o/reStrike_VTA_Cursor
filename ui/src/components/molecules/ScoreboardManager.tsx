@@ -101,10 +101,10 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   // Toggle overlay template active status
   const toggleOverlayActive = async (templateId: number, isActive: boolean) => {
     try {
-      const updatedTemplates = overlayTemplates.map(template => 
+      const updatedTemplates = overlayTemplates.map(template =>
         template.id === templateId ? { ...template, is_active: isActive } : template
       );
-      
+
       await invoke('overlays_sync_templates', { templates: updatedTemplates });
       setOverlayTemplates(updatedTemplates);
     } catch (error) {
@@ -135,7 +135,14 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     if (typeof window === 'undefined') {
       return relativePath;
     }
-    return `${window.location.origin}${relativePath}`;
+
+    const origin = window.location.origin;
+    if (origin.startsWith('http')) {
+      return `${origin}${relativePath}`;
+    }
+
+    const fallbackBase = process.env.REACT_APP_OVERLAY_BASE_URL || 'http://127.0.0.1:3000';
+    return `${fallbackBase}${relativePath}`;
   };
 
   const openOverlayExternally = async (relativePath: string) => {
@@ -164,7 +171,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     // Update match information
     updateElement(svg, 'matchCategory', matchCategory || "MEN'S -58KG");
     updateElement(svg, 'matchNumber', matchNumber?.toString() || '1');
-    
+
     // Update scores
     if (totalScore) {
       updateElement(svg, 'bluePlayerScore', totalScore.athlete1.toString());
@@ -206,7 +213,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
             </Button>
           </div>
         </div>
-        
+
         {isLoadingTemplates ? (
           <div className="text-sm text-gray-400">{t('ovr.templates.loading', 'Loading overlay templates...')}</div>
         ) : overlayTemplates.length === 0 ? (
@@ -216,11 +223,10 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
             {overlayTemplates.map((template) => (
               <div
                 key={template.id}
-                className={`p-3 rounded-lg border transition-all duration-200 ${
-                  template.is_active
+                className={`p-3 rounded-lg border transition-all duration-200 ${template.is_active
                     ? 'border-green-500 bg-green-900/20'
                     : 'border-gray-600 bg-gray-700/30'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -483,7 +489,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
               </span>
             </div>
           </div>
-          
+
           <div>
             <Label className="text-sm text-gray-300">{t('ovr.pss_status.current_match', 'Current Match')}</Label>
             <div className="text-sm text-gray-200 mt-1">
@@ -499,7 +505,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                   {athlete1?.long} ({athlete1?.short})
                 </div>
               </div>
-              
+
               <div>
                 <Label className="text-sm text-gray-300">{t('ovr.pss_status.red', 'Red Player')}</Label>
                 <div className="text-sm text-gray-200 mt-1">
@@ -524,4 +530,4 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   );
 };
 
-export default ScoreboardManager; 
+export default ScoreboardManager;
