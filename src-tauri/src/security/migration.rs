@@ -71,7 +71,7 @@ impl ConfigMigrationTool {
             SecureConfigManager::new(migration_config.master_password.clone(), database.clone())
                 .await?;
 
-        let audit = SecurityAudit::new(database.clone())?;
+        let audit = SecurityAudit::new(database.clone()).await?;
 
         Ok(Self {
             config_manager,
@@ -590,7 +590,7 @@ impl ConfigMigrationTool {
 4. Set up regular key rotation schedule
 5. Monitor audit logs for any security issues
 
-## Migration Completed Successfully 
+## Migration Completed Successfully
 Date: {}
 "#,
             self.stats.total_configs_found,
@@ -612,7 +612,7 @@ mod tests {
 
     async fn create_test_migration_tool() -> ConfigMigrationTool {
         // Use default database connection for testing
-        let database = Arc::new(DatabaseConnection::new().unwrap());
+        let database = Arc::new(DatabaseConnection::new_in_memory().unwrap());
 
         let config = MigrationConfig {
             master_password: "test_password".to_string(),

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::DatabaseConnection;
 use crate::security::audit::{AuditAction, SecurityAudit};
+use crate::security::config_manager::SecureConfigManager;
 use crate::security::encryption::EncryptedData;
 use crate::security::{SecureConfig, SecurityError, SecurityResult};
 
@@ -108,7 +109,8 @@ impl KeyManager {
         database: Arc<DatabaseConnection>,
         rotation_config: Option<KeyRotationConfig>,
     ) -> SecurityResult<Self> {
-        let audit = SecurityAudit::new(database.clone())?;
+        SecureConfigManager::ensure_tables(&database).await?;
+        let audit = SecurityAudit::new(database.clone()).await?;
         let config = rotation_config.unwrap_or_default();
 
         Ok(Self {
@@ -164,8 +166,8 @@ impl KeyManager {
         let conn = self.database.get_connection().await?;
 
         let result = conn.query_row(
-            "SELECT config_key, encrypted_value FROM secure_config 
-             WHERE category = 'encryption_keys' AND config_key LIKE ? AND is_sensitive = 1 
+            "SELECT config_key, encrypted_value FROM secure_config
+             WHERE category = 'encryption_keys' AND config_key LIKE ? AND is_sensitive = 1
              ORDER BY updated_at DESC LIMIT 1",
             [&format!("{algorithm}_%")],
             |row| {
@@ -266,7 +268,7 @@ impl KeyManager {
 
         // Get all active keys
         let mut stmt = conn.prepare(
-            "SELECT config_key, encrypted_value FROM secure_config 
+            "SELECT config_key, encrypted_value FROM secure_config
              WHERE category = 'encryption_keys' AND is_sensitive = 1",
         )?;
 
@@ -320,7 +322,7 @@ impl KeyManager {
 
         // Count active keys
         let active_keys: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM secure_config 
+            "SELECT COUNT(*) FROM secure_config
              WHERE category = 'encryption_keys' AND config_key LIKE '%active%'",
             [],
             |row| row.get(0),
@@ -407,7 +409,7 @@ impl KeyManager {
         });
 
         conn.execute(
-            "INSERT INTO secure_config 
+            "INSERT INTO secure_config
             (config_key, encrypted_value, category, is_sensitive, salt, algorithm, kdf_params, created_at, updated_at, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rusqlite::params![
@@ -433,7 +435,7 @@ impl KeyManager {
         let conn = self.database.get_connection().await?;
 
         let mut stmt = conn.prepare(
-            "SELECT config_key, encrypted_value FROM secure_config 
+            "SELECT config_key, encrypted_value FROM secure_config
              WHERE category = 'encryption_keys' AND is_sensitive = 1",
         )?;
 
@@ -514,7 +516,7 @@ impl KeyManager {
 
         // Find the config key for this key_id
         let result = conn.query_row(
-            "SELECT config_key, encrypted_value FROM secure_config 
+            "SELECT config_key, encrypted_value FROM secure_config
              WHERE category = 'encryption_keys' AND config_key LIKE ?",
             [&format!("%_{key_id}")],
             |row| {
@@ -542,8 +544,8 @@ impl KeyManager {
                 conn.execute(
                     "UPDATE secure_config SET encrypted_value = ?, updated_at = ?, access_count = ? WHERE config_key = ?",
                     params![
-                        updated_json.as_bytes(), 
-                        Utc::now().to_rfc3339(), 
+                        updated_json.as_bytes(),
+                        Utc::now().to_rfc3339(),
                         entry.metadata.usage_count as i64,
                         config_key
                     ],
@@ -566,9 +568,9 @@ impl KeyManager {
             Utc::now() - chrono::Duration::days(self.rotation_config.max_age_days as i64 * 2);
 
         let deleted = conn.execute(
-            "DELETE FROM secure_config 
-             WHERE category = 'encryption_keys' 
-             AND created_at < ? 
+            "DELETE FROM secure_config
+             WHERE category = 'encryption_keys'
+             AND created_at < ?
              AND config_key NOT LIKE '%_active'",
             [cutoff_date.to_rfc3339()],
         )?;
@@ -591,7 +593,7 @@ impl KeyManager {
         // Active keys by algorithm
         let mut active_keys_by_algorithm = std::collections::HashMap::new();
         let mut stmt = conn.prepare(
-            "SELECT config_key FROM secure_config 
+            "SELECT config_key FROM secure_config
              WHERE category = 'encryption_keys' AND config_key LIKE '%_active'",
         )?;
 
@@ -644,7 +646,7 @@ mod tests {
 
     async fn create_test_key_manager() -> KeyManager {
         // Use default database connection for testing
-        let database = Arc::new(DatabaseConnection::new().unwrap());
+        let database = Arc::new(DatabaseConnection::new_in_memory().unwrap());
 
         KeyManager::new(database, None).await.unwrap()
     }

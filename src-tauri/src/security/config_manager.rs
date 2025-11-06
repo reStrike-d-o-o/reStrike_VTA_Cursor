@@ -195,13 +195,78 @@ pub struct SecureConfigManager {
 }
 
 impl SecureConfigManager {
+    pub(crate) async fn ensure_tables(database: &Arc<DatabaseConnection>) -> SecurityResult<()> {
+        let conn = database.get_connection().await?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS secure_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_key TEXT NOT NULL UNIQUE,
+                encrypted_value BLOB NOT NULL,
+                category TEXT NOT NULL,
+                is_sensitive BOOLEAN NOT NULL DEFAULT 1,
+                salt BLOB NOT NULL,
+                algorithm TEXT NOT NULL DEFAULT 'AES-256-GCM',
+                kdf_params TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                last_accessed TEXT,
+                access_count INTEGER DEFAULT 0,
+                description TEXT
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_secure_config_key ON secure_config(config_key)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_secure_config_category ON secure_config(category)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_secure_config_sensitive ON secure_config(is_sensitive)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS security_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL UNIQUE,
+                user_context TEXT NOT NULL,
+                access_level TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_accessed TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                source_ip TEXT,
+                user_agent TEXT
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_security_sessions_id ON security_sessions(session_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_security_sessions_expires ON security_sessions(expires_at)",
+            [],
+        )?;
+
+        Ok(())
+    }
+
     /// Create a new secure configuration manager
     pub async fn new(
         master_password: String,
         database: Arc<DatabaseConnection>,
     ) -> SecurityResult<Self> {
+        Self::ensure_tables(&database).await?;
+
         let encryption = SecureConfig::new(master_password)?;
-        let audit = SecurityAudit::new(database.clone())?;
+        let audit = SecurityAudit::new(database.clone()).await?;
 
         Ok(Self {
             encryption,
@@ -673,7 +738,7 @@ mod tests {
 
     async fn create_test_manager() -> SecureConfigManager {
         // Use default database connection for testing
-        let database = Arc::new(DatabaseConnection::new().unwrap());
+        let database = Arc::new(DatabaseConnection::new_in_memory().unwrap());
 
         SecureConfigManager::new("test_password".to_string(), database)
             .await

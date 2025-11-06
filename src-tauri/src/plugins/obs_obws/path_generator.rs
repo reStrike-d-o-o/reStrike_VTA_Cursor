@@ -193,9 +193,10 @@ impl ObsPathGenerator {
         components.push(date_str);
         components.push(time_str);
 
-        // Join components and add extension
-        let filename = components.join("_");
-        format!("{}.{}", filename, self.config.default_format)
+        // Join components, sanitize, and normalize whitespace for filesystem safety
+        let joined = components.join("_");
+        let sanitized = self.sanitize_filename(&joined).replace(' ', "_");
+        format!("{}.{}", sanitized, self.config.default_format)
     }
 
     /// Sanitize filename for Windows compatibility

@@ -222,8 +222,10 @@ pub struct SecurityAudit {
 
 impl SecurityAudit {
     /// Create a new security audit logger
-    pub fn new(database: Arc<DatabaseConnection>) -> SecurityResult<Self> {
-        Ok(Self { database })
+    pub async fn new(database: Arc<DatabaseConnection>) -> SecurityResult<Self> {
+        let audit = Self { database };
+        audit.ensure_schema().await?;
+        Ok(audit)
     }
 
     /// Log a security event
@@ -272,12 +274,17 @@ impl SecurityAudit {
     pub async fn log_entry(&self, entry: &AuditEntry) -> SecurityResult<i64> {
         let conn = self.database.get_connection().await?;
 
+        let config_key = entry
+            .config_key
+            .clone()
+            .unwrap_or_else(|| "system_event".to_string());
+
         let _row_id = conn.execute(
             "INSERT INTO config_audit
             (config_key, action, user_context, source_ip, timestamp, details, success, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             params![
-                entry.config_key,
+                config_key,
                 entry.action.as_str(),
                 entry.user_context,
                 entry.source_ip,
@@ -432,50 +439,59 @@ impl SecurityAudit {
         hours: Option<i64>,
     ) -> SecurityResult<AuditStatistics> {
         let conn = self.database.get_connection().await?;
+        let since = hours.map(|h| (Utc::now() - chrono::Duration::hours(h)).to_rfc3339());
 
-        let (where_clause, params) = match hours {
-            Some(h) => {
-                let since = Utc::now() - chrono::Duration::hours(h);
-                ("WHERE timestamp >= ?", vec![since.to_rfc3339()])
-            }
-            None => ("", vec![]),
+        let total_events: i64 = match &since {
+            Some(ts) => conn.query_row(
+                "SELECT COUNT(*) FROM config_audit WHERE timestamp >= ?",
+                rusqlite::params![ts],
+                |row| row.get(0),
+            )?,
+            None => conn.query_row("SELECT COUNT(*) FROM config_audit", [], |row| row.get(0))?,
         };
 
-        // Total events
-        let total_events: i64 = conn.query_row(
-            &format!("SELECT COUNT(*) FROM config_audit {where_clause}"),
-            rusqlite::params_from_iter(&params),
-            |row| row.get(0),
-        )?;
+        let failed_events: i64 = match &since {
+            Some(ts) => conn.query_row(
+                "SELECT COUNT(*) FROM config_audit WHERE timestamp >= ? AND success = 0",
+                rusqlite::params![ts],
+                |row| row.get(0),
+            )?,
+            None => conn.query_row(
+                "SELECT COUNT(*) FROM config_audit WHERE success = 0",
+                [],
+                |row| row.get(0),
+            )?,
+        };
 
-        // Failed events
-        let failed_events: i64 = conn.query_row(
-            &format!(
-                "SELECT COUNT(*) FROM config_audit {} {}",
-                where_clause,
-                if where_clause.is_empty() {
-                    "WHERE"
-                } else {
-                    "AND"
-                }
-            ),
-            rusqlite::params_from_iter(params.iter().chain(std::iter::once(&"0".to_string()))),
-            |row| row.get(0),
-        )?;
+        let unique_users: i64 = match &since {
+            Some(ts) => conn.query_row(
+                "SELECT COUNT(DISTINCT user_context) FROM config_audit WHERE timestamp >= ?",
+                rusqlite::params![ts],
+                |row| row.get(0),
+            )?,
+            None => conn.query_row(
+                "SELECT COUNT(DISTINCT user_context) FROM config_audit",
+                [],
+                |row| row.get(0),
+            )?,
+        };
 
-        // Unique users
-        let unique_users: i64 = conn.query_row(
-            &format!("SELECT COUNT(DISTINCT user_context) FROM config_audit {where_clause}"),
-            rusqlite::params_from_iter(&params),
-            |row| row.get(0),
-        )?;
-
-        // Most active user
-        let most_active_user = conn.query_row(
-            &format!("SELECT user_context, COUNT(*) as count FROM config_audit {where_clause} GROUP BY user_context ORDER BY count DESC LIMIT 1"),
-            rusqlite::params_from_iter(&params),
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-        ).ok();
+        let most_active_user = match &since {
+            Some(ts) => conn
+                .query_row(
+                    "SELECT user_context, COUNT(*) as count FROM config_audit WHERE timestamp >= ? GROUP BY user_context ORDER BY count DESC LIMIT 1",
+                    rusqlite::params![ts],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                )
+                .ok(),
+            None => conn
+                .query_row(
+                    "SELECT user_context, COUNT(*) as count FROM config_audit GROUP BY user_context ORDER BY count DESC LIMIT 1",
+                    [],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                )
+                .ok(),
+        };
 
         Ok(AuditStatistics {
             total_events: total_events as u64,
@@ -533,6 +549,42 @@ impl SecurityAudit {
     }
 }
 
+impl SecurityAudit {
+    async fn ensure_schema(&self) -> SecurityResult<()> {
+        let conn = self.database.get_connection().await?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS config_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_key TEXT NOT NULL,
+                action TEXT NOT NULL,
+                user_context TEXT,
+                source_ip TEXT,
+                timestamp TEXT NOT NULL,
+                details TEXT,
+                success BOOLEAN NOT NULL DEFAULT 1,
+                error_message TEXT
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_audit_key ON config_audit(config_key)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_audit_action ON config_audit(action)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_config_audit_timestamp ON config_audit(timestamp)",
+            [],
+        )?;
+
+        Ok(())
+    }
+}
+
 /// Audit statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditStatistics {
@@ -550,9 +602,9 @@ mod tests {
 
     async fn create_test_audit() -> SecurityAudit {
         // Use default database connection for testing
-        let database = Arc::new(DatabaseConnection::new().unwrap());
+        let database = Arc::new(DatabaseConnection::new_in_memory().unwrap());
 
-        SecurityAudit::new(database).unwrap()
+        SecurityAudit::new(database).await.unwrap()
     }
 
     #[tokio::test]

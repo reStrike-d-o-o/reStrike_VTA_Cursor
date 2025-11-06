@@ -226,6 +226,20 @@ impl DatabaseConnection {
         })
     }
 
+    /// Create an in-memory database connection (primarily for testing)
+    pub fn new_in_memory() -> DatabaseResult<Self> {
+        let connection = Connection::open_in_memory().map_err(|e| {
+            DatabaseError::Connection(format!("Failed to open in-memory database: {e}"))
+        })?;
+
+        Self::configure_connection(&connection)?;
+
+        Ok(Self {
+            connection: Arc::new(TokioMutex::new(connection)),
+            connection_pool: None,
+        })
+    }
+
     /// Create a new DatabaseConnection using an existing connection pool
     pub fn new_from_pool(connection_pool: Arc<DatabaseConnectionPool>) -> Self {
         // Create a dummy connection - this will be replaced by the pool when used

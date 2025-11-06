@@ -397,7 +397,9 @@ pub async fn security_get_audit_history(
     let database = app.database_plugin().get_database_connection();
 
     // Create security audit
-    let audit = crate::security::SecurityAudit::new(database).map_err(TauriSecurityError::from)?;
+    let audit = crate::security::SecurityAudit::new(database)
+        .await
+        .map_err(TauriSecurityError::from)?;
 
     // Get audit history
     let entries = if let Some(key) = config_key {
