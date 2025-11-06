@@ -648,7 +648,16 @@ mod tests {
         // Use default database connection for testing
         let database = Arc::new(DatabaseConnection::new_in_memory().unwrap());
 
-        KeyManager::new(database, None).await.unwrap()
+        let rotation_config = KeyRotationConfig {
+            enabled: true,
+            interval_days: 0,
+            max_age_days: 1,
+            retain_old_keys: 1,
+        };
+
+        KeyManager::new(database, Some(rotation_config))
+            .await
+            .unwrap()
     }
 
     #[tokio::test]

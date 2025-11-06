@@ -11,7 +11,7 @@ pub struct Model {
     pub new_value: Option<String>,
     pub changed_by: String,
     pub change_reason: Option<String>,
-    pub created: i64,
+    pub created_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -15,7 +15,7 @@ pub struct Model {
     pub validation_rules: Option<String>,
     pub is_required: bool,
     pub is_sensitive: bool,
-    pub created: i64,
+    pub created_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

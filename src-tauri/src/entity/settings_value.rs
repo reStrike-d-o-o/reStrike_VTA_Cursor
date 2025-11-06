@@ -8,8 +8,8 @@ pub struct Model {
     pub id: String,
     pub key_id: String,
     pub value: String,
-    pub created: i64,
-    pub updated: i64,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
