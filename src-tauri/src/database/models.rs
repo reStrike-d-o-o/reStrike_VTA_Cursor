@@ -1838,8 +1838,6 @@ pub struct Tournament {
     pub banner: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub created: Option<i64>,
-    pub updated: Option<i64>,
 }
 
 impl Tournament {
@@ -1872,8 +1870,6 @@ impl Tournament {
             banner: None,
             created_at: now,
             updated_at: now,
-            created: Some(crate::utils::now_unix()),
-            updated: Some(crate::utils::now_unix()),
         }
     }
 
@@ -1905,8 +1901,6 @@ impl Tournament {
             banner: row.get("banner")?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
-            created: row.get("created")?,
-            updated: row.get("updated")?,
         })
     }
 }
@@ -1924,8 +1918,6 @@ pub struct TournamentDay {
     pub end_time: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub created: Option<i64>,
-    pub updated: Option<i64>,
 }
 
 impl TournamentDay {
@@ -1943,8 +1935,6 @@ impl TournamentDay {
             end_time: None,
             created_at: now,
             updated_at: now,
-            created: Some(crate::utils::now_unix()),
-            updated: Some(crate::utils::now_unix()),
         }
     }
 
@@ -1967,8 +1957,6 @@ impl TournamentDay {
                 .transpose()?,
             created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
             updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
-            created: row.get("created")?,
-            updated: row.get("updated")?,
         })
     }
 }

@@ -4916,8 +4916,6 @@ pub async fn tournament_update(
         banner: None,
         created_at: chrono::Utc::now(), // This will be ignored in update
         updated_at: chrono::Utc::now(),
-        created: None,
-        updated: None,
     };
 
     match app

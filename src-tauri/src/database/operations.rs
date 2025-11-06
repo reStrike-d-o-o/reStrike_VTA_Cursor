@@ -225,7 +225,6 @@ impl PssUdpOperations {
                 tx.last_insert_rowid()
             }
         };
-
         tx.commit()?;
         Ok(config_id)
     }
@@ -640,7 +639,7 @@ impl PssUdpOperations {
                 recognition_status, protocol_version, parser_confidence, validation_errors,
                 tournament_id, created_at
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )",
             params![
                 event.session_id,
@@ -1218,13 +1217,11 @@ impl TournamentOperations {
                 officials,
                 banner,
                 created_at,
-                updated_at,
-                created,
-                updated
+                updated_at
             )
             VALUES (
                 COALESCE(?, lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6)))),
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )",
             params![
                 tournament.uuid,
@@ -1245,8 +1242,6 @@ impl TournamentOperations {
                 tournament.banner,
                 tournament.created_at.to_rfc3339(),
                 tournament.updated_at.to_rfc3339(),
-                tournament.created,
-                tournament.updated,
             ],
         )?;
         // Return the actual inserted row id, not affected rows count
@@ -1275,11 +1270,9 @@ impl TournamentOperations {
                 officials,
                 banner,
                 created_at,
-                updated_at,
-                created,
-                updated
+                updated_at
             FROM tournaments
-            ORDER BY created DESC",
+            ORDER BY created_at DESC",
         )?;
 
         let rows = stmt.query_map([], Tournament::from_row)?;
@@ -1318,9 +1311,7 @@ impl TournamentOperations {
                 officials,
                 banner,
                 created_at,
-                updated_at,
-                created,
-                updated
+                updated_at
             FROM tournaments WHERE id = ?",
                 params![tournament_id],
                 Tournament::from_row,
@@ -1361,8 +1352,7 @@ impl TournamentOperations {
                  oc = ?,
                  officials = ?,
                  banner = ?,
-                 updated_at = ?,
-                 updated = strftime('%s','now')
+                 updated_at = ?
              WHERE id = ?",
             params![
                 tournament.name,
@@ -1411,9 +1401,8 @@ impl TournamentOperations {
             let tournament_day = TournamentDay::new(tournament_id, day_number, day_date);
 
             tx.execute(
-                "INSERT INTO tournament_days (uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated) VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now'))",
+                "INSERT INTO tournament_days (uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at) VALUES (lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))), ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
-
                     tournament_day.tournament_id,
                     tournament_day.day_number,
                     tournament_day.date.to_rfc3339(),
@@ -1436,7 +1425,7 @@ impl TournamentOperations {
         tournament_id: i64,
     ) -> DatabaseResult<Vec<TournamentDay>> {
         let mut stmt = conn.prepare(
-            "SELECT id, uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at, created, updated \
+            "SELECT id, uuid, tournament_id, day_number, date, status, start_time, end_time, created_at, updated_at \
              FROM tournament_days WHERE tournament_id = ? ORDER BY day_number"
         )?;
 
@@ -1558,12 +1547,10 @@ impl TournamentOperations {
                 officials,
                 banner,
                 created_at,
-                updated_at,
-                created,
-                updated
+                updated_at
             FROM tournaments
             WHERE status = 'running'
-            ORDER BY created DESC
+            ORDER BY created_at DESC
             LIMIT 1",
                 [],
                 Tournament::from_row,
@@ -1590,9 +1577,7 @@ impl TournamentOperations {
                 start_time,
                 end_time,
                 created_at,
-                updated_at,
-                created,
-                updated
+                updated_at
             FROM tournament_days
             WHERE tournament_id = ? AND status = 'running'
             ORDER BY day_number DESC
@@ -1794,7 +1779,7 @@ impl PssEventStatusOperations {
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
                 tournament_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 event.session_id,
                 event.match_id,
@@ -2163,7 +2148,7 @@ impl PssEventStatusOperations {
                     protocol_version, raw_data, parsed_data, created_at
              FROM pss_event_recognition_history
              WHERE event_id = ?
-             ORDER BY created DESC",
+             ORDER BY created_at DESC",
         )?;
 
         let rows = stmt.query_map(params![event_id], |row| {
@@ -2193,7 +2178,7 @@ impl PssEventStatusOperations {
                     recognition_status, protocol_version, parser_confidence, validation_errors, created_at
              FROM pss_events
              WHERE session_id = ? AND recognition_status = ?
-             ORDER BY created DESC
+             ORDER BY created_at DESC
              LIMIT ?"
         )?;
 
@@ -2455,6 +2440,7 @@ impl DataArchivalOperations {
         days_old: i64,
     ) -> DatabaseResult<usize> {
         let start_time = std::time::Instant::now();
+        let cutoff = format!("-{} days", days_old);
 
         // Create archive table if it doesn't exist (schema mirrors pss_events)
         conn.execute(
@@ -2476,8 +2462,7 @@ impl DataArchivalOperations {
                 parser_confidence REAL,
                 validation_errors TEXT,
                 tournament_id TEXT,
-                created_at TEXT,
-                created INTEGER
+                created_at TEXT NOT NULL
             )",
             [],
         )?;
@@ -2494,28 +2479,42 @@ impl DataArchivalOperations {
 
         // Archive events older than specified days
         let archived_count = conn.execute(
-            "INSERT INTO pss_events_archive
-             SELECT * FROM pss_events
-             WHERE created_at < datetime('now', '-{} days')",
-            [days_old],
+            "INSERT INTO pss_events_archive (
+                id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
+                parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                recognition_status, protocol_version, parser_confidence, validation_errors,
+                tournament_id, created_at
+            )
+             SELECT
+                id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
+                parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                recognition_status, protocol_version, parser_confidence, validation_errors,
+                tournament_id, created_at
+             FROM pss_events
+             WHERE created_at < datetime('now', ?1)",
+            params![cutoff.as_str()],
         )?;
 
         // Delete archived events from main table
         let deleted_count = conn.execute(
             "DELETE FROM pss_events
-             WHERE created_at < datetime('now', '-{} days')",
-            [days_old],
+             WHERE created_at < datetime('now', ?1)",
+            params![cutoff.as_str()],
         )?;
 
         // Archive related event details
         let archived_details = conn.execute(
-            "INSERT INTO pss_event_details_archive
-             SELECT * FROM pss_event_details
+            "INSERT INTO pss_event_details_archive (
+                id, event_id, detail_key, detail_value, detail_type, created_at
+            )
+             SELECT
+                id, event_id, detail_key, detail_value, detail_type, created_at
+             FROM pss_event_details
              WHERE event_id IN (
                  SELECT id FROM pss_events_archive
-                 WHERE created_at < datetime('now', '-{} days')
+                 WHERE created_at < datetime('now', ?1)
              )",
-            [days_old],
+            params![cutoff.as_str()],
         )?;
 
         // Delete archived event details from main table
@@ -2523,9 +2522,9 @@ impl DataArchivalOperations {
             "DELETE FROM pss_event_details
              WHERE event_id IN (
                  SELECT id FROM pss_events_archive
-                 WHERE created_at < datetime('now', '-{} days')
+                 WHERE created_at < datetime('now', ?1)
              )",
-            [days_old],
+            params![cutoff.as_str()],
         )?;
 
         let duration = start_time.elapsed();
@@ -2588,21 +2587,35 @@ impl DataArchivalOperations {
 
         // Restore events from archive
         let restored_events = conn.execute(
-            "INSERT INTO pss_events
-             SELECT * FROM pss_events_archive
-             WHERE created_at BETWEEN ? AND ?",
-            [start_date, end_date],
+            "INSERT INTO pss_events (
+                id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
+                parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                recognition_status, protocol_version, parser_confidence, validation_errors,
+                tournament_id, created_at
+            )
+             SELECT
+                id, session_id, match_id, round_id, event_type_id, timestamp, raw_data,
+                parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
+                recognition_status, protocol_version, parser_confidence, validation_errors,
+                tournament_id, created_at
+             FROM pss_events_archive
+             WHERE created_at BETWEEN ?1 AND ?2",
+            params![start_date, end_date],
         )?;
 
         // Restore event details
         let restored_details = conn.execute(
-            "INSERT INTO pss_event_details
-             SELECT * FROM pss_event_details_archive
+            "INSERT INTO pss_event_details (
+                id, event_id, detail_key, detail_value, detail_type, created_at
+            )
+             SELECT
+                id, event_id, detail_key, detail_value, detail_type, created_at
+             FROM pss_event_details_archive
              WHERE event_id IN (
                  SELECT id FROM pss_events_v2
-                 WHERE created_at BETWEEN ? AND ?
+                 WHERE created_at BETWEEN ?1 AND ?2
              )",
-            [start_date, end_date],
+            params![start_date, end_date],
         )?;
 
         // Remove restored events from archive
@@ -2626,12 +2639,13 @@ impl DataArchivalOperations {
         days_old: i64,
     ) -> DatabaseResult<usize> {
         let start_time = std::time::Instant::now();
+        let cutoff = format!("-{} days", days_old);
 
         // Delete old archived events
         let deleted_events = conn.execute(
             "DELETE FROM pss_events_archive
-             WHERE created_at < datetime('now', '-{} days')",
-            [days_old],
+             WHERE created_at < datetime('now', ?1)",
+            params![cutoff.as_str()],
         )?;
 
         // Delete old archived event details
@@ -2848,8 +2862,8 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
 
         let id = conn.execute(
-            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, url, created_at, updated_at, created, updated)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, url, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 &template.name,
                 &template.description.as_deref().unwrap_or("").to_string(),
@@ -2861,8 +2875,6 @@ impl DatabaseConnection {
                 &template.url.as_deref().unwrap_or("").to_string(),
                 &template.created_at.to_rfc3339(),
                 &now,
-                &crate::utils::now_unix().to_string(),
-                &crate::utils::now_unix().to_string(),
             ],
         )?;
 
@@ -3083,11 +3095,11 @@ impl DatabaseConnection {
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at, created, updated)
-             SELECT ?, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?, ?, ?
-              FROM event_triggers WHERE tournament_id = ?",
-            [&target_tournament_id.to_string(), &now, &now, &crate::utils::now_unix().to_string(), &crate::utils::now_unix().to_string(), &source_tournament_id.to_string()],
-        )?;
+                        "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
+                         SELECT ?, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+                            FROM event_triggers WHERE tournament_id = ?",
+                        [&target_tournament_id.to_string(), &now, &now, &source_tournament_id.to_string()],
+                )?;
 
         Ok(())
     }
@@ -3103,11 +3115,11 @@ impl DatabaseConnection {
 
         // Create a special template trigger with the template name
         conn.execute(
-            "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at, created, updated)
-             SELECT NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?, ?, ?
-              FROM event_triggers WHERE tournament_id = ?",
-            [&now, &now, &crate::utils::now_unix().to_string(), &crate::utils::now_unix().to_string(), &tournament_id.to_string()],
-        )?;
+                        "INSERT INTO event_triggers (tournament_id, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, created_at, updated_at)
+                         SELECT NULL, event_type, trigger_type, obs_scene_id, overlay_template_id, is_enabled, priority, ?, ?
+                            FROM event_triggers WHERE tournament_id = ?",
+                        [&now, &now, &tournament_id.to_string()],
+                )?;
 
         Ok(())
     }
@@ -3592,9 +3604,9 @@ impl OvrOperations {
             id
         } else {
             tx.execute(
-				"INSERT INTO ovr_providers (name, base_url, enabled, rate_limit_ms, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-				params![p.name, p.base_url, p.enabled, p.rate_limit_ms, now, now, crate::utils::now_unix(), crate::utils::now_unix()]
-			)?;
+            "INSERT INTO ovr_providers (name, base_url, enabled, rate_limit_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            params![p.name, p.base_url, p.enabled, p.rate_limit_ms, now, now]
+        )?;
             tx.last_insert_rowid()
         };
         tx.commit()?;
@@ -3678,26 +3690,24 @@ impl OvrOperations {
             id
         } else {
             tx.execute(
-				"INSERT INTO ovr_tournaments (provider_id, provider_tournament_id, name, start_date, end_date, city, country, url, status, last_seen_at, hash, etag, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				params![
-					t.provider_id,
-					t.provider_tournament_id,
-					t.name,
-					t.start_date.map(|d| d.to_rfc3339()),
-					t.end_date.map(|d| d.to_rfc3339()),
-					t.city,
-					t.country,
-					t.url,
-					t.status,
-					Some(now.clone()),
-					t.hash,
-					t.etag,
-					now,
-					now,
-					crate::utils::now_unix(),
-					crate::utils::now_unix()
-				]
-			)?;
+            "INSERT INTO ovr_tournaments (provider_id, provider_tournament_id, name, start_date, end_date, city, country, url, status, last_seen_at, hash, etag, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                t.provider_id,
+                t.provider_tournament_id,
+                t.name,
+                t.start_date.map(|d| d.to_rfc3339()),
+                t.end_date.map(|d| d.to_rfc3339()),
+                t.city,
+                t.country,
+                t.url,
+                t.status,
+                Some(now.clone()),
+                t.hash,
+                t.etag,
+                now,
+                now
+            ]
+        )?;
             tx.last_insert_rowid()
         };
         tx.commit()?;
@@ -3770,22 +3780,20 @@ impl OvrOperations {
         )?;
         for c in categories {
             tx.execute(
-				"INSERT INTO ovr_categories (tournament_id, discipline, age_group, gender, division, weight_class, bracket_stage, provider_raw, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				params![
-					tournament_id,
-					c.discipline,
-					c.age_group,
-					c.gender,
-					c.division,
-					c.weight_class,
-					c.bracket_stage,
-					c.provider_raw,
-					Utc::now().to_rfc3339(),
-					Utc::now().to_rfc3339(),
-					crate::utils::now_unix(),
-					crate::utils::now_unix(),
-				]
-			)?;
+            "INSERT INTO ovr_categories (tournament_id, discipline, age_group, gender, division, weight_class, bracket_stage, provider_raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                tournament_id,
+                c.discipline,
+                c.age_group,
+                c.gender,
+                c.division,
+                c.weight_class,
+                c.bracket_stage,
+                c.provider_raw,
+                Utc::now().to_rfc3339(),
+                Utc::now().to_rfc3339(),
+            ]
+        )?;
         }
         tx.commit()?;
         Ok(())
@@ -3819,21 +3827,19 @@ impl OvrOperations {
         // Insert directly within this transaction to avoid connection borrowing issues
         let local_id = {
             tx.execute(
-				"INSERT INTO tournaments (name, duration_days, city, country, status, start_date, end_date, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-				params![
-					t_name,
-					1,
-					overv(ovr.city),
-					overv(ovr.country),
-					"pending",
-					overv_dt(ovr.start_date),
-					overv_dt(ovr.end_date),
-					Utc::now().to_rfc3339(),
-					Utc::now().to_rfc3339(),
-					crate::utils::now_unix(),
-					crate::utils::now_unix()
-				]
-			)?;
+            "INSERT INTO tournaments (name, duration_days, city, country, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                t_name,
+                1,
+                overv(ovr.city),
+                overv(ovr.country),
+                "pending",
+                overv_dt(ovr.start_date),
+                overv_dt(ovr.end_date),
+                Utc::now().to_rfc3339(),
+                Utc::now().to_rfc3339()
+            ]
+        )?;
             tx.last_insert_rowid()
         };
         // Bridge
