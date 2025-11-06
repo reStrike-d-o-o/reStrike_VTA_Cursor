@@ -81,14 +81,11 @@ pub async fn upsert_network_interface(
         active.mac_address = Set(interface.mac_address.clone());
         active.interface_type = Set(interface.interface_type.clone());
         active.updated_at = Set(now.naive_utc());
-        active.updated = Set(Some(now.timestamp()));
         active.update(conn).await?;
         Ok(id)
     } else {
         let created_at = interface.created_at.naive_utc();
         let updated_at = interface.updated_at.naive_utc();
-        let created_ts = interface.created_at.timestamp();
-        let updated_ts = interface.updated_at.timestamp();
         let active = network_interface::ActiveModel {
             name: Set(interface.name.clone()),
             address: Set(interface.address.clone()),
@@ -103,8 +100,6 @@ pub async fn upsert_network_interface(
             interface_type: Set(interface.interface_type.clone()),
             created_at: Set(created_at),
             updated_at: Set(updated_at),
-            created: Set(Some(created_ts)),
-            updated: Set(Some(updated_ts)),
             ..Default::default()
         };
 

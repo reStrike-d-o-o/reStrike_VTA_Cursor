@@ -19,8 +19,6 @@ pub struct Model {
     pub interface_type: Option<String>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
-    pub created: Option<i64>,
-    pub updated: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

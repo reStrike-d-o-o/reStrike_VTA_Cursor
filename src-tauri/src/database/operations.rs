@@ -2382,16 +2382,15 @@ impl PssEventOperations {
         } else {
             // Insert new event type
             tx.execute(
-                "INSERT INTO pss_event_types (event_code, event_name, description, category, is_active, created_at, created)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO pss_event_types (event_code, event_name, description, category, is_active, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     event_type.event_code,
                     event_type.event_name,
                     event_type.description,
                     event_type.category,
                     event_type.is_active,
-                    event_type.created_at.to_rfc3339(),
-                    crate::utils::now_unix()
+                    event_type.created_at.to_rfc3339()
                 ]
             )?;
             tx.last_insert_rowid()
