@@ -4,13 +4,14 @@ use crate::database::{
     // models::*,
     // operations::*,
     models::{
-        PssAthlete as DbPssAthlete, PssEventType as DbPssEventType, PssMatch as DbPssMatch,
+        ObsConnection as DbObsConnection, PssAthlete as DbPssAthlete,
+        PssEventType as DbPssEventType, PssMatch as DbPssMatch,
         PssMatchAthlete as DbPssMatchAthlete, UdpClientConnection as DbUdpClientConnection,
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
-        network as sea_network, pss as sea_pss, pss_catalog as sea_catalog,
+        network as sea_network, obs as sea_obs, pss as sea_pss, pss_catalog as sea_catalog,
         pss_status as sea_status, ui_settings as sea_settings,
     },
     DatabaseError,
@@ -323,6 +324,92 @@ impl DatabasePlugin {
                 crate::types::AppError::ConfigError(format!(
                     "Failed to upsert network interface: {e}"
                 ))
+            })
+    }
+
+    /// Retrieve all OBS WebSocket connections stored in the database.
+    pub async fn list_obs_connections(&self) -> AppResult<Vec<DbObsConnection>> {
+        sea_obs::list_connections(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to fetch OBS connections: {e}"))
+            })
+    }
+
+    /// Retrieve only active OBS connections.
+    pub async fn list_active_obs_connections(&self) -> AppResult<Vec<DbObsConnection>> {
+        sea_obs::list_active_connections(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch active OBS connections: {e}"
+                ))
+            })
+    }
+
+    /// Look up a specific OBS connection by name.
+    pub async fn find_obs_connection_by_name(
+        &self,
+        name: &str,
+    ) -> AppResult<Option<DbObsConnection>> {
+        sea_obs::find_connection_by_name(&self.seaorm_connection, name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to lookup OBS connection '{name}': {e}"
+                ))
+            })
+    }
+
+    /// Insert or update an OBS connection and return the persisted record.
+    pub async fn save_obs_connection(
+        &self,
+        connection: &DbObsConnection,
+    ) -> AppResult<DbObsConnection> {
+        sea_obs::upsert_connection(&self.seaorm_connection, connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save OBS connection '{}': {e}",
+                    connection.name
+                ))
+            })
+    }
+
+    /// Update status metadata for an OBS connection.
+    pub async fn update_obs_connection_status(
+        &self,
+        name: &str,
+        status: &str,
+        error: Option<&str>,
+    ) -> AppResult<()> {
+        sea_obs::update_connection_status(&self.seaorm_connection, name, status, error)
+            .await
+            .map(|_| ())
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to update OBS connection '{name}' status: {e}"
+                ))
+            })
+    }
+
+    /// Delete a single OBS connection by name.
+    pub async fn delete_obs_connection(&self, name: &str) -> AppResult<()> {
+        sea_obs::delete_connection(&self.seaorm_connection, name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to delete OBS connection '{name}': {e}"
+                ))
+            })
+    }
+
+    /// Remove all OBS connections from the database.
+    pub async fn clear_obs_connections(&self) -> AppResult<()> {
+        sea_obs::clear_connections(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!("Failed to clear OBS connections: {e}"))
             })
     }
 

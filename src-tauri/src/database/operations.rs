@@ -1,10 +1,10 @@
 use crate::database::{
     models::{
         Athlete, EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
-        MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsConnection,
-        ObsRecordingConfig, ObsRecordingSession, ObsScene, Octagon, OverlayTemplate,
-        OvrAnthemAsset, OvrCategory, OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete,
-        PssEventDetail, PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
+        MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsRecordingConfig,
+        ObsRecordingSession, ObsScene, Octagon, OverlayTemplate, OvrAnthemAsset, OvrCategory,
+        OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete, PssEventDetail,
+        PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
         PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
         PssUnknownEvent, PssWarning, Tournament, TournamentDay, TournamentRanking,
         UdpClientConnection, UdpServerConfig, UdpServerSession,
@@ -1136,19 +1136,6 @@ impl PssUdpOperations {
         Ok(serde_json::json!({
             "settings": settings
         }))
-    }
-
-    pub fn get_obs_connections(conn: &Connection) -> DatabaseResult<Vec<ObsConnection>> {
-        let mut stmt = conn.prepare(
-            "SELECT id, name, host, port, password, is_active, status, error, created_at, updated_at
-             FROM obs_connections ORDER BY name"
-        )?;
-
-        let connections = stmt
-            .query_map([], ObsConnection::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(connections)
     }
 }
 
@@ -3119,108 +3106,6 @@ impl DatabaseConnection {
                             FROM event_triggers WHERE tournament_id = ?",
                         [&now, &now, &tournament_id.to_string()],
                 )?;
-
-        Ok(())
-    }
-
-    // ========================================================================
-    // OBS CONNECTION OPERATIONS
-    // ========================================================================
-
-    /// Get all OBS connections
-    pub async fn get_obs_connections(&self) -> DatabaseResult<Vec<ObsConnection>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare("SELECT * FROM obs_connections ORDER BY name")?;
-
-        let connections = stmt
-            .query_map([], ObsConnection::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(connections)
-    }
-
-    /// Get active OBS connections only
-    pub async fn get_active_obs_connections(&self) -> DatabaseResult<Vec<ObsConnection>> {
-        let conn = self.get_connection().await?;
-        let mut stmt =
-            conn.prepare("SELECT * FROM obs_connections WHERE is_active = 1 ORDER BY name")?;
-
-        let connections = stmt
-            .query_map([], ObsConnection::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(connections)
-    }
-
-    /// Get OBS connection by name
-    pub async fn get_obs_connection_by_name(
-        &self,
-        name: &str,
-    ) -> DatabaseResult<Option<ObsConnection>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare("SELECT * FROM obs_connections WHERE name = ?")?;
-
-        let connection = stmt.query_row([name], ObsConnection::from_row).optional()?;
-
-        Ok(connection)
-    }
-
-    /// Insert or update OBS connection
-    pub async fn upsert_obs_connection(&self, connection: &ObsConnection) -> DatabaseResult<i64> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        let id = conn.execute(
-            "INSERT OR REPLACE INTO obs_connections (name, host, port, password, is_active, status, error, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                &connection.name,
-                &connection.host,
-                &connection.port.to_string(),
-                &connection.password.as_deref().unwrap_or("").to_string(),
-                &(connection.is_active as i32).to_string(),
-                &connection.status,
-                &connection.error.as_deref().unwrap_or("").to_string(),
-                &connection.created_at.to_rfc3339(),
-                &now,
-            ],
-        )?;
-
-        Ok(id as i64)
-    }
-
-    /// Update OBS connection status
-    pub async fn update_obs_connection_status(
-        &self,
-        name: &str,
-        status: &str,
-        error: Option<&str>,
-    ) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        conn.execute(
-            "UPDATE obs_connections SET status = ?, error = ?, updated_at = ? WHERE name = ?",
-            [status, error.unwrap_or(""), &now, name],
-        )?;
-
-        Ok(())
-    }
-
-    /// Delete OBS connection
-    pub async fn delete_obs_connection(&self, name: &str) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-
-        conn.execute("DELETE FROM obs_connections WHERE name = ?", [name])?;
-
-        Ok(())
-    }
-
-    /// Clear all OBS connections
-    pub async fn clear_obs_connections(&self) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-
-        conn.execute("DELETE FROM obs_connections", [])?;
 
         Ok(())
     }

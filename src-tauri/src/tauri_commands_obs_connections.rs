@@ -19,10 +19,10 @@ pub struct ObsConnectionPayload {
 pub async fn obs_connections_get_all(
     app: State<'_, Arc<crate::App>>,
 ) -> Result<Vec<ObsConnection>, TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
-    let connections = conn
-        .get_obs_connections()
+    let connections = plugin
+        .list_obs_connections()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
@@ -33,10 +33,10 @@ pub async fn obs_connections_get_all(
 pub async fn obs_connections_get_active(
     app: State<'_, Arc<crate::App>>,
 ) -> Result<Vec<ObsConnection>, TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
-    let connections = conn
-        .get_active_obs_connections()
+    let connections = plugin
+        .list_active_obs_connections()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
@@ -48,7 +48,7 @@ pub async fn obs_connections_save(
     app: State<'_, Arc<crate::App>>,
     connection: ObsConnectionPayload,
 ) -> Result<ObsConnection, TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
     let obs_connection = ObsConnection {
         id: connection.id,
@@ -63,11 +63,12 @@ pub async fn obs_connections_save(
         updated_at: Utc::now(),
     };
 
-    conn.upsert_obs_connection(&obs_connection)
+    let saved = plugin
+        .save_obs_connection(&obs_connection)
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
-    Ok(obs_connection)
+    Ok(saved)
 }
 
 #[command]
@@ -77,9 +78,10 @@ pub async fn obs_connections_update_status(
     status: String,
     error: Option<String>,
 ) -> Result<(), TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
-    conn.update_obs_connection_status(&name, &status, error.as_deref())
+    plugin
+        .update_obs_connection_status(&name, &status, error.as_deref())
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
@@ -91,9 +93,10 @@ pub async fn obs_connections_delete(
     app: State<'_, Arc<crate::App>>,
     name: String,
 ) -> Result<(), TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
-    conn.delete_obs_connection(&name)
+    plugin
+        .delete_obs_connection(&name)
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
@@ -102,9 +105,10 @@ pub async fn obs_connections_delete(
 
 #[command]
 pub async fn obs_connections_clear_all(app: State<'_, Arc<crate::App>>) -> Result<(), TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
-    conn.clear_obs_connections()
+    plugin
+        .clear_obs_connections()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
@@ -115,13 +119,14 @@ pub async fn obs_connections_clear_all(app: State<'_, Arc<crate::App>>) -> Resul
 pub async fn obs_connections_sync_from_config(
     app: State<'_, Arc<crate::App>>,
 ) -> Result<Vec<ObsConnection>, TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let plugin = app.database_plugin();
 
     // Get connections from config manager
     let config_connections = app.config_manager().get_obs_connections().await;
 
     // Clear existing database connections
-    conn.clear_obs_connections()
+    plugin
+        .clear_obs_connections()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
@@ -141,11 +146,12 @@ pub async fn obs_connections_sync_from_config(
             updated_at: Utc::now(),
         };
 
-        conn.upsert_obs_connection(&obs_connection)
+        let saved = plugin
+            .save_obs_connection(&obs_connection)
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
 
-        db_connections.push(obs_connection);
+        db_connections.push(saved);
     }
 
     Ok(db_connections)
