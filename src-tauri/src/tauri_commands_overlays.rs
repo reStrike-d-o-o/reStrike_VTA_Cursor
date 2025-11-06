@@ -21,7 +21,7 @@ pub async fn overlays_sync_templates(
     app: State<'_, Arc<crate::App>>,
     templates: Vec<OverlayTemplatePayload>,
 ) -> Result<Vec<OverlayTemplate>, TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let db = app.database_plugin();
 
     // Insert or update each template
     for t in templates {
@@ -39,13 +39,13 @@ pub async fn overlays_sync_templates(
             created_at: now,
             updated_at: now,
         };
-        conn.insert_overlay_template(&tpl)
+        db.upsert_overlay_template(&tpl)
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     }
 
     // Return fresh list
-    let list = conn
+    let list = db
         .get_active_overlay_templates()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
@@ -56,7 +56,7 @@ pub async fn overlays_sync_templates(
 pub async fn overlays_populate_from_files(
     app: State<'_, Arc<crate::App>>,
 ) -> Result<Vec<OverlayTemplate>, TauriError> {
-    let conn = app.database_plugin().get_database_connection();
+    let db = app.database_plugin();
 
     // Define overlay templates based on existing SVG files
     let overlay_templates = vec![
@@ -118,18 +118,9 @@ pub async fn overlays_populate_from_files(
     ];
 
     // Clear existing templates by getting all and deleting them
-    let existing_templates = conn
-        .get_overlay_templates()
+    db.clear_overlay_templates()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-
-    for template in existing_templates {
-        if let Some(id) = template.id {
-            conn.delete_overlay_template(id)
-                .await
-                .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
-        }
-    }
 
     // Insert each template
     for t in overlay_templates {
@@ -147,13 +138,13 @@ pub async fn overlays_populate_from_files(
             created_at: now,
             updated_at: now,
         };
-        conn.insert_overlay_template(&tpl)
+        db.upsert_overlay_template(&tpl)
             .await
             .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     }
 
     // Return fresh list
-    let list = conn
+    let list = db
         .get_active_overlay_templates()
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;

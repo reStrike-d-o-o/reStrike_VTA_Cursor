@@ -2,12 +2,12 @@ use crate::database::{
     models::{
         Athlete, EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
         MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsRecordingConfig,
-        ObsRecordingSession, Octagon, OverlayTemplate, OvrAnthemAsset, OvrCategory,
-        OvrFlagAnimationAsset, OvrProvider, OvrTournament, PssAthlete, PssEventDetail,
-        PssEventRecognitionHistory, PssEventStatistics, PssEventType, PssEventV2,
-        PssEventValidationResult, PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore,
-        PssUnknownEvent, PssWarning, Tournament, TournamentDay, TournamentRanking,
-        UdpClientConnection, UdpServerConfig, UdpServerSession,
+        ObsRecordingSession, Octagon, OvrAnthemAsset, OvrCategory, OvrFlagAnimationAsset,
+        OvrProvider, OvrTournament, PssAthlete, PssEventDetail, PssEventRecognitionHistory,
+        PssEventStatistics, PssEventType, PssEventV2, PssEventValidationResult,
+        PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore, PssUnknownEvent, PssWarning,
+        Tournament, TournamentDay, TournamentRanking, UdpClientConnection, UdpServerConfig,
+        UdpServerSession,
     },
     DatabaseConnection, DatabaseError, DatabaseResult,
 };
@@ -2685,108 +2685,6 @@ pub struct ArchiveStatistics {
 // ============================================================================
 
 impl DatabaseConnection {
-    // ========================================================================
-    // OVERLAY TEMPLATE OPERATIONS
-    // ========================================================================
-
-    /// Get all overlay templates
-    pub async fn get_overlay_templates(&self) -> DatabaseResult<Vec<OverlayTemplate>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare("SELECT * FROM overlay_templates ORDER BY name")?;
-
-        let templates = stmt
-            .query_map([], OverlayTemplate::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(templates)
-    }
-
-    /// Get active overlay templates only
-    pub async fn get_active_overlay_templates(&self) -> DatabaseResult<Vec<OverlayTemplate>> {
-        let conn = self.get_connection().await?;
-        let mut stmt =
-            conn.prepare("SELECT * FROM overlay_templates WHERE is_active = 1 ORDER BY name")?;
-
-        let templates = stmt
-            .query_map([], OverlayTemplate::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(templates)
-    }
-
-    /// Get overlay template by name
-    pub async fn get_overlay_template_by_name(
-        &self,
-        name: &str,
-    ) -> DatabaseResult<Option<OverlayTemplate>> {
-        let conn = self.get_connection().await?;
-        let mut stmt = conn.prepare("SELECT * FROM overlay_templates WHERE name = ?")?;
-
-        let template = stmt
-            .query_row([name], OverlayTemplate::from_row)
-            .optional()?;
-
-        Ok(template)
-    }
-
-    /// Insert overlay template
-    pub async fn insert_overlay_template(&self, template: &OverlayTemplate) -> DatabaseResult<i64> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        let id = conn.execute(
-            "INSERT INTO overlay_templates (name, description, theme, colors, animation_type, duration_ms, is_active, url, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                &template.name,
-                &template.description.as_deref().unwrap_or("").to_string(),
-                &template.theme,
-                &template.colors.as_deref().unwrap_or("").to_string(),
-                &template.animation_type,
-                &template.duration_ms.to_string(),
-                &(template.is_active as i32).to_string(),
-                &template.url.as_deref().unwrap_or("").to_string(),
-                &template.created_at.to_rfc3339(),
-                &now,
-            ],
-        )?;
-
-        Ok(id as i64)
-    }
-
-    /// Update overlay template
-    pub async fn update_overlay_template(&self, template: &OverlayTemplate) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-        let now = chrono::Utc::now().to_rfc3339();
-
-        conn.execute(
-            "UPDATE overlay_templates SET description = ?, theme = ?, colors = ?, animation_type = ?, duration_ms = ?, is_active = ?, url = ?, updated_at = ?
-             WHERE id = ?",
-            [
-                &template.description.as_deref().unwrap_or("").to_string(),
-                &template.theme,
-                &template.colors.as_deref().unwrap_or("").to_string(),
-                &template.animation_type,
-                &template.duration_ms.to_string(),
-                &(template.is_active as i32).to_string(),
-                &template.url.as_deref().unwrap_or("").to_string(),
-                &now,
-                &template.id.unwrap_or(0).to_string(),
-            ],
-        )?;
-
-        Ok(())
-    }
-
-    /// Delete overlay template
-    pub async fn delete_overlay_template(&self, id: i64) -> DatabaseResult<()> {
-        let conn = self.get_connection().await?;
-
-        conn.execute("DELETE FROM overlay_templates WHERE id = ?", [id])?;
-
-        Ok(())
-    }
-
     // ========================================================================
     // EVENT TRIGGER OPERATIONS
     // ========================================================================

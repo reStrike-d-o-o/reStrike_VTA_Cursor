@@ -34,6 +34,7 @@ pub mod overlay_anthem;
 pub mod overlay_category;
 pub mod overlay_flag_animation;
 pub mod overlay_provider;
+pub mod overlay_template;
 pub mod overlay_tournament;
 pub mod overlay_tournament_map;
 pub mod round;
@@ -86,6 +87,7 @@ pub mod prelude {
     pub use super::overlay_category::Entity as OverlayCategory;
     pub use super::overlay_flag_animation::Entity as OverlayFlagAnimation;
     pub use super::overlay_provider::Entity as OverlayProvider;
+    pub use super::overlay_template::Entity as OverlayTemplate;
     pub use super::overlay_tournament::Entity as OverlayTournament;
     pub use super::overlay_tournament_map::Entity as OverlayTournamentMap;
     pub use super::round::Entity as Round;

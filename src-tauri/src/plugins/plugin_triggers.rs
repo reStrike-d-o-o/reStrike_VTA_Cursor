@@ -263,7 +263,7 @@ impl TriggerPlugin {
 
     /// Initialize default overlay templates
     async fn initialize_default_overlay_templates(&self) -> AppResult<()> {
-        let existing_templates = self.db.get_overlay_templates().await?;
+        let existing_templates = self.db_plugin.get_overlay_templates().await?;
         if !existing_templates.is_empty() {
             return Ok(());
         }
@@ -339,7 +339,7 @@ impl TriggerPlugin {
         ];
 
         for template in &default_templates {
-            self.db.insert_overlay_template(template).await?;
+            self.db_plugin.upsert_overlay_template(template).await?;
         }
 
         log::info!(
@@ -802,7 +802,7 @@ impl TriggerPlugin {
         };
 
         // Get overlay template from database
-        let templates = self.db.get_overlay_templates().await?;
+        let templates = self.db_plugin.get_overlay_templates().await?;
         let template = templates
             .iter()
             .find(|t| t.id == Some(template_id))

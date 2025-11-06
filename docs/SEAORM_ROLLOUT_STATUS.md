@@ -12,9 +12,11 @@ This log keeps track of every subsystem that still touches the legacy `rusqlite`
 | Athletes | `operations.rs` | **Done** (SeaORM-backed) | Manual match creation and UDP ingest now upsert via SeaORM; legacy helpers unused and ready for removal. |
 | Tournaments / days / ranking / champions | `operations.rs` | **Pending** | Needed for OBS overlays, reporting, medal ceremony tooling. |
 | UI settings | `seaorm_ops::ui_settings` | **Done** | Database plugin, HybridSettingsProvider, core app, and Tauri commands now use SeaORM helpers; legacy rusqlite module removed. |
-| OBS connections & recording config | `operations.rs::ObsRecordingOperations` | **Pending** | Add SeaORM helpers for `obs_connection`, `obs_recording_*`; switch `plugin_websocket`, `tauri_commands_obws`. |
+| OBS connections & scenes | `operations.rs::ObsRecordingOperations` | **Done** (`seaorm_ops::obs`, `seaorm_ops::obs_scene`) | Plugin database + trigger commands now read/write via SeaORM; rusqlite helpers removed. |
+| OBS recording config | `operations.rs::ObsRecordingOperations` | **Pending** | Add SeaORM helpers for `obs_recording_*`; switch `plugin_websocket`, `tauri_commands_obws`. |
 | UDP server config / sessions / clients | Mixed (SeaORM reads, rusqlite writes) | **Done** (SeaORM-backed) | Config, session lifecycle, and client tracking handled via SeaORM; keep verifying telemetry before deleting legacy helpers. |
 | Network interfaces | `PssUdpOperations` | **Done** (`seaorm_ops::network`) | Plugin now reads and writes via SeaORM helpers; legacy operations only kept for reference. |
+| Overlay templates | `database::operations::get_overlay_templates` etc. | **Done** (`seaorm_ops::overlay`) | Plugin helpers and Tauri commands switched; legacy ops removed from `operations.rs`. |
 | Overlay providers / flags / anthems | `operations.rs` | **Pending** | Required for overlays UI and OBS scene builder. |
 | Security keys / encryption | `security::key_manager`, `security::encryption` | **Pending** | Migrate secure storage semantics before dropping rusqlite. |
 | Maintenance / archives | `maintenance.rs`, `operations.rs::DataArchivalOperations` | **Pending** | Decide whether to keep raw SQL or add thin SeaORM wrappers. |
@@ -30,8 +32,10 @@ This log keeps track of every subsystem that still touches the legacy `rusqlite`
 
 ## Immediate Candidates
 
-- Match & athlete catalogue — unblocks tournaments, overlays, OBS, and analytics.
-- UI settings — high touch area across the desktop UI; removing rusqlite here eliminates a large portion of `operations.rs`.
+- OBS recording config — migrate settings + sessions to SeaORM and update the websocket/recording plugins.
+- Tournaments / days / rankings — prerequisite for overlays, medal ceremony, and reporting flows.
+- Overlay providers / flags / anthems — keep overlays UI on a single persistence layer.
+- Security storage (keys, encryption metadata) — required before the legacy DB can ship in read-only mode.
 
 Keep this document current so the team always knows what remains before we can declare the SeaORM rollout finished.
 

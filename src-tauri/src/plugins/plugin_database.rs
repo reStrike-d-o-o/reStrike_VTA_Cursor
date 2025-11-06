@@ -4,15 +4,17 @@ use crate::database::{
     // models::*,
     // operations::*,
     models::{
-        ObsConnection as DbObsConnection, ObsScene as DbObsScene, PssAthlete as DbPssAthlete,
+        ObsConnection as DbObsConnection, ObsScene as DbObsScene,
+        OverlayTemplate as DbOverlayTemplate, PssAthlete as DbPssAthlete,
         PssEventType as DbPssEventType, PssMatch as DbPssMatch,
         PssMatchAthlete as DbPssMatchAthlete, UdpClientConnection as DbUdpClientConnection,
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
-        network as sea_network, obs as sea_obs, obs_scene as sea_obs_scene, pss as sea_pss,
-        pss_catalog as sea_catalog, pss_status as sea_status, ui_settings as sea_settings,
+        network as sea_network, obs as sea_obs, obs_scene as sea_obs_scene, overlay as sea_overlay,
+        pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status,
+        ui_settings as sea_settings,
     },
     DatabaseError,
     HybridSettingsProvider,
@@ -484,6 +486,79 @@ impl DatabasePlugin {
             .await
             .map_err(|e| {
                 crate::types::AppError::ConfigError(format!("Failed to sync OBS scenes: {e}"))
+            })
+    }
+
+    /// Fetch every overlay template.
+    pub async fn get_overlay_templates(&self) -> AppResult<Vec<DbOverlayTemplate>> {
+        sea_overlay::list_templates(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch overlay templates: {e}"
+                ))
+            })
+    }
+
+    /// Fetch overlay templates currently marked as active.
+    pub async fn get_active_overlay_templates(&self) -> AppResult<Vec<DbOverlayTemplate>> {
+        sea_overlay::list_active_templates(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch active overlay templates: {e}"
+                ))
+            })
+    }
+
+    /// Look up an overlay template by name.
+    pub async fn find_overlay_template_by_name(
+        &self,
+        name: &str,
+    ) -> AppResult<Option<DbOverlayTemplate>> {
+        sea_overlay::find_template_by_name(&self.seaorm_connection, name)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to lookup overlay template '{name}': {e}"
+                ))
+            })
+    }
+
+    /// Insert or update an overlay template.
+    pub async fn upsert_overlay_template(
+        &self,
+        template: &DbOverlayTemplate,
+    ) -> AppResult<DbOverlayTemplate> {
+        sea_overlay::upsert_template(&self.seaorm_connection, template)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save overlay template '{}': {e}",
+                    template.name
+                ))
+            })
+    }
+
+    /// Delete an overlay template by id.
+    pub async fn delete_overlay_template(&self, id: i64) -> AppResult<()> {
+        sea_overlay::delete_template(&self.seaorm_connection, id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to delete overlay template {id}: {e}"
+                ))
+            })
+    }
+
+    /// Remove all overlay templates.
+    pub async fn clear_overlay_templates(&self) -> AppResult<()> {
+        sea_overlay::clear_templates(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to clear overlay templates: {e}"
+                ))
             })
     }
 
