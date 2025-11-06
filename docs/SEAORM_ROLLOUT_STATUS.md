@@ -17,7 +17,8 @@ This log keeps track of every subsystem that still touches the legacy `rusqlite`
 | UDP server config / sessions / clients | Mixed (SeaORM reads, rusqlite writes) | **Done** (SeaORM-backed) | Config, session lifecycle, and client tracking handled via SeaORM; keep verifying telemetry before deleting legacy helpers. |
 | Network interfaces | `PssUdpOperations` | **Done** (`seaorm_ops::network`) | Plugin now reads and writes via SeaORM helpers; legacy operations only kept for reference. |
 | Overlay templates | `database::operations::get_overlay_templates` etc. | **Done** (`seaorm_ops::overlay`) | Plugin helpers and Tauri commands switched; legacy ops removed from `operations.rs`. |
-| Overlay providers / flags / anthems | `operations.rs` | **Pending** | Required for overlays UI and OBS scene builder. |
+| Overlay providers | Legacy `OvrOperations` (providers) | **Done** (`seaorm_ops::overlay_provider`) | Database plugin + scraper + commands fully SeaORM; rusqlite helpers deleted. |
+| Overlay flags / anthems | `operations.rs` | **Pending** | Required for overlays UI and OBS scene builder. |
 | Security keys / encryption | `security::key_manager`, `security::encryption` | **Pending** | Migrate secure storage semantics before dropping rusqlite. |
 | Maintenance / archives | `maintenance.rs`, `operations.rs::DataArchivalOperations` | **Pending** | Decide whether to keep raw SQL or add thin SeaORM wrappers. |
 | Docs & schema reference | `20251105_schema_unification.sql` | **Done** (`include_str!`) | Keep docs aligned as new SeaORM modules land. |
@@ -34,7 +35,7 @@ This log keeps track of every subsystem that still touches the legacy `rusqlite`
 
 - OBS recording config — migrate settings + sessions to SeaORM and update the websocket/recording plugins.
 - Tournaments / days / rankings — prerequisite for overlays, medal ceremony, and reporting flows.
-- Overlay providers / flags / anthems — keep overlays UI on a single persistence layer.
+- Overlay flags / anthems — keep overlays UI on a single persistence layer.
 - Security storage (keys, encryption metadata) — required before the legacy DB can ship in read-only mode.
 
 Keep this document current so the team always knows what remains before we can declare the SeaORM rollout finished.
@@ -42,7 +43,7 @@ Keep this document current so the team always knows what remains before we can d
 ## Pre-Data-Transfer Checklist
 
 - Confirm end-to-end tests for SeaORM match/event flows (UDP ingest, OBS recorder, manual mode) against a seeded sandbox database.
-- Replace remaining rusqlite paths (OBS recording/config, overlay providers, medal ceremony, archival jobs, security storage) with targeted SeaORM modules.
+- Replace remaining rusqlite paths (OBS recording/config, overlay assets, medal ceremony, archival jobs, security storage) with targeted SeaORM modules.
 - Validate the new SeaORM network interface helpers with UDP server provisioning flows to confirm parity with the legacy path.
 - Add `created_at` / `updated_at` triggers across tables so SeaORM helpers no longer need to stamp timestamps manually.
 - Audit migrations in `scripts/db_migrations/20251105_schema_unification.sql` to ensure new tables/entities match runtime expectations (timestamps, UUIDs, FKs).

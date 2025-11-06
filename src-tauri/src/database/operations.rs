@@ -3,11 +3,10 @@ use crate::database::{
         Athlete, EventTrigger, MedalCeremony, MedalCeremonyDetail, MedalCeremonyDivision,
         MedalCeremonyDivisionDetail, MedalCeremonyMedalist, NetworkInterface, ObsRecordingConfig,
         ObsRecordingSession, Octagon, OvrAnthemAsset, OvrCategory, OvrFlagAnimationAsset,
-        OvrProvider, OvrTournament, PssAthlete, PssEventDetail, PssEventRecognitionHistory,
-        PssEventStatistics, PssEventType, PssEventV2, PssEventValidationResult,
-        PssEventValidationRule, PssMatch, PssMatchAthlete, PssScore, PssUnknownEvent, PssWarning,
-        Tournament, TournamentDay, TournamentRanking, UdpClientConnection, UdpServerConfig,
-        UdpServerSession,
+        OvrTournament, PssAthlete, PssEventDetail, PssEventRecognitionHistory, PssEventStatistics,
+        PssEventType, PssEventV2, PssEventValidationResult, PssEventValidationRule, PssMatch,
+        PssMatchAthlete, PssScore, PssUnknownEvent, PssWarning, Tournament, TournamentDay,
+        TournamentRanking, UdpClientConnection, UdpServerConfig, UdpServerSession,
     },
     DatabaseConnection, DatabaseError, DatabaseResult,
 };
@@ -3225,91 +3224,10 @@ impl ObsRecordingOperations {
 pub struct OvrOperations;
 
 impl OvrOperations {
-    // Providers
-    pub fn ensure_default_providers(conn: &mut Connection) -> DatabaseResult<()> {
-        let now = Utc::now().to_rfc3339();
-        conn.execute(
-			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
-			params!["simplycompete", "https://www.simplycompete.com", &now, &now],
-		)?;
-        conn.execute(
-			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
-			params!["tpss", "https://www.tpss.eu", &now, &now],
-		)?;
-        conn.execute(
-			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
-			params!["martial.events", "https://martial.events", &now, &now],
-		)?;
-        conn.execute(
-			"INSERT OR IGNORE INTO ovr_providers(name, base_url, enabled, created_at, updated_at) VALUES(?, ?, 1, ?, ?)",
-			params!["etu", "https://europetaekwondo.org", &now, &now],
-		)?;
-        Ok(())
-    }
-
-    pub fn get_providers(conn: &Connection) -> DatabaseResult<Vec<OvrProvider>> {
-        let mut stmt = conn.prepare("SELECT * FROM ovr_providers ORDER BY name")?;
-        let res = stmt
-            .query_map([], OvrProvider::from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(res)
-    }
-
-    pub fn upsert_provider(conn: &mut Connection, p: &OvrProvider) -> DatabaseResult<i64> {
-        let tx = conn.transaction()?;
-        let id_opt: Option<i64> = tx
-            .query_row(
-                "SELECT id FROM ovr_providers WHERE name = ?",
-                params![p.name],
-                |r| r.get(0),
-            )
-            .optional()?;
-        let now = Utc::now().to_rfc3339();
-        let id = if let Some(id) = id_opt {
-            tx.execute(
-				"UPDATE ovr_providers SET base_url = ?, enabled = ?, rate_limit_ms = ?, updated_at = ? WHERE id = ?",
-				params![p.base_url, p.enabled, p.rate_limit_ms, now, id]
-			)?;
-            id
-        } else {
-            tx.execute(
-            "INSERT INTO ovr_providers (name, base_url, enabled, rate_limit_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-            params![p.name, p.base_url, p.enabled, p.rate_limit_ms, now, now]
-        )?;
-            tx.last_insert_rowid()
-        };
-        tx.commit()?;
-        Ok(id)
-    }
-
-    pub fn remove_provider(conn: &mut Connection, id: i64) -> DatabaseResult<()> {
-        conn.execute("DELETE FROM ovr_providers WHERE id = ?", params![id])?;
-        Ok(())
-    }
-
     pub fn clear_all_tournaments(conn: &mut Connection) -> DatabaseResult<()> {
         conn.execute("DELETE FROM ovr_categories", [])?;
         conn.execute("DELETE FROM ovr_to_local_tournament", [])?;
         conn.execute("DELETE FROM ovr_tournaments", [])?;
-        Ok(())
-    }
-
-    pub fn set_provider_refresh_status(
-        conn: &mut Connection,
-        id: i64,
-        status: Option<&str>,
-        err: Option<&str>,
-    ) -> DatabaseResult<()> {
-        conn.execute(
-			"UPDATE ovr_providers SET last_refreshed_at = ?, last_status = ?, last_error = ?, updated_at = ? WHERE id = ?",
-			params![
-				Some(Utc::now().to_rfc3339()),
-				status,
-				err,
-				Utc::now().to_rfc3339(),
-				id
-			]
-		)?;
         Ok(())
     }
 

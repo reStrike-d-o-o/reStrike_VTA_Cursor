@@ -5,16 +5,16 @@ use crate::database::{
     // operations::*,
     models::{
         ObsConnection as DbObsConnection, ObsScene as DbObsScene,
-        OverlayTemplate as DbOverlayTemplate, PssAthlete as DbPssAthlete,
-        PssEventType as DbPssEventType, PssMatch as DbPssMatch,
+        OverlayTemplate as DbOverlayTemplate, OvrProvider as DbOvrProvider,
+        PssAthlete as DbPssAthlete, PssEventType as DbPssEventType, PssMatch as DbPssMatch,
         PssMatchAthlete as DbPssMatchAthlete, UdpClientConnection as DbUdpClientConnection,
         UdpServerConfig as DbUdpServerConfig, UdpServerSession as DbUdpServerSession,
     },
     seaorm::{connect as seaorm_connect, SeaOrmConnection},
     seaorm_ops::{
         network as sea_network, obs as sea_obs, obs_scene as sea_obs_scene, overlay as sea_overlay,
-        pss as sea_pss, pss_catalog as sea_catalog, pss_status as sea_status,
-        ui_settings as sea_settings,
+        overlay_provider as sea_overlay_provider, pss as sea_pss, pss_catalog as sea_catalog,
+        pss_status as sea_status, ui_settings as sea_settings,
     },
     DatabaseError,
     HybridSettingsProvider,
@@ -560,6 +560,86 @@ impl DatabasePlugin {
                     "Failed to clear overlay templates: {e}"
                 ))
             })
+    }
+
+    /// Ensure the default overlay providers exist in the database.
+    pub async fn ensure_default_overlay_providers(&self) -> AppResult<()> {
+        sea_overlay_provider::ensure_default_providers(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to ensure default overlay providers: {e}"
+                ))
+            })
+    }
+
+    /// Fetch all overlay providers ordered by name.
+    pub async fn get_overlay_providers(&self) -> AppResult<Vec<DbOvrProvider>> {
+        sea_overlay_provider::list_providers(&self.seaorm_connection)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch overlay providers: {e}"
+                ))
+            })
+    }
+
+    /// Fetch a single overlay provider by id.
+    pub async fn get_overlay_provider_by_id(&self, id: i64) -> AppResult<Option<DbOvrProvider>> {
+        sea_overlay_provider::find_provider_by_id(&self.seaorm_connection, id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to fetch overlay provider {id}: {e}"
+                ))
+            })
+    }
+
+    /// Insert or update an overlay provider.
+    pub async fn upsert_overlay_provider(
+        &self,
+        provider: &DbOvrProvider,
+    ) -> AppResult<DbOvrProvider> {
+        sea_overlay_provider::upsert_provider(&self.seaorm_connection, provider)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to save overlay provider '{}': {e}",
+                    provider.name
+                ))
+            })
+    }
+
+    /// Delete an overlay provider by its id.
+    pub async fn delete_overlay_provider(&self, id: i64) -> AppResult<()> {
+        sea_overlay_provider::delete_provider(&self.seaorm_connection, id)
+            .await
+            .map_err(|e| {
+                crate::types::AppError::ConfigError(format!(
+                    "Failed to delete overlay provider {id}: {e}"
+                ))
+            })
+    }
+
+    /// Update the refresh status metadata for a provider.
+    pub async fn set_overlay_provider_refresh_status(
+        &self,
+        id: i64,
+        status: Option<&str>,
+        error: Option<&str>,
+    ) -> AppResult<()> {
+        sea_overlay_provider::set_provider_refresh_status(
+            &self.seaorm_connection,
+            id,
+            status,
+            error,
+        )
+        .await
+        .map_err(|e| {
+            crate::types::AppError::ConfigError(format!(
+                "Failed to update overlay provider {id} status: {e}"
+            ))
+        })
     }
 
     /// Get all UDP server configurations

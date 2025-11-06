@@ -2,6 +2,7 @@ pub mod network;
 pub mod obs;
 pub mod obs_scene;
 pub mod overlay;
+pub mod overlay_provider;
 pub mod pss;
 pub mod pss_catalog;
 pub mod pss_status;

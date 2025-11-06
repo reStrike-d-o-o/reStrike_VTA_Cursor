@@ -7844,20 +7844,27 @@ fn get_ovr_refresh_task() -> Arc<AsyncMutex<Option<tokio::task::JoinHandle<()>>>
 
 #[tauri::command]
 pub async fn ovr_get_providers(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await?;
-    use crate::database::operations::OvrOperations as Ops;
-    let _ = Ops::ensure_default_providers(&mut conn);
-    match Ops::get_providers(&conn) {
+    let db = app.database_plugin();
+
+    if let Err(e) = db.ensure_default_overlay_providers().await {
+        return Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        }));
+    }
+
+    match db.get_overlay_providers().await {
         Ok(items) => Ok(serde_json::json!({"success": true, "providers": items})),
-        Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string()
+        })),
     }
 }
 
 #[tauri::command]
 pub async fn ovr_refresh_all(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
-    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
-        app.database_plugin().get_database_connection(),
-    );
+    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().clone());
     match plugin.refresh_all().await {
         Ok(n) => Ok(serde_json::json!({"success": true, "providers_processed": n})),
         Err(e) => Ok(serde_json::json!({"success": false, "error": e})),
@@ -7869,21 +7876,15 @@ pub async fn ovr_refresh_provider(
     app: State<'_, Arc<App>>,
     provider_id: i64,
 ) -> Result<serde_json::Value, TauriError> {
-    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
-        app.database_plugin().get_database_connection(),
-    );
+    let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(app.database_plugin().clone());
     match plugin.refresh_provider(provider_id).await {
         Ok(_) => Ok(serde_json::json!({"success": true})),
         Err(e) => {
             // Persist error status for direct refresh calls as well
-            if let Ok(mut conn) = app.database_plugin().get_connection().await {
-                let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
-                    &mut conn,
-                    provider_id,
-                    Some("error"),
-                    Some(&e),
-                );
-            }
+            let _ = app
+                .database_plugin()
+                .set_overlay_provider_refresh_status(provider_id, Some("error"), Some(&e))
+                .await;
             Ok(serde_json::json!({"success": false, "error": e}))
         }
     }
@@ -7894,15 +7895,21 @@ pub async fn ovr_start_refresh_all(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     let state = get_ovr_refresh_state();
+    app.database_plugin()
+        .ensure_default_overlay_providers()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    let providers = app
+        .database_plugin()
+        .get_overlay_providers()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     {
         let mut st = state.lock().await;
         if st.active {
             return Ok(serde_json::json!({"success": false, "error": "already_running"}));
         }
-        let conn = app.database_plugin().get_connection().await?;
-        use crate::database::operations::OvrOperations as Ops;
-        let providers = Ops::get_providers(&conn)
-            .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
         let total = providers.iter().filter(|p| p.enabled).count();
         st.active = true;
         st.cancelled = false;
@@ -7916,17 +7923,13 @@ pub async fn ovr_start_refresh_all(
     tokio::spawn(async move {
         let state = get_ovr_refresh_state();
         let providers = {
-            match app_arc.database_plugin().get_connection().await {
-                Ok(conn) => {
-                    use crate::database::operations::OvrOperations as Ops;
-                    Ops::get_providers(&conn).unwrap_or_default()
-                }
+            match app_arc.database_plugin().get_overlay_providers().await {
+                Ok(list) => list,
                 Err(_) => vec![],
             }
         };
-        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
-            app_arc.database_plugin().get_database_connection(),
-        );
+        let plugin =
+            crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().clone());
         for p in providers.into_iter().filter(|p| p.enabled) {
             {
                 let st = state.lock().await;
@@ -7945,15 +7948,10 @@ pub async fn ovr_start_refresh_all(
             let plugin_clone = plugin.clone();
             let handle = tokio::spawn(async move {
                 if let Err(e) = plugin_clone.refresh_provider(id).await {
-                    if let Ok(mut conn) = app_clone.database_plugin().get_connection().await {
-                        let _ =
-                            crate::database::operations::OvrOperations::set_provider_refresh_status(
-                                &mut conn,
-                                id,
-                                Some("error"),
-                                Some(&e),
-                            );
-                    }
+                    let _ = app_clone
+                        .database_plugin()
+                        .set_overlay_provider_refresh_status(id, Some("error"), Some(&e))
+                        .await;
                     let mut st = state_clone.lock().await;
                     st.last_error = Some(e);
                 }
@@ -8027,36 +8025,29 @@ pub async fn ovr_start_refresh_provider(
     let app_arc = app.inner().clone();
     tokio::spawn(async move {
         let state = get_ovr_refresh_state();
-        let provider_name: Option<String> = match app_arc.database_plugin().get_connection().await {
-            Ok(conn) => {
-                let mut stmt = conn
-                    .prepare("SELECT name FROM ovr_providers WHERE id = ?")
-                    .ok();
-                stmt.as_mut()
-                    .and_then(|s| s.query_row([provider_id], |r| r.get::<_, String>(0)).ok())
-            }
-            Err(_) => None,
+        let provider_name: Option<String> = match app_arc
+            .database_plugin()
+            .get_overlay_provider_by_id(provider_id)
+            .await
+        {
+            Ok(Some(provider)) => Some(provider.name),
+            Ok(None) | Err(_) => None,
         };
         {
             let mut st = state.lock().await;
             st.current_provider = provider_name;
         }
-        let plugin = crate::plugins::plugin_ovr::OvrScraperPlugin::new(
-            app_arc.database_plugin().get_database_connection(),
-        );
+        let plugin =
+            crate::plugins::plugin_ovr::OvrScraperPlugin::new(app_arc.database_plugin().clone());
         // Spawn cancellable task
         let app_clone = app_arc.clone();
         let state_clone = get_ovr_refresh_state();
         let handle = tokio::spawn(async move {
             if let Err(e) = plugin.refresh_provider(provider_id).await {
-                if let Ok(mut conn) = app_clone.database_plugin().get_connection().await {
-                    let _ = crate::database::operations::OvrOperations::set_provider_refresh_status(
-                        &mut conn,
-                        provider_id,
-                        Some("error"),
-                        Some(&e),
-                    );
-                }
+                let _ = app_clone
+                    .database_plugin()
+                    .set_overlay_provider_refresh_status(provider_id, Some("error"), Some(&e))
+                    .await;
                 let mut st = state_clone.lock().await;
                 st.last_error = Some(e);
             }
@@ -8124,7 +8115,6 @@ pub async fn ovr_upsert_provider(
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
     use crate::database::models::OvrProvider;
-    let mut conn = app.database_plugin().get_connection().await?;
     let now = chrono::Utc::now();
     let model = OvrProvider {
         id: payload.id,
@@ -8138,9 +8128,11 @@ pub async fn ovr_upsert_provider(
         created_at: now,
         updated_at: now,
     };
-    use crate::database::operations::OvrOperations as Ops;
-    match Ops::upsert_provider(&mut conn, &model) {
-        Ok(id) => Ok(serde_json::json!({"success": true, "id": id})),
+    match app.database_plugin().upsert_overlay_provider(&model).await {
+        Ok(saved) => Ok(serde_json::json!({
+            "success": true,
+            "id": saved.id.unwrap_or_default()
+        })),
         Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
@@ -8150,9 +8142,7 @@ pub async fn ovr_remove_provider(
     id: i64,
     app: State<'_, Arc<App>>,
 ) -> Result<serde_json::Value, TauriError> {
-    let mut conn = app.database_plugin().get_connection().await?;
-    use crate::database::operations::OvrOperations as Ops;
-    match Ops::remove_provider(&mut conn, id) {
+    match app.database_plugin().delete_overlay_provider(id).await {
         Ok(_) => Ok(serde_json::json!({"success": true})),
         Err(e) => Ok(serde_json::json!({"success": false, "error": e.to_string()})),
     }

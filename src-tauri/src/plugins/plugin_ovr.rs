@@ -1,10 +1,9 @@
-use crate::database::models::{OvrProvider, OvrTournament};
-use crate::database::DatabaseConnection;
+use crate::database::models::OvrTournament;
+use crate::plugins::plugin_database::DatabasePlugin;
 use chrono::Utc;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
 use std::time::Duration;
 
 type TpssEventMetadata = Option<(
@@ -16,7 +15,7 @@ type TpssEventMetadata = Option<(
 
 #[derive(Clone)]
 pub struct OvrScraperPlugin {
-    database: Arc<DatabaseConnection>,
+    database: DatabasePlugin,
 }
 
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +24,7 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 impl OvrScraperPlugin {
-    pub fn new(database: Arc<DatabaseConnection>) -> Self {
+    pub fn new(database: DatabasePlugin) -> Self {
         Self { database }
     }
 
@@ -33,12 +32,9 @@ impl OvrScraperPlugin {
     pub async fn refresh_all(&self) -> Result<usize, String> {
         // Load providers in a short scope so the DB lock is released before per-provider refresh
         let providers = {
-            let conn = self
-                .database
-                .get_connection()
+            self.database
+                .get_overlay_providers()
                 .await
-                .map_err(|e| e.to_string())?;
-            crate::database::operations::OvrOperations::get_providers(&conn)
                 .map_err(|e| e.to_string())?
         };
         let mut updated = 0usize;
@@ -48,18 +44,12 @@ impl OvrScraperPlugin {
                 Err(e) => {
                     let _ = self
                         .database
-                        .get_connection()
-                        .await
-                        .map_err(|_| ())
-                        .and_then(|mut c| {
-                            crate::database::operations::OvrOperations::set_provider_refresh_status(
-                                &mut c,
-                                p.id.unwrap_or_default(),
-                                Some("error"),
-                                Some(&e),
-                            )
-                            .map_err(|_| ())
-                        });
+                        .set_overlay_provider_refresh_status(
+                            p.id.unwrap_or_default(),
+                            Some("error"),
+                            Some(&e),
+                        )
+                        .await;
                 }
             }
         }
@@ -69,34 +59,18 @@ impl OvrScraperPlugin {
     /// Refresh single provider by basic adapter selection
     pub async fn refresh_provider(&self, provider_id: i64) -> Result<(), String> {
         // Read provider in a short scope so the DB lock is released before network calls
-        let provider = {
-            let conn = self
-                .database
-                .get_connection()
-                .await
-                .map_err(|e| e.to_string())?;
-            let mut stmt = conn
-                .prepare("SELECT * FROM ovr_providers WHERE id = ?")
-                .map_err(|e| e.to_string())?;
-            stmt.query_row([provider_id], OvrProvider::from_row)
-                .map_err(|e| e.to_string())?
-        };
+        let provider = self
+            .database
+            .get_overlay_provider_by_id(provider_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Overlay provider {provider_id} not found"))?;
 
         // Mark provider as fetching
-        {
-            let mut connw = self
-                .database
-                .get_connection()
-                .await
-                .map_err(|e| e.to_string())?;
-            crate::database::operations::OvrOperations::set_provider_refresh_status(
-                &mut connw,
-                provider_id,
-                Some("fetching"),
-                None,
-            )
+        self.database
+            .set_overlay_provider_refresh_status(provider_id, Some("fetching"), None)
+            .await
             .map_err(|e| e.to_string())?;
-        }
         let name_lc = provider.name.to_lowercase();
         let rate_limit_ms = provider.rate_limit_ms;
 
@@ -134,22 +108,16 @@ impl OvrScraperPlugin {
         };
 
         // Persist tournaments (obtain a fresh DB lock now)
-        let mut connw = self
-            .database
-            .get_connection()
-            .await
-            .map_err(|e| e.to_string())?;
+        let db_conn = self.database.get_database_connection();
+        let mut connw = db_conn.get_connection().await.map_err(|e| e.to_string())?;
         for t in tournaments {
             let _ = crate::database::operations::OvrOperations::upsert_tournament(&mut connw, &t)
                 .map_err(|e| e.to_string())?;
         }
-        crate::database::operations::OvrOperations::set_provider_refresh_status(
-            &mut connw,
-            provider_id,
-            Some("ok"),
-            None,
-        )
-        .map_err(|e| e.to_string())?;
+        self.database
+            .set_overlay_provider_refresh_status(provider_id, Some("ok"), None)
+            .await
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
