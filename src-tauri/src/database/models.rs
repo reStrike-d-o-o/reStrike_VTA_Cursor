@@ -116,8 +116,8 @@ pub struct ObsRecordingSession {
     pub replay_buffer_filename: Option<String>,
     pub status: String, // 'pending', 'recording', 'completed', 'error', 'cancelled'
     pub error_message: Option<String>,
-    pub created: i64,
-    pub updated: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl ObsRecordingSession {
@@ -127,7 +127,7 @@ impl ObsRecordingSession {
         recording_path: String,
         recording_filename: String,
     ) -> Self {
-        let now_unix = crate::utils::now_unix();
+        let now = Utc::now();
         Self {
             id: None,
             obs_connection_name,
@@ -150,8 +150,8 @@ impl ObsRecordingSession {
             replay_buffer_filename: None,
             status: "pending".to_string(),
             error_message: None,
-            created: now_unix,
-            updated: now_unix,
+            created_at: now,
+            updated_at: now,
         }
     }
 
@@ -161,7 +161,9 @@ impl ObsRecordingSession {
             id: row.get("id")?,
             obs_connection_name: row.get("obs_connection_name")?,
             tournament_id: row.get("tournament_id")?,
-            match_id: row.get("match_id")?,
+            match_id: row
+                .get::<_, Option<String>>("match_code")
+                .or_else(|_| row.get::<_, Option<String>>("match_id"))?,
             match_number: row.get("match_number")?,
             player1_name: row.get("player1_name")?,
             player1_flag: row.get("player1_flag")?,
@@ -187,30 +189,8 @@ impl ObsRecordingSession {
             replay_buffer_filename: row.get("replay_buffer_filename")?,
             status: row.get("status")?,
             error_message: row.get("error_message")?,
-            created: row.get("created").unwrap_or_else(|_| {
-                // Fallback to parsing created_at if created doesn't exist
-                row.get::<_, Option<String>>("created_at")
-                    .ok()
-                    .flatten()
-                    .and_then(|s| {
-                        parse_datetime_from_db(&s, "created_at")
-                            .ok()
-                            .map(|dt| dt.timestamp())
-                    })
-                    .unwrap_or_else(crate::utils::now_unix)
-            }),
-            updated: row.get("updated").unwrap_or_else(|_| {
-                // Fallback to parsing updated_at if updated doesn't exist
-                row.get::<_, Option<String>>("updated_at")
-                    .ok()
-                    .flatten()
-                    .and_then(|s| {
-                        parse_datetime_from_db(&s, "updated_at")
-                            .ok()
-                            .map(|dt| dt.timestamp())
-                    })
-                    .unwrap_or_else(crate::utils::now_unix)
-            }),
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }
@@ -568,7 +548,7 @@ pub struct SettingsCategory {
     pub name: String,
     pub description: Option<String>,
     pub display_order: i32,
-    pub created: i64,
+    pub created_at: DateTime<Utc>,
 }
 
 impl SettingsCategory {
@@ -579,7 +559,7 @@ impl SettingsCategory {
             name,
             description,
             display_order,
-            created: crate::utils::now_unix(),
+            created_at: Utc::now(),
         }
     }
 
@@ -590,7 +570,7 @@ impl SettingsCategory {
             name: row.get("name")?,
             description: row.get("description")?,
             display_order: row.get("display_order")?,
-            created: row.get("created")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
         })
     }
 }
@@ -608,7 +588,7 @@ pub struct SettingsKey {
     pub validation_rules: Option<String>, // JSON validation rules
     pub is_required: bool,
     pub is_sensitive: bool,
-    pub created: i64,
+    pub created_at: DateTime<Utc>,
 }
 
 impl SettingsKey {
@@ -636,7 +616,7 @@ impl SettingsKey {
             validation_rules,
             is_required,
             is_sensitive,
-            created: crate::utils::now_unix(),
+            created_at: Utc::now(),
         }
     }
 
@@ -653,7 +633,7 @@ impl SettingsKey {
             validation_rules: row.get("validation_rules")?,
             is_required: row.get("is_required")?,
             is_sensitive: row.get("is_sensitive")?,
-            created: row.get("created")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
         })
     }
 }
@@ -664,20 +644,20 @@ pub struct SettingsValue {
     pub id: Option<String>,
     pub key_id: String,
     pub value: String,
-    pub created: i64,
-    pub updated: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl SettingsValue {
     /// Create a new settings value
     pub fn new(key_id: String, value: String) -> Self {
-        let now = crate::utils::now_unix();
+        let now = Utc::now();
         Self {
             id: None,
             key_id,
             value,
-            created: now,
-            updated: now,
+            created_at: now,
+            updated_at: now,
         }
     }
 
@@ -687,8 +667,8 @@ impl SettingsValue {
             id: row.get("id")?,
             key_id: row.get("key_id")?,
             value: row.get("value")?,
-            created: row.get("created")?,
-            updated: row.get("updated")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
         })
     }
 }
@@ -702,7 +682,7 @@ pub struct SettingsHistory {
     pub new_value: Option<String>,
     pub changed_by: String, // 'user', 'system', 'migration'
     pub change_reason: Option<String>,
-    pub created: i64,
+    pub created_at: DateTime<Utc>,
 }
 
 impl SettingsHistory {
@@ -721,7 +701,7 @@ impl SettingsHistory {
             new_value,
             changed_by,
             change_reason,
-            created: crate::utils::now_unix(),
+            created_at: Utc::now(),
         }
     }
 
@@ -734,7 +714,7 @@ impl SettingsHistory {
             new_value: row.get("new_value")?,
             changed_by: row.get("changed_by")?,
             change_reason: row.get("change_reason")?,
-            created: row.get("created")?,
+            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
         })
     }
 }
@@ -1062,14 +1042,11 @@ pub struct PssMatch {
     pub creation_mode: String, // 'Automatic' or 'Manual'
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub created: Option<i64>,
-    pub updated: Option<i64>,
 }
 
 impl PssMatch {
     pub fn new(match_id: String) -> Self {
         let now = Utc::now();
-        let now_unix = crate::utils::now_unix();
         Self {
             id: None,
             uuid: None,
@@ -1087,8 +1064,6 @@ impl PssMatch {
             creation_mode: "Automatic".to_string(),
             created_at: now,
             updated_at: now,
-            created: Some(now_unix),
-            updated: Some(now_unix),
         }
     }
 
@@ -1126,8 +1101,6 @@ impl PssMatch {
                     )
                 })?
                 .with_timezone(&Utc),
-            created: row.get("created")?,
-            updated: row.get("updated")?,
         })
     }
 }
@@ -1334,7 +1307,6 @@ pub struct PssEventV2 {
     pub validation_errors: Option<String>,
     // Tournament context fields (UUID strings)
     pub created_at: DateTime<Utc>,
-    pub created: Option<i64>,
 }
 
 impl PssEventV2 {
@@ -1364,7 +1336,6 @@ impl PssEventV2 {
             parser_confidence: Some(1.0),
             validation_errors: None,
             created_at: Utc::now(),
-            created: Some(crate::utils::now_unix()),
         }
     }
 
@@ -1405,7 +1376,6 @@ impl PssEventV2 {
                     )
                 })?
                 .with_timezone(&Utc),
-            created: row.get("created")?,
         })
     }
 }

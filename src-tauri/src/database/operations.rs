@@ -467,10 +467,10 @@ impl PssUdpOperations {
             let match_obj = PssMatch::new(match_id.to_string());
             tx.execute(
                 "INSERT INTO pss_matches (
-                    uuid, match_id, total_rounds, created_at, updated_at, created, updated
+                    uuid, match_id, total_rounds, created_at, updated_at
                 ) VALUES (
                     lower(hex(randomblob(4))||'-'||hex(randomblob(2))||'-4'||substr(hex(randomblob(2)),2)||'-'||substr('AB89',abs(random())%4+1,1)||substr(hex(randomblob(2)),2)||'-'||hex(randomblob(6))),
-                    ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now')
+                    ?, ?, ?, ?
                 )",
                 params![
                     match_obj.match_id,
@@ -495,7 +495,7 @@ impl PssUdpOperations {
         conn.execute(
             "UPDATE pss_matches SET
                 match_number = ?, category = ?, weight_class = ?, division = ?,
-                total_rounds = ?, round_duration = ?, countdown_type = ?, format_type = ?, updated_at = ?, updated = strftime('%s','now')
+                total_rounds = ?, round_duration = ?, countdown_type = ?, format_type = ?, updated_at = ?
             WHERE id = ?",
             params![
                 match_data.match_number,
@@ -546,7 +546,7 @@ impl PssUdpOperations {
         new_match_id: &str,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE pss_matches SET match_id = ?, updated_at = ?, updated = strftime('%s','now') WHERE id = ?",
+            "UPDATE pss_matches SET match_id = ?, updated_at = ? WHERE id = ?",
             params![new_match_id, Utc::now().to_rfc3339(), id],
         )?;
         Ok(())
@@ -638,7 +638,7 @@ impl PssUdpOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, created_at, created
+                tournament_id, created_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )",
@@ -659,10 +659,7 @@ impl PssUdpOperations {
                 event.parser_confidence,
                 event.validation_errors,
                 event.tournament_id,
-                event.created_at.to_rfc3339(),
-                event
-                    .created
-                    .unwrap_or_else(|| event.created_at.timestamp())
+                event.created_at.to_rfc3339()
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -877,7 +874,7 @@ impl PssUdpOperations {
 
         // Get recent activity (last 24 hours)
         let recent_events: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM pss_events WHERE created > strftime('%s','now','-1 day')",
+            "SELECT COUNT(*) FROM pss_events WHERE created_at > datetime('now', '-1 day')",
             [],
             |row| row.get(0),
         )?;
@@ -893,7 +890,7 @@ impl PssUdpOperations {
 
     pub fn get_pss_matches(conn: &Connection, limit: Option<i64>) -> DatabaseResult<Vec<PssMatch>> {
         let limit_clause = limit.map(|l| format!(" LIMIT {l}")).unwrap_or_default();
-        let query = format!("SELECT * FROM pss_matches ORDER BY created DESC{limit_clause}");
+        let query = format!("SELECT * FROM pss_matches ORDER BY created_at DESC{limit_clause}");
 
         let mut stmt = conn.prepare(&query)?;
         let matches = stmt
@@ -907,8 +904,9 @@ impl PssUdpOperations {
         conn: &Connection,
         creation_mode: &str,
     ) -> DatabaseResult<Vec<PssMatch>> {
-        let mut stmt = conn
-            .prepare("SELECT * FROM pss_matches WHERE creation_mode = ? ORDER BY created DESC")?;
+        let mut stmt = conn.prepare(
+            "SELECT * FROM pss_matches WHERE creation_mode = ? ORDER BY created_at DESC",
+        )?;
 
         let matches = stmt
             .query_map([creation_mode], PssMatch::from_row)?
@@ -919,7 +917,7 @@ impl PssUdpOperations {
 
     pub fn insert_pss_match(conn: &Connection, pss_match: &PssMatch) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_matches (match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pss_matches (match_id, match_number, category, weight_class, division, total_rounds, round_duration, countdown_type, format_type, creation_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 pss_match.match_id,
                 pss_match.match_number,
@@ -933,8 +931,6 @@ impl PssUdpOperations {
                 pss_match.creation_mode,
                 pss_match.created_at.to_rfc3339(),
                 pss_match.updated_at.to_rfc3339(),
-                pss_match.created.unwrap_or_else(crate::utils::now_unix),
-                pss_match.updated.unwrap_or_else(crate::utils::now_unix),
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -962,7 +958,7 @@ impl PssUdpOperations {
 
     pub fn insert_pss_athlete(conn: &Connection, athlete: &PssAthlete) -> DatabaseResult<i64> {
         conn.execute(
-            "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pss_athletes (athlete_code, short_name, long_name, country_code, flag_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![
                 athlete.athlete_code,
                 athlete.short_name,
@@ -971,8 +967,6 @@ impl PssUdpOperations {
                 athlete.flag_id,
                 athlete.created_at.to_rfc3339(),
                 athlete.updated_at.to_rfc3339(),
-                crate::utils::now_unix(),
-                crate::utils::now_unix(),
             ],
         )?;
         Ok(conn.last_insert_rowid())
@@ -1799,7 +1793,7 @@ impl PssEventStatusOperations {
                 session_id, match_id, round_id, event_type_id, timestamp, raw_data,
                 parsed_data, event_sequence, processing_time_ms, is_valid, error_message,
                 recognition_status, protocol_version, parser_confidence, validation_errors,
-                tournament_id, created_at, created
+                tournament_id, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 event.session_id,
@@ -1818,10 +1812,7 @@ impl PssEventStatusOperations {
                 event.parser_confidence,
                 event.validation_errors,
                 event.tournament_id,
-                event.created_at.to_rfc3339(),
-                event
-                    .created
-                    .unwrap_or_else(|| event.created_at.timestamp())
+                event.created_at.to_rfc3339()
             ],
         )?;
 
@@ -3306,7 +3297,7 @@ impl ObsRecordingOperations {
         conn: &Connection,
     ) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions WHERE status IN ('pending', 'recording') ORDER BY created DESC"
+            "SELECT * FROM obs_recording_session WHERE status IN ('pending', 'recording') ORDER BY created_at DESC"
         )?;
 
         let sessions = stmt
@@ -3322,7 +3313,7 @@ impl ObsRecordingOperations {
         obs_connection_name: &str,
     ) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions WHERE obs_connection_name = ? ORDER BY created DESC"
+            "SELECT * FROM obs_recording_session WHERE obs_connection_name = ? ORDER BY created_at DESC"
         )?;
 
         let sessions = stmt
@@ -3340,7 +3331,7 @@ impl ObsRecordingOperations {
         match_id: &str,
     ) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt = conn.prepare(
-            "SELECT * FROM obs_recording_sessions WHERE match_id = ? ORDER BY created DESC",
+            "SELECT * FROM obs_recording_session WHERE match_code = ? ORDER BY created_at DESC",
         )?;
 
         let sessions = stmt
@@ -3355,67 +3346,42 @@ impl ObsRecordingOperations {
         conn: &mut Connection,
         session: &ObsRecordingSession,
     ) -> DatabaseResult<i64> {
-        let session_id = conn.execute(
-            "INSERT INTO obs_recording_sessions (
-                obs_connection_name, tournament_id, match_id, match_number,
+        conn.execute(
+            "INSERT INTO obs_recording_session (
+                obs_connection_name, tournament_id, match_code, match_number,
                 player1_name, player1_flag, player2_name, player2_flag, recording_path,
                 recording_filename, recording_start_time, recording_end_time, recording_duration,
                 recording_size_bytes, replay_buffer_start_time, replay_buffer_end_time,
                 replay_buffer_saved, replay_buffer_filename, status, error_message,
-                created, updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                &session.obs_connection_name,
-                &session
-                    .tournament_id
-                    .map(|id| id.to_string())
-                    .unwrap_or_default(),
-                &session.match_id.as_deref().unwrap_or("").to_string(),
-                &session.match_number.as_deref().unwrap_or("").to_string(),
-                &session.player1_name.as_deref().unwrap_or("").to_string(),
-                &session.player1_flag.as_deref().unwrap_or("").to_string(),
-                &session.player2_name.as_deref().unwrap_or("").to_string(),
-                &session.player2_flag.as_deref().unwrap_or("").to_string(),
-                &session.recording_path,
-                &session.recording_filename,
-                &session
-                    .recording_start_time
-                    .map(|dt| dt.to_rfc3339())
-                    .unwrap_or_default(),
-                &session
-                    .recording_end_time
-                    .map(|dt| dt.to_rfc3339())
-                    .unwrap_or_default(),
-                &session
-                    .recording_duration
-                    .map(|d| d.to_string())
-                    .unwrap_or_default(),
-                &session
-                    .recording_size_bytes
-                    .map(|s| s.to_string())
-                    .unwrap_or_default(),
-                &session
-                    .replay_buffer_start_time
-                    .map(|dt| dt.to_rfc3339())
-                    .unwrap_or_default(),
-                &session
-                    .replay_buffer_end_time
-                    .map(|dt| dt.to_rfc3339())
-                    .unwrap_or_default(),
-                &session.replay_buffer_saved.to_string(),
-                &session
-                    .replay_buffer_filename
-                    .as_deref()
-                    .unwrap_or("")
-                    .to_string(),
-                &session.status,
-                &session.error_message.as_deref().unwrap_or("").to_string(),
-                &session.created.to_string(),
-                &session.updated.to_string(),
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                session.obs_connection_name,
+                session.tournament_id,
+                session.match_id,
+                session.match_number,
+                session.player1_name,
+                session.player1_flag,
+                session.player2_name,
+                session.player2_flag,
+                session.recording_path,
+                session.recording_filename,
+                session.recording_start_time.map(|dt| dt.to_rfc3339()),
+                session.recording_end_time.map(|dt| dt.to_rfc3339()),
+                session.recording_duration,
+                session.recording_size_bytes,
+                session.replay_buffer_start_time.map(|dt| dt.to_rfc3339()),
+                session.replay_buffer_end_time.map(|dt| dt.to_rfc3339()),
+                session.replay_buffer_saved,
+                session.replay_buffer_filename.clone(),
+                session.status,
+                session.error_message.clone(),
+                session.created_at.to_rfc3339(),
+                session.updated_at.to_rfc3339(),
             ],
         )?;
 
-        Ok(session_id as i64)
+        Ok(conn.last_insert_rowid())
     }
 
     /// Update recording session
@@ -3425,36 +3391,36 @@ impl ObsRecordingOperations {
         session: &ObsRecordingSession,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE obs_recording_sessions SET
-                obs_connection_name = ?, tournament_id = ?, match_id = ?, match_number = ?,
+            "UPDATE obs_recording_session SET
+                obs_connection_name = ?, tournament_id = ?, match_code = ?, match_number = ?,
                 player1_name = ?, player1_flag = ?, player2_name = ?, player2_flag = ?, recording_path = ?,
                 recording_filename = ?, recording_start_time = ?, recording_end_time = ?, recording_duration = ?,
                 recording_size_bytes = ?, replay_buffer_start_time = ?, replay_buffer_end_time = ?,
-                replay_buffer_saved = ?, replay_buffer_filename = ?, status = ?, error_message = ?, updated = ?
+                replay_buffer_saved = ?, replay_buffer_filename = ?, status = ?, error_message = ?, updated_at = ?
             WHERE id = ?",
-            [
-                &session.obs_connection_name,
-                &session.tournament_id.map(|id| id.to_string()).unwrap_or_default(),
-                &session.match_id.as_deref().unwrap_or("").to_string(),
-                &session.match_number.as_deref().unwrap_or("").to_string(),
-                &session.player1_name.as_deref().unwrap_or("").to_string(),
-                &session.player1_flag.as_deref().unwrap_or("").to_string(),
-                &session.player2_name.as_deref().unwrap_or("").to_string(),
-                &session.player2_flag.as_deref().unwrap_or("").to_string(),
-                &session.recording_path,
-                &session.recording_filename,
-                &session.recording_start_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
-                &session.recording_end_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
-                &session.recording_duration.map(|d| d.to_string()).unwrap_or_default(),
-                &session.recording_size_bytes.map(|s| s.to_string()).unwrap_or_default(),
-                &session.replay_buffer_start_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
-                &session.replay_buffer_end_time.map(|dt| dt.to_rfc3339()).unwrap_or_default(),
-                &session.replay_buffer_saved.to_string(),
-                &session.replay_buffer_filename.as_deref().unwrap_or("").to_string(),
-                &session.status,
-                &session.error_message.as_deref().unwrap_or("").to_string(),
-                &crate::utils::now_unix().to_string(),
-                &session_id.to_string(),
+            params![
+                session.obs_connection_name,
+                session.tournament_id,
+                session.match_id,
+                session.match_number,
+                session.player1_name,
+                session.player1_flag,
+                session.player2_name,
+                session.player2_flag,
+                session.recording_path,
+                session.recording_filename,
+                session.recording_start_time.map(|dt| dt.to_rfc3339()),
+                session.recording_end_time.map(|dt| dt.to_rfc3339()),
+                session.recording_duration,
+                session.recording_size_bytes,
+                session.replay_buffer_start_time.map(|dt| dt.to_rfc3339()),
+                session.replay_buffer_end_time.map(|dt| dt.to_rfc3339()),
+                session.replay_buffer_saved,
+                session.replay_buffer_filename.clone(),
+                session.status,
+                session.error_message.clone(),
+                Utc::now().to_rfc3339(),
+                session_id,
             ],
         )?;
 
@@ -3466,7 +3432,7 @@ impl ObsRecordingOperations {
         conn: &Connection,
         session_id: i64,
     ) -> DatabaseResult<Option<ObsRecordingSession>> {
-        let mut stmt = conn.prepare("SELECT * FROM obs_recording_sessions WHERE id = ?")?;
+        let mut stmt = conn.prepare("SELECT * FROM obs_recording_session WHERE id = ?")?;
 
         let session = stmt
             .query_row([session_id], ObsRecordingSession::from_row)
@@ -3483,12 +3449,12 @@ impl ObsRecordingOperations {
         error_message: Option<&str>,
     ) -> DatabaseResult<()> {
         conn.execute(
-            "UPDATE obs_recording_sessions SET status = ?, error_message = ?, updated = ? WHERE id = ?",
-            [
+            "UPDATE obs_recording_session SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+            params![
                 status,
-                error_message.unwrap_or(""),
-                &crate::utils::now_unix().to_string(),
-                &session_id.to_string(),
+                error_message,
+                Utc::now().to_rfc3339(),
+                session_id,
             ],
         )?;
 
@@ -3499,12 +3465,12 @@ impl ObsRecordingOperations {
     pub fn start_recording_session(conn: &mut Connection, session_id: i64) -> DatabaseResult<()> {
         let now = Utc::now();
         conn.execute(
-            "UPDATE obs_recording_sessions SET recording_start_time = ?, status = ?, updated = ? WHERE id = ?",
-            [
-                &now.to_rfc3339(),
+            "UPDATE obs_recording_session SET recording_start_time = ?, status = ?, updated_at = ? WHERE id = ?",
+            params![
+                now.to_rfc3339(),
                 "recording",
-                &crate::utils::now_unix().to_string(),
-                &session_id.to_string(),
+                Utc::now().to_rfc3339(),
+                session_id,
             ],
         )?;
 
@@ -3523,8 +3489,8 @@ impl ObsRecordingOperations {
         // First get the start time to calculate duration
         let start_time: Option<String> = conn
             .query_row(
-                "SELECT recording_start_time FROM obs_recording_sessions WHERE id = ?",
-                [&session_id.to_string()],
+                "SELECT recording_start_time FROM obs_recording_session WHERE id = ?",
+                [session_id],
                 |row| row.get(0),
             )
             .optional()?;
@@ -3542,13 +3508,13 @@ impl ObsRecordingOperations {
         };
 
         conn.execute(
-            "UPDATE obs_recording_sessions SET recording_end_time = ?, recording_duration = ?, status = ?, updated = ? WHERE id = ?",
-            [
-                &now.to_rfc3339(),
-                &duration_seconds.to_string(),
+            "UPDATE obs_recording_session SET recording_end_time = ?, recording_duration = ?, status = ?, updated_at = ? WHERE id = ?",
+            params![
+                now.to_rfc3339(),
+                duration_seconds,
                 status,
-                &crate::utils::now_unix().to_string(),
-                &session_id.to_string(),
+                Utc::now().to_rfc3339(),
+                session_id,
             ],
         )?;
 
@@ -3564,7 +3530,7 @@ impl ObsRecordingOperations {
         limit: i64,
     ) -> DatabaseResult<Vec<ObsRecordingSession>> {
         let mut stmt =
-            conn.prepare("SELECT * FROM obs_recording_sessions ORDER BY created DESC LIMIT ?")?;
+            conn.prepare("SELECT * FROM obs_recording_session ORDER BY created_at DESC LIMIT ?")?;
 
         let sessions = stmt
             .query_map([limit], ObsRecordingSession::from_row)?
