@@ -2,7 +2,7 @@ use crate::entity::{settings_category, settings_history, settings_key, settings_
 use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr,
-    EntityTrait, QueryFilter, Statement, TransactionTrait, TryGetable, Value,
+    EntityTrait, QueryFilter, Statement, TransactionTrait, TryGetableTrait, Value,
 };
 use uuid::Uuid;
 
