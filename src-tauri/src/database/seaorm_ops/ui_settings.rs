@@ -2,7 +2,7 @@ use crate::entity::{settings_category, settings_history, settings_key, settings_
 use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr,
-    EntityTrait, QueryFilter, TransactionTrait,
+    EntityTrait, QueryFilter, Statement, TransactionTrait, TryGetable, Value,
 };
 use uuid::Uuid;
 
@@ -154,6 +154,7 @@ const UI_SETTINGS: &[SettingSeed] = &[
 /// Ensure the canonical UI settings definitions exist and seed default values where missing.
 pub async fn initialize_ui_settings(conn: &DatabaseConnection) -> Result<(), DbErr> {
     let txn = conn.begin().await?;
+    backfill_missing_ids(&txn).await?;
     let category_id = get_or_create_category(&txn, "ui", "User Interface Settings", 5).await?;
 
     for seed in UI_SETTINGS {
@@ -177,6 +178,7 @@ pub async fn get_ui_setting(
     conn: &DatabaseConnection,
     key_name: &str,
 ) -> Result<Option<String>, DbErr> {
+    backfill_missing_ids(conn).await?;
     let record = settings_value::Entity::find()
         .inner_join(settings_key::Entity)
         .filter(settings_key::Column::KeyName.eq(key_name))
@@ -195,6 +197,7 @@ pub async fn set_ui_setting(
     change_reason: Option<&str>,
 ) -> Result<(), DbErr> {
     let txn = conn.begin().await?;
+    backfill_missing_ids(&txn).await?;
 
     let key = settings_key::Entity::find()
         .filter(settings_key::Column::KeyName.eq(key_name))
@@ -255,6 +258,7 @@ pub async fn set_ui_setting(
 pub async fn get_all_ui_settings(
     conn: &DatabaseConnection,
 ) -> Result<Vec<(String, String)>, DbErr> {
+    backfill_missing_ids(conn).await?;
     let rows = settings_value::Entity::find()
         .find_also_related(settings_key::Entity)
         .all(conn)
@@ -367,6 +371,7 @@ async fn ensure_default_value<C>(
 where
     C: ConnectionTrait,
 {
+    backfill_missing_ids(conn).await?;
     let Some(default) = default_value else {
         return Ok(());
     };
@@ -390,6 +395,42 @@ where
     };
 
     value_model.insert(conn).await.map(|_| ())
+}
+
+async fn backfill_missing_ids<C>(conn: &C) -> Result<(), DbErr>
+where
+    C: ConnectionTrait,
+{
+    heal_table(conn, "settings_values").await?;
+    heal_table(conn, "settings_history").await
+}
+
+async fn heal_table<C>(conn: &C, table: &str) -> Result<(), DbErr>
+where
+    C: ConnectionTrait,
+{
+    let backend = conn.get_database_backend();
+    let select_sql = format!("SELECT rowid FROM {table} WHERE id IS NULL OR id = ''");
+    let rows = conn
+        .query_all(Statement::from_string(backend, select_sql))
+        .await?;
+
+    if rows.is_empty() {
+        return Ok(());
+    }
+
+    for row in rows {
+        let row_id: i64 = row.try_get("", "rowid")?;
+        let update_sql = format!("UPDATE {table} SET id = ? WHERE rowid = ?");
+        conn.execute(Statement::from_sql_and_values(
+            backend,
+            update_sql,
+            vec![Value::from(Uuid::new_v4().to_string()), Value::from(row_id)],
+        ))
+        .await?;
+    }
+
+    Ok(())
 }
 
 async fn insert_history<C>(
