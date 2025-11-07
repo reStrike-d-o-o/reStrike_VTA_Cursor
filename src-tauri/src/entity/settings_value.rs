@@ -8,8 +8,10 @@ pub struct Model {
     pub id: String,
     pub key_id: String,
     pub value: String,
-    pub created_at: DateTime,
-    pub updated_at: DateTime,
+    #[sea_orm(column_name = "created")]
+    pub created: Option<i64>,
+    #[sea_orm(column_name = "updated")]
+    pub updated: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -1,10 +1,10 @@
-use rusqlite::{Result as SqliteResult, params, OptionalExtension};
-use serde_json::Value;
 use crate::database::{
-    DatabaseError, DatabaseResult,
-    models::{SettingsKey, SettingsValue, SettingsHistory, SettingsCategory},
     connection::DatabaseConnection,
+    models::{SettingsCategory, SettingsHistory, SettingsKey, SettingsValue},
+    DatabaseError, DatabaseResult,
 };
+use rusqlite::{params, OptionalExtension, Result as SqliteResult};
+use serde_json::Value;
 
 /// Settings Manager for enhanced settings management
 pub struct SettingsManager {
@@ -16,22 +16,24 @@ impl SettingsManager {
     pub fn new(conn: DatabaseConnection) -> Self {
         Self { conn }
     }
-    
+
     /// Get a setting value by key name
     pub fn get_setting(&self, key_name: &str) -> DatabaseResult<Option<String>> {
         let conn = self.conn.get_connection()?;
-        
-        let value: Option<String> = conn.query_row(
-            "SELECT sv.value FROM settings_values sv 
-             JOIN settings_keys sk ON sv.key_id = sk.id 
+
+        let value: Option<String> = conn
+            .query_row(
+                "SELECT sv.value FROM settings_values sv
+             JOIN settings_keys sk ON sv.key_id = sk.id
              WHERE sk.key_name = ?",
-            params![key_name],
-            |row| row.get(0)
-        ).optional()?;
-        
+                params![key_name],
+                |row| row.get(0),
+            )
+            .optional()?;
+
         Ok(value)
     }
-    
+
     /// Set a setting value with validation and history tracking
     pub fn set_setting(
         &self,
@@ -41,156 +43,176 @@ impl SettingsManager {
         change_reason: Option<&str>,
     ) -> DatabaseResult<()> {
         let mut conn = self.conn.get_connection()?;
-        
+
         // Start transaction
         let tx = conn.transaction()?;
-        
+
         // Get the setting key
-        let setting_key: Option<SettingsKey> = tx.query_row(
-            "SELECT * FROM settings_keys WHERE key_name = ?",
-            params![key_name],
-            |row| SettingsKey::from_row(row)
-        ).optional()?;
-        
+        let setting_key: Option<SettingsKey> = tx
+            .query_row(
+                "SELECT * FROM settings_keys WHERE key_name = ?",
+                params![key_name],
+                |row| SettingsKey::from_row(row),
+            )
+            .optional()?;
+
         let setting_key = setting_key.ok_or_else(|| {
             DatabaseError::InvalidData(format!("Setting key '{}' not found", key_name))
         })?;
-        
+
+        let key_id = setting_key.id.clone().ok_or_else(|| {
+            DatabaseError::InvalidData(format!(
+                "Setting key '{}' is missing its primary key",
+                key_name
+            ))
+        })?;
+
         // Validate the setting if validation rules exist
         if let Some(validation_rules) = &setting_key.validation_rules {
             self.validate_setting_value(&setting_key.data_type, value, validation_rules)?;
         }
-        
+
         // Check if setting value exists
-        let existing_value: Option<SettingsValue> = tx.query_row(
-            "SELECT * FROM settings_values WHERE key_id = ?",
-            params![setting_key.id.unwrap()],
-            |row| SettingsValue::from_row(row)
-        ).optional()?;
-        
+        let existing_value: Option<SettingsValue> = tx
+            .query_row(
+                "SELECT * FROM settings_values WHERE key_id = ?",
+                params![key_id.clone()],
+                |row| SettingsValue::from_row(row),
+            )
+            .optional()?;
+
         if let Some(existing) = existing_value {
             // Update existing value
             let old_value = existing.value.clone();
-            
             let now_unix = crate::utils::now_unix();
+            let value_id = existing.id.clone().ok_or_else(|| {
+                DatabaseError::InvalidData(
+                    "Existing settings value missing primary key".to_string(),
+                )
+            })?;
+
             tx.execute(
-                "UPDATE settings_values SET value = ?, updated = ?, updated_at = datetime('unixepoch', ?) WHERE id = ?",
-                params![value, now_unix, now_unix, existing.id.unwrap()]
+                "UPDATE settings_values SET value = ?, updated = ? WHERE id = ?",
+                params![value, now_unix, value_id],
             )?;
-            
+
             // Record history
             let history = SettingsHistory::new(
-                setting_key.id.clone().unwrap(),
+                key_id.clone(),
                 Some(old_value),
                 Some(value.to_string()),
                 changed_by.to_string(),
                 change_reason.map(|s| s.to_string()),
             );
-            
+
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created) VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created,
-                    history.created,
-                ]
+                    history.created_at.timestamp(),
+                ],
             )?;
         } else {
             // Create new value
-            let setting_value = SettingsValue::new(
-                setting_key.id.unwrap(),
-                value.to_string(),
-            );
-            
-            let _value_id = tx.execute(
-                "INSERT INTO settings_values (key_id, value, created, updated, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
+            let setting_value = SettingsValue::new(key_id.clone(), value.to_string());
+            let new_value_id = crate::utils::new_uuid();
+
+            tx.execute(
+                "INSERT INTO settings_values (id, key_id, value, created, updated) VALUES (?, ?, ?, ?, ?)",
                 params![
-                    setting_value.key_id,
-                    setting_value.value,
-                    setting_value.created,
-                    setting_value.updated,
-                    setting_value.created,
-                    setting_value.updated,
-                ]
+                    new_value_id,
+                    key_id.clone(),
+                    setting_value.value.clone(),
+                    setting_value.created_at.timestamp(),
+                    setting_value.updated_at.timestamp(),
+                ],
             )?;
-            
+
             // Record history for new setting
             let history = SettingsHistory::new(
-                setting_key.id.clone().unwrap(),
+                key_id.clone(),
                 None,
                 Some(value.to_string()),
                 changed_by.to_string(),
                 change_reason.map(|s| s.to_string()),
             );
-            
+
             tx.execute(
-                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
+                "INSERT INTO settings_history (key_id, old_value, new_value, changed_by, change_reason, created) VALUES (?, ?, ?, ?, ?, ?)",
                 params![
                     history.key_id,
                     history.old_value,
                     history.new_value,
                     history.changed_by,
                     history.change_reason,
-                    history.created,
-                    history.created,
-                ]
+                    history.created_at.timestamp(),
+                ],
             )?;
         }
-        
+
         // Commit transaction
         tx.commit()?;
-        
+
         Ok(())
     }
-    
+
     /// Get all settings by category
-    pub fn get_settings_by_category(&self, category_name: &str) -> DatabaseResult<Vec<(SettingsKey, Option<String>)>> {
+    pub fn get_settings_by_category(
+        &self,
+        category_name: &str,
+    ) -> DatabaseResult<Vec<(SettingsKey, Option<String>)>> {
         let conn = self.conn.get_connection()?;
-        
+
         let mut stmt = conn.prepare(
-            "SELECT sk.*, sv.value FROM settings_keys sk 
-             LEFT JOIN settings_values sv ON sk.id = sv.key_id 
-             JOIN settings_categories sc ON sk.category_id = sc.id 
-             WHERE sc.name = ? 
-             ORDER BY sk.key_name"
+            "SELECT sk.*, sv.value FROM settings_keys sk
+             LEFT JOIN settings_values sv ON sk.id = sv.key_id
+             JOIN settings_categories sc ON sk.category_id = sc.id
+             WHERE sc.name = ?
+             ORDER BY sk.key_name",
         )?;
-        
-        let settings = stmt.query_map(params![category_name], |row| {
-            let key = SettingsKey::from_row(row)?;
-            let value: Option<String> = row.get("value")?;
-            Ok((key, value))
-        })?
-        .collect::<SqliteResult<Vec<_>>>()?;
-        
+
+        let settings = stmt
+            .query_map(params![category_name], |row| {
+                let key = SettingsKey::from_row(row)?;
+                let value: Option<String> = row.get("value")?;
+                Ok((key, value))
+            })?
+            .collect::<SqliteResult<Vec<_>>>()?;
+
         Ok(settings)
     }
-    
+
     /// Get settings history for a specific setting
-    pub fn get_setting_history(&self, key_name: &str, limit: Option<i64>) -> DatabaseResult<Vec<SettingsHistory>> {
+    pub fn get_setting_history(
+        &self,
+        key_name: &str,
+        limit: Option<i64>,
+    ) -> DatabaseResult<Vec<SettingsHistory>> {
         let conn = self.conn.get_connection()?;
-        
+
         let limit = limit.unwrap_or(50);
-        
+
         let mut stmt = conn.prepare(
-            "SELECT sh.* FROM settings_history sh 
-             JOIN settings_keys sk ON sh.key_id = sk.id 
-             WHERE sk.key_name = ? 
-             ORDER BY sh.created DESC 
-             LIMIT ?"
+            "SELECT sh.* FROM settings_history sh
+             JOIN settings_keys sk ON sh.key_id = sk.id
+             WHERE sk.key_name = ?
+             ORDER BY sh.created DESC
+             LIMIT ?",
         )?;
-        
-        let history = stmt.query_map(params![key_name, limit], |row| {
-            SettingsHistory::from_row(row)
-        })?
-        .collect::<SqliteResult<Vec<_>>>()?;
-        
+
+        let history = stmt
+            .query_map(params![key_name, limit], |row| {
+                SettingsHistory::from_row(row)
+            })?
+            .collect::<SqliteResult<Vec<_>>>()?;
+
         Ok(history)
     }
-    
+
     /// Create a new setting key
     pub fn create_setting_key(
         &self,
@@ -205,17 +227,17 @@ impl SettingsManager {
         is_sensitive: bool,
     ) -> DatabaseResult<i64> {
         let mut conn = self.conn.get_connection()?;
-        
+
         // Start transaction
         let tx = conn.transaction()?;
-        
+
         // Get category ID
         let category_id: String = tx.query_row(
             "SELECT id FROM settings_categories WHERE name = ?",
             params![category_name],
-            |row| row.get(0)
+            |row| row.get(0),
         )?;
-        
+
         // Create setting key
         let setting_key = SettingsKey::new(
             category_id,
@@ -228,10 +250,12 @@ impl SettingsManager {
             is_required,
             is_sensitive,
         );
-        
-        let key_id = tx.execute(
-            "INSERT INTO settings_keys (category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('unixepoch', ?))",
+
+        let key_id = crate::utils::new_uuid();
+        tx.execute(
+            "INSERT INTO settings_keys (id, category_id, key_name, display_name, description, data_type, default_value, validation_rules, is_required, is_sensitive, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
+                key_id.clone(),
                 setting_key.category_id,
                 setting_key.key_name,
                 setting_key.display_name,
@@ -241,56 +265,65 @@ impl SettingsManager {
                 setting_key.validation_rules,
                 setting_key.is_required,
                 setting_key.is_sensitive,
-                setting_key.created,
-                setting_key.created,
-            ]
+                setting_key.created_at.timestamp(),
+            ],
         )?;
-        
+
         // Set default value if provided
         if let Some(default_val) = default_value {
-            let setting_value = SettingsValue::new(key_id.to_string(), default_val.to_string());
-            
+            let setting_value = SettingsValue::new(key_id.clone(), default_val.to_string());
+            let value_id = crate::utils::new_uuid();
+
             tx.execute(
-                "INSERT INTO settings_values (id, key_id, value, created, updated, created_at, updated_at) VALUES (printf('%s', hex(randomblob(16))), ?, ?, ?, ?, datetime('unixepoch', ?), datetime('unixepoch', ?))",
+                "INSERT INTO settings_values (id, key_id, value, created, updated) VALUES (?, ?, ?, ?, ?)",
                 params![
-                    setting_value.key_id,
-                    setting_value.value,
-                    setting_value.created,
-                    setting_value.updated,
-                    setting_value.created,
-                    setting_value.updated,
-                ]
+                    value_id,
+                    setting_value.key_id.clone(),
+                    setting_value.value.clone(),
+                    setting_value.created_at.timestamp(),
+                    setting_value.updated_at.timestamp(),
+                ],
             )?;
         }
-        
+
         // Commit transaction
         tx.commit()?;
-        
-        Ok(key_id as i64)
+
+        Ok(1)
     }
-    
+
     /// Validate a setting value against validation rules
-    fn validate_setting_value(&self, data_type: &str, value: &str, validation_rules: &str) -> DatabaseResult<()> {
+    fn validate_setting_value(
+        &self,
+        data_type: &str,
+        value: &str,
+        validation_rules: &str,
+    ) -> DatabaseResult<()> {
         match data_type {
             "json" => {
                 // Validate JSON format
-                serde_json::from_str::<Value>(value)
-                    .map_err(|e| DatabaseError::InvalidData(format!("Invalid JSON format: {}", e)))?;
+                serde_json::from_str::<Value>(value).map_err(|e| {
+                    DatabaseError::InvalidData(format!("Invalid JSON format: {}", e))
+                })?;
             }
             "boolean" => {
                 // Validate boolean value
                 if !["true", "false", "1", "0"].contains(&value.to_lowercase().as_str()) {
-                    return Err(DatabaseError::InvalidData("Invalid boolean value".to_string()));
+                    return Err(DatabaseError::InvalidData(
+                        "Invalid boolean value".to_string(),
+                    ));
                 }
             }
             "integer" => {
                 // Validate integer value
-                value.parse::<i64>()
+                value
+                    .parse::<i64>()
                     .map_err(|_| DatabaseError::InvalidData("Invalid integer value".to_string()))?;
             }
             "float" => {
                 // Validate float value
-                value.parse::<f64>()
+                value
+                    .parse::<f64>()
                     .map_err(|_| DatabaseError::InvalidData("Invalid float value".to_string()))?;
             }
             "range" => {
@@ -300,12 +333,15 @@ impl SettingsManager {
                         if let (Some(min_val), Some(max_val)) = (min.as_f64(), max.as_f64()) {
                             if let Ok(value_float) = value.parse::<f64>() {
                                 if value_float < min_val || value_float > max_val {
-                                    return Err(DatabaseError::InvalidData(
-                                        format!("Value must be between {} and {}", min_val, max_val)
-                                    ));
+                                    return Err(DatabaseError::InvalidData(format!(
+                                        "Value must be between {} and {}",
+                                        min_val, max_val
+                                    )));
                                 }
                             } else {
-                                return Err(DatabaseError::InvalidData("Value must be a number".to_string()));
+                                return Err(DatabaseError::InvalidData(
+                                    "Value must be a number".to_string(),
+                                ));
                             }
                         }
                     }
@@ -315,23 +351,21 @@ impl SettingsManager {
                 // String type or unknown type - no validation needed
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Get all categories
     pub fn get_categories(&self) -> DatabaseResult<Vec<SettingsCategory>> {
         let conn = self.conn.get_connection()?;
-        
-        let mut stmt = conn.prepare(
-            "SELECT * FROM settings_categories ORDER BY display_order, name"
-        )?;
-        
-        let categories = stmt.query_map([], |row| {
-            SettingsCategory::from_row(row)
-        })?
-        .collect::<SqliteResult<Vec<_>>>()?;
-        
+
+        let mut stmt =
+            conn.prepare("SELECT * FROM settings_categories ORDER BY display_order, name")?;
+
+        let categories = stmt
+            .query_map([], |row| SettingsCategory::from_row(row))?
+            .collect::<SqliteResult<Vec<_>>>()?;
+
         Ok(categories)
     }
-} 
+}

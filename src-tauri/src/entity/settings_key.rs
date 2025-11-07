@@ -15,7 +15,8 @@ pub struct Model {
     pub validation_rules: Option<String>,
     pub is_required: bool,
     pub is_sensitive: bool,
-    pub created_at: DateTime,
+    #[sea_orm(column_name = "created")]
+    pub created: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

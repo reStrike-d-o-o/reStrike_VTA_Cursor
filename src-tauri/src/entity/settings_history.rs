@@ -11,7 +11,8 @@ pub struct Model {
     pub new_value: Option<String>,
     pub changed_by: String,
     pub change_reason: Option<String>,
-    pub created_at: DateTime,
+    #[sea_orm(column_name = "created")]
+    pub created: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

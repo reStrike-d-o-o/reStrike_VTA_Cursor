@@ -1,5 +1,5 @@
 use crate::entity::{settings_category, settings_history, settings_key, settings_value};
-use chrono::{NaiveDateTime, Utc};
+use chrono::Utc;
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr,
     EntityTrait, QueryFilter, TransactionTrait,
@@ -202,7 +202,7 @@ pub async fn set_ui_setting(
         .await?
         .ok_or_else(|| DbErr::RecordNotFound(format!("Setting key '{key_name}' not found")))?;
 
-    let now = Utc::now().naive_utc();
+    let now_ts = Utc::now().timestamp();
     let key_id = key.id.clone();
 
     if let Some(existing) = settings_value::Entity::find()
@@ -213,7 +213,7 @@ pub async fn set_ui_setting(
         let old_value = existing.value.clone();
         let mut active: settings_value::ActiveModel = existing.into();
         active.value = Set(value.to_string());
-        active.updated_at = Set(now);
+        active.updated = Set(Some(now_ts));
         active.update(&txn).await?;
 
         insert_history(
@@ -223,7 +223,7 @@ pub async fn set_ui_setting(
             Some(value.to_string()),
             changed_by,
             change_reason,
-            now,
+            now_ts,
         )
         .await?;
     } else {
@@ -231,8 +231,8 @@ pub async fn set_ui_setting(
             id: Set(Uuid::new_v4().to_string()),
             key_id: Set(key_id.clone()),
             value: Set(value.to_string()),
-            created_at: Set(now),
-            updated_at: Set(now),
+            created: Set(Some(now_ts)),
+            updated: Set(Some(now_ts)),
         };
         value_model.insert(&txn).await?;
 
@@ -243,7 +243,7 @@ pub async fn set_ui_setting(
             Some(value.to_string()),
             changed_by,
             change_reason,
-            now,
+            now_ts,
         )
         .await?;
     }
@@ -313,7 +313,7 @@ where
         name: Set(name.to_string()),
         description: Set(Some(description.to_string())),
         display_order: Set(display_order),
-        created_at: Set(Utc::now().naive_utc()),
+        created: Set(Some(Utc::now().timestamp())),
     };
 
     let inserted = category.insert(conn).await?;
@@ -352,7 +352,7 @@ where
         validation_rules: Set(validation_rules.map(|rules| rules.to_string())),
         is_required: Set(false),
         is_sensitive: Set(false),
-        created_at: Set(Utc::now().naive_utc()),
+        created: Set(Some(Utc::now().timestamp())),
     };
 
     let inserted = key_model.insert(conn).await?;
@@ -380,13 +380,13 @@ where
         return Ok(());
     }
 
-    let now = Utc::now().naive_utc();
+    let now_ts = Utc::now().timestamp();
     let value_model = settings_value::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
         key_id: Set(key_id.to_string()),
         value: Set(default.to_string()),
-        created_at: Set(now),
-        updated_at: Set(now),
+        created: Set(Some(now_ts)),
+        updated: Set(Some(now_ts)),
     };
 
     value_model.insert(conn).await.map(|_| ())
@@ -399,7 +399,7 @@ async fn insert_history<C>(
     new_value: Option<String>,
     changed_by: &str,
     change_reason: Option<&str>,
-    timestamp: NaiveDateTime,
+    timestamp: i64,
 ) -> Result<(), DbErr>
 where
     C: ConnectionTrait,
@@ -411,7 +411,7 @@ where
         new_value: Set(new_value),
         changed_by: Set(changed_by.to_string()),
         change_reason: Set(change_reason.map(|reason| reason.to_string())),
-        created_at: Set(timestamp),
+        created: Set(Some(timestamp)),
     };
 
     history.insert(conn).await.map(|_| ())

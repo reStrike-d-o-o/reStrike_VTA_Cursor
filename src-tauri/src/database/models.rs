@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
-use rusqlite::Row;
+use chrono::{DateTime, TimeZone, Utc};
+use rusqlite::{Error as SqlError, Row};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -246,6 +246,68 @@ fn parse_json_array(value: Option<String>) -> Value {
     value
         .and_then(|raw| serde_json::from_str(&raw).ok())
         .unwrap_or_else(|| json!([]))
+}
+
+fn get_optional_i64(row: &Row, column: &str) -> rusqlite::Result<Option<i64>> {
+    match row.get::<_, Option<i64>>(column) {
+        Ok(value) => Ok(value),
+        Err(SqlError::InvalidColumnName(_)) => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+fn get_optional_string(row: &Row, column: &str) -> rusqlite::Result<Option<String>> {
+    match row.get::<_, Option<String>>(column) {
+        Ok(value) => Ok(value),
+        Err(SqlError::InvalidColumnName(_)) => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+fn datetime_from_unix(ts: i64) -> DateTime<Utc> {
+    Utc.timestamp_opt(ts, 0).single().unwrap_or_else(|| {
+        Utc.timestamp_opt(0, 0)
+            .single()
+            .expect("unix epoch must be valid")
+    })
+}
+
+fn parse_timestamp_from_row(
+    row: &Row,
+    unix_col: &str,
+    text_col: &str,
+    field_name: &str,
+) -> rusqlite::Result<DateTime<Utc>> {
+    if let Some(ts) = get_optional_i64(row, unix_col)? {
+        return Ok(datetime_from_unix(ts));
+    }
+
+    if let Some(text) = get_optional_string(row, text_col)? {
+        if !text.trim().is_empty() {
+            return parse_datetime_from_db(&text, field_name);
+        }
+    }
+
+    Ok(datetime_from_unix(0))
+}
+
+fn parse_optional_timestamp_from_row(
+    row: &Row,
+    unix_col: &str,
+    text_col: &str,
+    field_name: &str,
+) -> rusqlite::Result<Option<DateTime<Utc>>> {
+    if let Some(ts) = get_optional_i64(row, unix_col)? {
+        return Ok(Some(datetime_from_unix(ts)));
+    }
+
+    if let Some(text) = get_optional_string(row, text_col)? {
+        if !text.trim().is_empty() {
+            return Ok(Some(parse_datetime_from_db(&text, field_name)?));
+        }
+    }
+
+    Ok(None)
 }
 
 /// PSS Event model for storing raw PSS events
@@ -570,7 +632,7 @@ impl SettingsCategory {
             name: row.get("name")?,
             description: row.get("description")?,
             display_order: row.get("display_order")?,
-            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            created_at: parse_timestamp_from_row(row, "created", "created_at", "created")?,
         })
     }
 }
@@ -633,7 +695,7 @@ impl SettingsKey {
             validation_rules: row.get("validation_rules")?,
             is_required: row.get("is_required")?,
             is_sensitive: row.get("is_sensitive")?,
-            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            created_at: parse_timestamp_from_row(row, "created", "created_at", "created")?,
         })
     }
 }
@@ -663,12 +725,17 @@ impl SettingsValue {
 
     /// Create from database row
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        let created_at = parse_timestamp_from_row(row, "created", "created_at", "created")?;
+        let updated_at =
+            parse_optional_timestamp_from_row(row, "updated", "updated_at", "updated")?
+                .unwrap_or_else(|| created_at.clone());
+
         Ok(Self {
             id: row.get("id")?,
             key_id: row.get("key_id")?,
             value: row.get("value")?,
-            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
-            updated_at: parse_datetime_from_db(&row.get::<_, String>("updated_at")?, "updated_at")?,
+            created_at,
+            updated_at,
         })
     }
 }
@@ -714,7 +781,7 @@ impl SettingsHistory {
             new_value: row.get("new_value")?,
             changed_by: row.get("changed_by")?,
             change_reason: row.get("change_reason")?,
-            created_at: parse_datetime_from_db(&row.get::<_, String>("created_at")?, "created_at")?,
+            created_at: parse_timestamp_from_row(row, "created", "created_at", "created")?,
         })
     }
 }
