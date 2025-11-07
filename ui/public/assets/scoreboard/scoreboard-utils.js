@@ -68,6 +68,126 @@ class ScoreboardOverlay {
     return null;
   }
 
+  // Normalize IOC flag codes to uppercase trimmed format
+  normalizeFlagCode(country) {
+    return (country || '').toString().trim().toUpperCase();
+  }
+
+  // Ensure we have an <image> element sized to the provided flag container
+  ensureFlagImage(flagElement) {
+    if (!flagElement) return null;
+    const ns = 'http://www.w3.org/2000/svg';
+    const tag = (flagElement.tagName || '').toLowerCase();
+    if (tag === 'image') {
+      flagElement.setAttribute('data-flag', 'true');
+      if (!flagElement.getAttribute('preserveAspectRatio')) {
+        flagElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      }
+      flagElement.style.pointerEvents = 'none';
+      return flagElement;
+    }
+
+    let imageEl = flagElement.querySelector('image[data-flag="true"]');
+    if (!imageEl) {
+      imageEl = document.createElementNS(ns, 'image');
+      imageEl.setAttribute('data-flag', 'true');
+      flagElement.appendChild(imageEl);
+    }
+
+    let x = 0;
+    let y = 0;
+    let width = 60;
+    let height = 40;
+
+    const rect = flagElement.querySelector('rect');
+    if (rect) {
+      x = parseFloat(rect.getAttribute('x')) || x;
+      y = parseFloat(rect.getAttribute('y')) || y;
+      width = parseFloat(rect.getAttribute('width')) || width;
+      height = parseFloat(rect.getAttribute('height')) || height;
+    } else if (typeof flagElement.getBBox === 'function') {
+      try {
+        const bb = flagElement.getBBox();
+        if (bb) {
+          x = Number.isFinite(bb.x) ? bb.x : x;
+          y = Number.isFinite(bb.y) ? bb.y : y;
+          width = Number.isFinite(bb.width) && bb.width > 0 ? bb.width : width;
+          height = Number.isFinite(bb.height) && bb.height > 0 ? bb.height : height;
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    imageEl.setAttribute('x', String(x));
+    imageEl.setAttribute('y', String(y));
+    imageEl.setAttribute('width', String(Math.max(1, width)));
+    imageEl.setAttribute('height', String(Math.max(1, height)));
+    imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    imageEl.style.pointerEvents = 'none';
+    return imageEl;
+  }
+
+  // Apply flag asset to a specific element (group or image) and return the image node
+  setFlagForElement(flagElement, country) {
+    if (!flagElement) return null;
+    const imageEl = this.ensureFlagImage(flagElement);
+    if (!imageEl) return null;
+
+    const code = this.normalizeFlagCode(country);
+    if (!code) {
+      imageEl.removeAttribute('href');
+      try { imageEl.removeAttributeNS('http://www.w3.org/1999/xlink', 'href'); } catch (_) { /* ignore */ }
+      imageEl.style.display = 'none';
+      if (flagElement !== imageEl) flagElement.style.display = 'none';
+      return imageEl;
+    }
+
+    const url = `/assets/flags/svg/${code}.svg`;
+    imageEl.setAttribute('href', url);
+    imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
+    imageEl.style.display = 'block';
+    if (flagElement !== imageEl) flagElement.style.display = 'block';
+    imageEl.dataset.flagCode = code;
+    return imageEl;
+  }
+
+  // Convenience: set flag using candidate IDs, returning the image element when successful
+  setFlagForElementCandidates(ids, country) {
+    const flagElement = this.getSvgElementAny(ids);
+    if (!flagElement) return null;
+    return this.setFlagForElement(flagElement, country);
+  }
+
+  // Compute current rendered width for layout adjustments (falls back to width attribute)
+  getFlagDisplayWidth(element) {
+    if (!element) return 0;
+    try {
+      if (typeof element.getBBox === 'function') {
+        const bbox = element.getBBox();
+        if (bbox && Number.isFinite(bbox.width) && bbox.width > 0) {
+          return bbox.width;
+        }
+      }
+    } catch (_) { /* ignore */ }
+    if (typeof element.getBoundingClientRect === 'function') {
+      const rect = element.getBoundingClientRect();
+      if (rect && Number.isFinite(rect.width) && rect.width > 0) {
+        return rect.width;
+      }
+    }
+    const attrWidth = parseFloat(element.getAttribute('width') || '');
+    return Number.isFinite(attrWidth) && attrWidth > 0 ? attrWidth : 0;
+  }
+
+  // Attach a one-time load handler for dynamically swapped SVG images
+  onSvgImageLoad(imageEl, handler) {
+    if (!imageEl || typeof handler !== 'function') return;
+    try {
+      imageEl.addEventListener('load', handler, { once: true });
+    } catch (_) {
+      imageEl.addEventListener('load', handler);
+    }
+  }
+
   // If element is a group, set text of its first <text> child, else set its own text
   setTextForElementOrGroup(el, value) {
     if (!el) return;
@@ -151,45 +271,15 @@ class ScoreboardOverlay {
 
   // Update player countries (flags)
   updateCountry(player, country) {
-    const code = (country || '').toString().trim().toUpperCase();
-    // Map player colors to SVG element IDs (support legacy and new schemas)
-    const flagElement = this.getSvgElementAny(
+    const code = this.normalizeFlagCode(country);
+    const imageEl = this.setFlagForElementCandidates(
       player === 'blue'
         ? ['modern_player1Flag', 'athlete1Flag', 'player1Flag']
-        : ['modern_player2Flag', 'athlete2Flag', 'player2Flag']
+        : ['modern_player2Flag', 'athlete2Flag', 'player2Flag'],
+      code
     );
-    if (flagElement) {
-      // Add or update a single image sized to the first inner rect (stable frame)
-      try {
-        const r = flagElement.querySelector('rect');
-        let x = 0, y = 0, w = 60, h = 40;
-        if (r) {
-          x = parseFloat(r.getAttribute('x')) || 0;
-          y = parseFloat(r.getAttribute('y')) || 0;
-          w = parseFloat(r.getAttribute('width')) || 60;
-          h = parseFloat(r.getAttribute('height')) || 40;
-        } else {
-          const bb = flagElement.getBBox();
-          x = bb.x; y = bb.y; w = bb.width; h = bb.height;
-        }
-        let imageEl = flagElement.querySelector('image[data-flag="true"]');
-        if (!imageEl) {
-          imageEl = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-          imageEl.setAttribute('data-flag', 'true');
-          flagElement.appendChild(imageEl);
-        }
-        imageEl.setAttribute('x', String(x));
-        imageEl.setAttribute('y', String(y));
-        imageEl.setAttribute('width', String(Math.max(1, w)));
-        imageEl.setAttribute('height', String(Math.max(1, h)));
-        imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-        imageEl.style.pointerEvents = 'none';
-        const url = `/assets/flags/svg/${code}.svg`;
-        imageEl.setAttribute('href', url);
-        imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
-      } catch (_) {
-        // ignore
-      }
+
+    if (imageEl) {
       console.log(`✅ Updated ${player} player country flag: ${code}`);
     } else {
       console.warn(`⚠️ Could not find flag element for ${player}`);
@@ -850,79 +940,55 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 1 flag
   updatePlayer1Flag(countryCode) {
-    const flagElement = this.getSvgElementAny(['modern_player1Flag', 'leftPlayerFlag']);
-    if (flagElement) {
-      flagElement.setAttribute('href', `/assets/flags/svg/${countryCode}.svg`);
+    const imageEl = this.setFlagForElementCandidates(['modern_player1Flag', 'leftPlayerFlag'], countryCode);
+    if (!imageEl) return;
 
-      // Adjust glass effect rectangle after flag loads
-      const adjustLeftFlag = () => {
-        // Get the actual rendered width of the flag
-        const flagRect = flagElement.getBoundingClientRect();
-        const flagWidth = flagRect.width;
+    const adjustLeftFlag = () => {
+      const flagWidth = this.getFlagDisplayWidth(imageEl);
+      if (flagWidth <= 0) {
+        setTimeout(adjustLeftFlag, 100);
+        return;
+      }
+      const glassRect = this.getSvgElementAny(['modern_player1FlagGlass', 'leftPlayerFlagGlass']);
+      if (glassRect) {
+        glassRect.setAttribute('width', flagWidth.toString());
+      }
+      console.log(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
+    };
 
-        if (flagWidth > 0) {
-          // Update the glass effect rectangle width
-          const glassRect = this.getSvgElementAny(['modern_player1FlagGlass', 'leftPlayerFlagGlass']);
-          if (glassRect) {
-            glassRect.setAttribute('width', flagWidth.toString());
-          }
+    this.onSvgImageLoad(imageEl, adjustLeftFlag);
+    setTimeout(adjustLeftFlag, 75);
 
-          console.log(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
-        } else {
-          // If width is not available yet, try again after a short delay
-          setTimeout(adjustLeftFlag, 100);
-        }
-      };
-
-      flagElement.onload = adjustLeftFlag;
-      setTimeout(adjustLeftFlag, 50);
-
-      console.log(`✅ Updated Player 1 flag: ${countryCode}`);
-    }
+    console.log(`✅ Updated Player 1 flag: ${this.normalizeFlagCode(countryCode)}`);
   }
 
   // Update Player 2 flag
   updatePlayer2Flag(countryCode) {
-    const flagElement = this.getSvgElementAny(['modern_player2Flag', 'rightPlayerFlag']);
-    if (flagElement) {
-      flagElement.setAttribute('href', `/assets/flags/svg/${countryCode}.svg`);
+    const imageEl = this.setFlagForElementCandidates(['modern_player2Flag', 'rightPlayerFlag'], countryCode);
+    if (!imageEl) return;
 
-      // Dynamically adjust position after flag loads to ensure 20px right padding
-      const adjustFlagPosition = () => {
-        // Get the actual rendered width of the flag
-        const flagRect = flagElement.getBoundingClientRect();
-        const flagWidth = flagRect.width;
+    const adjustFlagPosition = () => {
+      const flagWidth = this.getFlagDisplayWidth(imageEl);
+      if (flagWidth <= 0) {
+        setTimeout(adjustFlagPosition, 100);
+        return;
+      }
+      const newX = 1640 - flagWidth;
+      imageEl.setAttribute('x', newX.toString());
 
-        if (flagWidth > 0) {
-          // Calculate new x position to ensure 20px right padding
-          // Red rectangle starts at x=1660, so flag should end at x=1640
-          const newX = 1640 - flagWidth;
+      const glassRect = this.getSvgElementAny(['modern_player2FlagGlass', 'rightPlayerFlagGlass']);
+      if (glassRect) {
+        glassRect.setAttribute('x', newX.toString());
+        glassRect.setAttribute('width', flagWidth.toString());
+      }
 
-          // Update flag position
-          flagElement.setAttribute('x', newX.toString());
+      console.log(`✅ Updated Player 2 flag position: x=${newX}, width=${flagWidth}`);
+    };
 
-          // Also update the glass effect rectangle position and width
-          const glassRect = this.getSvgElementAny(['modern_player2FlagGlass', 'rightPlayerFlagGlass']);
-          if (glassRect) {
-            glassRect.setAttribute('x', newX.toString());
-            glassRect.setAttribute('width', flagWidth.toString());
-          }
+    this.onSvgImageLoad(imageEl, adjustFlagPosition);
+    setTimeout(adjustFlagPosition, 75);
 
-          console.log(`✅ Updated Player 2 flag position: x=${newX}, width=${flagWidth}`);
-        } else {
-          // If width is not available yet, try again after a short delay
-          setTimeout(adjustFlagPosition, 100);
-        }
-      };
-
-      // Wait for the flag to load and then adjust position
-      flagElement.onload = adjustFlagPosition;
-
-      // Also try immediately in case the flag is already loaded
-      setTimeout(adjustFlagPosition, 50);
-
-      console.log(`✅ Updated Player 2 flag: ${countryCode}`);
-    }
+    console.log(`✅ Updated Player 2 flag: ${this.normalizeFlagCode(countryCode)}`);
   }
 
   // Apply announcement effect
