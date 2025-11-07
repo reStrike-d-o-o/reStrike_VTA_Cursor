@@ -73,7 +73,23 @@ class ScoreboardOverlay {
     if (!el) return;
     if (el.tagName && el.tagName.toLowerCase() === 'g') {
       const textChild = el.querySelector('text');
-      if (textChild) { textChild.textContent = value; return; }
+      if (textChild) {
+        this.setTextForElementOrGroup(textChild, value);
+        return;
+      }
+      el.textContent = value;
+      return;
+    }
+    if (el.tagName && el.tagName.toLowerCase() === 'text') {
+      const tspans = el.querySelectorAll('tspan');
+      if (tspans.length > 0) {
+        tspans[0].textContent = value;
+        for (let i = 1; i < tspans.length; i += 1) {
+          const span = tspans[i];
+          if (span) span.textContent = '';
+        }
+        return;
+      }
     }
     el.textContent = value;
   }
@@ -98,7 +114,7 @@ class ScoreboardOverlay {
       const raw = (name == null ? '' : String(name));
       // Preserve case for IOC/country codes (2-4 uppercase letters/digits)
       const display = /^[A-Z0-9]{2,4}$/.test(raw.trim()) ? raw.trim().toUpperCase() : capitalizeName(raw);
-      nameElement.textContent = display;
+      this.setTextForElementOrGroup(nameElement, display);
       console.log(`✅ Updated ${player} player name: ${display}`);
     } else {
       console.warn(`⚠️ Could not find name element for ${player} (tried: ${candidateIds.join(', ')})`);
@@ -189,7 +205,9 @@ class ScoreboardOverlay {
   // Update player seeds
   updateSeed(player, seed) {
     const seedElement = this.svg.getElementById(`${player}PlayerSeed`);
-    if (seedElement) seedElement.textContent = `(${seed})`;
+    if (!seedElement) return;
+    const value = (seed == null || seed === '') ? '' : `(${seed})`;
+    this.setTextForElementOrGroup(seedElement, value);
   }
 
   // Update penalties and warnings
@@ -227,9 +245,7 @@ class ScoreboardOverlay {
         for (const strictId of strictIds) {
           const strictEl = this.svg.getElementById(strictId);
           if (!strictEl) continue;
-          const ts = strictEl.querySelector('tspan');
-          if (ts) ts.textContent = displayValue;
-          else strictEl.textContent = displayValue;
+          this.setTextForElementOrGroup(strictEl, displayValue);
           strictEl.style.display = 'block';
         }
       } catch (_) { /* noop */ }
@@ -259,7 +275,7 @@ class ScoreboardOverlay {
       : ['modern_player2Rounds', 'athlete2Rounds', 'player2Rounds'];
     const winsElement = this.getSvgElementAny(roundIdCandidates);
     if (winsElement) {
-      winsElement.textContent = wins || 0;
+      this.setTextForElementOrGroup(winsElement, wins || 0);
       // Apply pop-out animation
       winsElement.classList.add('update');
       setTimeout(() => winsElement.classList.remove('update'), 500);
@@ -275,7 +291,7 @@ class ScoreboardOverlay {
   updateTimer(minutes, seconds) {
     const timerElement = this.getSvgElementAny(['modern_match_time', 'matchTimer', 'time']);
     if (timerElement) {
-      timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      this.setTextForElementOrGroup(timerElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
       console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
     } else {
       console.warn(`⚠️ Could not find match timer element (tried: modern_match_time, matchTimer, time)`);
@@ -301,13 +317,13 @@ class ScoreboardOverlay {
     if (injuryElement) {
       // Handle both string format ("1:00") and separate parameters (minutes, seconds)
       if (typeof time === 'string') {
-        injuryElement.textContent = time;
+        this.setTextForElementOrGroup(injuryElement, time);
         console.log(`✅ Updated injury time: ${time}`);
       } else {
         // Fallback for separate minutes/seconds parameters
         const minutes = arguments[0] || 0;
         const seconds = arguments[1] || 0;
-        injuryElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        this.setTextForElementOrGroup(injuryElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
         console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
       }
     } else {
@@ -343,7 +359,7 @@ class ScoreboardOverlay {
   resetInjuryTime() {
     const injuryElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
-      injuryElement.textContent = '0:00';
+      this.setTextForElementOrGroup(injuryElement, '0:00');
       console.log('✅ Injury time reset to 0:00');
     } else {
       console.warn('⚠️ Could not find injuryTime element');
@@ -463,7 +479,7 @@ class ScoreboardOverlay {
     return s;
   }
 
-  // Derive modern gender label ("Men's under"/"Women's over") and stripped weight value
+  // Derive modern gender label ("Men's"/"Women's") and stripped weight value
   deriveGenderWeightLabels(weightSource, options = {}) {
     const toAscii = (value) => String(value ?? '').replace(/[’‘]/g, "'").trim();
     const rawWeight = toAscii(weightSource);
@@ -490,36 +506,50 @@ class ScoreboardOverlay {
       else if (/^m\b/i.test(rawWeight)) genderWord = "Men's";
     }
 
-    let rangeWord = '';
-    if (/\+/.test(rawWeight)) rangeWord = 'over';
-    else if (/-/.test(rawWeight)) rangeWord = 'under';
-    else {
-      for (const src of genderSources) {
-        if (!src) continue;
-        const lower = src.toLowerCase();
-        if (/\bover\b/.test(lower)) { rangeWord = 'over'; break; }
-        if (/\bunder\b/.test(lower)) { rangeWord = 'under'; break; }
-      }
-    }
-    if (!rangeWord && genderWord) rangeWord = 'under';
-
     const weightCandidates = [rawWeight, normalizedWeight, divisionText, categoryText];
     let weightLabel = '';
+    let detectedSign = '';
+    let numericPortion = '';
     for (const candidate of weightCandidates) {
       if (!candidate) continue;
-      const match = candidate.match(/([+-]?\s*\d+(?:\.\d+)?\s*(?:kg|kgs|kilograms|lb|lbs|pounds))/i);
-      if (match) {
-        weightLabel = match[0].replace(/\s+/g, ' ').trim();
+      const signMatch = candidate.match(/([+-])\s*(\d+(?:\.\d+)?)/);
+      if (signMatch) {
+        detectedSign = signMatch[1];
+        numericPortion = signMatch[2];
         break;
       }
+      const numericMatch = candidate.match(/(\d+(?:\.\d+)?)/);
+      if (numericMatch && !numericPortion) {
+        numericPortion = numericMatch[1];
+      }
     }
-    if (!weightLabel && normalizedWeight) {
-      const cleaned = this.normalizeWeightLabel(normalizedWeight);
-      weightLabel = cleaned.replace(/^[MW]\s*/i, '').replace(/^[MW](?=[+-])/, '').trim();
-    }
-    weightLabel = weightLabel.replace(/[’‘]/g, "'");
 
-    const genderLabel = genderWord ? `${genderWord}${rangeWord ? ` ${rangeWord}` : ''}` : '';
+    if (!numericPortion && normalizedWeight) {
+      const cleaned = this.normalizeWeightLabel(normalizedWeight);
+      const numericMatch = cleaned.match(/(\d+(?:\.\d+)?)/);
+      if (numericMatch) numericPortion = numericMatch[1];
+      const signMatch = cleaned.match(/^([+-])/);
+      if (signMatch) detectedSign = signMatch[1];
+    }
+
+    if (!detectedSign) {
+      const loweredSources = genderSources.map((src) => src.toLowerCase());
+      if (loweredSources.some((src) => /\bover\b/.test(src) || /\bplus\b/.test(src))) {
+        detectedSign = '+';
+      } else if (loweredSources.some((src) => /\bunder\b/.test(src) || /\bminus\b/.test(src))) {
+        detectedSign = '-';
+      }
+    }
+
+    if (numericPortion) {
+      // Drop trailing .0
+      if (/\.0+$/.test(numericPortion)) {
+        numericPortion = numericPortion.replace(/\.0+$/, '');
+      }
+      weightLabel = `${detectedSign || ''}${numericPortion}`;
+    }
+
+    const genderLabel = genderWord || '';
     return {
       genderLabel,
       weightLabel
@@ -547,8 +577,8 @@ class ScoreboardOverlay {
 
     const modernGender = this.getSvgElementAny(['modern_gender']);
     const modernWeight = this.getSvgElementAny(['modern_weight']);
-    if (modernGender) modernGender.textContent = genderLabel || '';
-    if (modernWeight) modernWeight.textContent = weightLabel ? ` ${weightLabel}` : '';
+    if (modernGender) this.setTextForElementOrGroup(modernGender, genderLabel || '');
+    if (modernWeight) this.setTextForElementOrGroup(modernWeight, weightLabel || '');
 
     const matchInfoElement = this.getSvgElementAny(['matchInfo']);
     if (!matchInfoElement) { console.warn('⚠️ Could not find matchInfo element'); return; }
@@ -563,7 +593,7 @@ class ScoreboardOverlay {
     } else if (tspans.length === 1) {
       tspans[0].textContent = `${leftSegment}${rightSegment}`.trim();
     } else {
-      matchInfoElement.textContent = `${leftSegment}${rightSegment}`.trim();
+      this.setTextForElementOrGroup(matchInfoElement, `${leftSegment}${rightSegment}`.trim());
     }
     console.log('✅ Updated match info');
   }
@@ -606,7 +636,7 @@ class ScoreboardOverlay {
       const weight = parts[0] || '';
       const division = parts[1] || '';
       const combinedText = `${weight} ${division} ${category || ''}`.trim();
-      matchInfoElement.textContent = combinedText;
+      this.setTextForElementOrGroup(matchInfoElement, combinedText);
       console.log(`✅ Updated match category: ${category}`);
     } else {
       console.warn(`⚠️ Could not find matchInfo element`);
@@ -617,7 +647,7 @@ class ScoreboardOverlay {
   updateMatchType(type) {
     const typeElement = this.getSvgElement('matchType');
     if (typeElement) {
-      typeElement.textContent = type;
+      this.setTextForElementOrGroup(typeElement, type);
       console.log(`✅ Updated match type: ${type}`);
     } else {
       console.warn(`⚠️ Could not find matchType element`);
@@ -634,7 +664,7 @@ class ScoreboardOverlay {
       const division = parts[1] || '';
       const category = parts.slice(2).join(' ') || '';
       const combinedText = `${weight || ''} ${division} ${category}`.trim();
-      matchInfoElement.textContent = combinedText;
+      this.setTextForElementOrGroup(matchInfoElement, combinedText);
       console.log(`✅ Updated match weight: ${weight}`);
     } else {
       console.warn(`⚠️ Could not find matchInfo element`);
@@ -643,7 +673,7 @@ class ScoreboardOverlay {
 
   // Update match division (for backward compatibility)
   updateMatchDivision(division) {
-    const matchInfoElement = this.getSvgElement(['matchInfo', 'tournament_x5F_name']);
+    const matchInfoElement = this.getSvgElementAny(['matchInfo', 'tournament_x5F_name']);
     if (matchInfoElement) {
       // Get current weight and category from the element
       const currentText = matchInfoElement.textContent || '';
@@ -651,7 +681,7 @@ class ScoreboardOverlay {
       const weight = parts[0] || '';
       const category = parts.slice(2).join(' ') || '';
       const combinedText = `${weight} ${division || ''} ${category}`.trim();
-      matchInfoElement.textContent = combinedText;
+      this.setTextForElementOrGroup(matchInfoElement, combinedText);
       console.log(`✅ Updated match division: ${division}`);
     } else {
       console.warn(`⚠️ Could not find matchInfo element`);
@@ -951,7 +981,7 @@ class WinnerAnnouncementOverlay extends ScoreboardOverlay {
       });
       this.updateElementAny(['matchWeight'], rawCategory);
       this.updateElementAny(['modern_gender'], genderLabel || '');
-      this.updateElementAny(['modern_weight'], weightLabel ? ` ${weightLabel}` : '');
+      this.updateElementAny(['modern_weight'], weightLabel || '');
     }
     if (type != null) {
       this.updateElementAny(['matchCategory'], type);
