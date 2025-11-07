@@ -87,10 +87,10 @@
         <g id="player4">
           <rect class="cls-10" x=".00001" y="335.388357" width="1534.100321" height="65.99946"/>
           <rect class="cls-17" x="1279.9999" y="335.3884" width="188.100793" height="65.99946"/>
-          <text class="cls-9" transform="translate(1130.364746 381.102051)"><tspan x="0" y="0">PTF</tspan></text>
-          <text id="score" class="cls-4" transform="translate(1343.62207 381.101562)"><tspan x="0" y="0">2-0</tspan></text>
-          <text id="winner" class="cls-9" transform="translate(1484.403809 380.887207)"><tspan x="0" y="0">W</tspan></text>
-          <text id="player4_x5F_country" class="cls-7" transform="translate(20.889313 385.045898)"><tspan x="0" y="0">AUT</tspan></text>
+          <text id="modern_win_type3" class="cls-9" transform="translate(1130.364746 381.102051)"><tspan x="0" y="0">PTF</tspan></text>
+          <text id="modern_score3" class="cls-4" transform="translate(1343.62207 381.101562)"><tspan x="0" y="0">2-0</tspan></text>
+          <text id="modern_result3" class="cls-9" transform="translate(1484.403809 380.887207)"><tspan x="0" y="0">W</tspan></text>
+          <text id="modern_opponent3_ioc" class="cls-7" transform="translate(20.889313 385.045898)"><tspan x="0" y="0">AUT</tspan></text>
           <g id="flag4_x5F_placeholder">
             <rect class="cls-2" x="138.458008" y="346.724609" width="64.489746" height="43.327148"/>
             <path class="cls-14" d="M202.447968,347.22472v42.326735h-63.490112v-42.326735h63.490112M203.447968,346.22472h-65.490112v44.326735h65.490112v-44.326735h0Z"/>
@@ -99,15 +99,15 @@
             <rect class="cls-15" x="138.957857" y="347.224719" width="63.490106" height="42.326737"/>
             <rect class="cls-14" x="138.957857" y="361.333631" width="63.490106" height="14.108912"/>
           </g>
-          <text id="player4_x5F_name" class="cls-6" transform="translate(227.713043 381.075195)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text id="modern_opponent3_name" class="cls-6" transform="translate(227.713043 381.075195)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
         </g>
         <g id="player3">
           <rect class="cls-10" x=".00001" y="264.38816" width="1534.100321" height="65.99946"/>
           <rect class="cls-17" x="1279.9999" y="264.388203" width="188.100793" height="65.99946"/>
-          <text class="cls-9" transform="translate(1130.364746 310.102051)"><tspan x="0" y="0">PTF</tspan></text>
-          <text id="score-2" data-name="score" class="cls-4" transform="translate(1343.62207 310.101562)"><tspan x="0" y="0">2-0</tspan></text>
-          <text id="winner-2" data-name="winner" class="cls-9" transform="translate(1484.403809 309.887207)"><tspan x="0" y="0">W</tspan></text>
-          <text id="player3_x5F_country" class="cls-7" transform="translate(20.889313 314.045898)"><tspan x="0" y="0">AUT</tspan></text>
+          <text id="modern_win_type2" class="cls-9" transform="translate(1130.364746 310.102051)"><tspan x="0" y="0">PTF</tspan></text>
+          <text id="modern_score2" data-name="score" class="cls-4" transform="translate(1343.62207 310.101562)"><tspan x="0" y="0">2-0</tspan></text>
+          <text id="modern_result2" data-name="winner" class="cls-9" transform="translate(1484.403809 309.887207)"><tspan x="0" y="0">W</tspan></text>
+          <text id="modern_opponent2_ioc" class="cls-7" transform="translate(20.889313 314.045898)"><tspan x="0" y="0">AUT</tspan></text>
           <g id="flag3_x5F_placeholder">
             <rect class="cls-2" x="138.458008" y="275.724609" width="64.489746" height="43.326172"/>
             <path class="cls-14" d="M202.447968,276.224518v42.326744h-63.490112v-42.326744h63.490112M203.447968,275.224518h-65.490112v44.326744h65.490112v-44.326744h0Z"/>
@@ -116,15 +116,15 @@
             <rect class="cls-15" x="138.957857" y="276.224522" width="63.490106" height="42.326737"/>
             <rect class="cls-14" x="138.957857" y="290.333434" width="63.490106" height="14.108912"/>
           </g>
-          <text id="player3_x5F_name" class="cls-6" transform="translate(227.713043 310.075195)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text id="modern_opponent2_name" class="cls-6" transform="translate(227.713043 310.075195)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
         </g>
         <g id="player2">
           <rect class="cls-10" x=".00001" y="193.387931" width="1534.100321" height="65.99946"/>
           <rect class="cls-17" x="1279.9999" y="193.387974" width="188.100793" height="65.99946"/>
-          <text class="cls-9" transform="translate(1130.364746 239.102051)"><tspan x="0" y="0">PTF</tspan></text>
-          <text id="score-3" data-name="score" class="cls-4" transform="translate(1343.62207 239.101562)"><tspan x="0" y="0">2-0</tspan></text>
-          <text id="winner-3" data-name="winner" class="cls-9" transform="translate(1484.403809 238.887207)"><tspan x="0" y="0">W</tspan></text>
-          <text id="player2_x5F_country" class="cls-7" transform="translate(20.889313 243.045898)"><tspan x="0" y="0">AUT</tspan></text>
+          <text id="modern_win_type1" class="cls-9" transform="translate(1130.364746 239.102051)"><tspan x="0" y="0">PTF</tspan></text>
+          <text id="modern_score1" data-name="score" class="cls-4" transform="translate(1343.62207 239.101562)"><tspan x="0" y="0">2-0</tspan></text>
+          <text id="modern_result1" data-name="winner" class="cls-9" transform="translate(1484.403809 238.887207)"><tspan x="0" y="0">W</tspan></text>
+          <text id="modern_opponent1_ioc" class="cls-7" transform="translate(20.889313 243.045898)"><tspan x="0" y="0">AUT</tspan></text>
           <g id="flag2_x5F_placeholder">
             <rect class="cls-2" x="138.458008" y="204.724609" width="64.489746" height="43.326172"/>
             <path class="cls-14" d="M202.447968,205.224289v42.326736h-63.490112v-42.326736h63.490112M203.447968,204.224289h-65.490112v44.326736h65.490112v-44.326736h0Z"/>
@@ -133,13 +133,13 @@
             <rect class="cls-15" x="138.957857" y="205.224293" width="63.490106" height="42.326737"/>
             <rect class="cls-14" x="138.957857" y="219.333205" width="63.490106" height="14.108912"/>
           </g>
-          <text id="player2_x5F_name" class="cls-6" transform="translate(227.713043 239.075195)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text id="modern_opponent1_name" class="cls-6" transform="translate(227.713043 239.075195)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
         </g>
         <path class="cls-14" d="M1515.087936,64.278494H18.531407C8.296852,64.278494.000107,72.575239.000107,82.809794v46.115429h1533.619079v-46.115479c0-10.234527-8.296723-18.53125-18.53125-18.53125Z"/>
         <rect class="cls-13" x=".00001" y="128.925222" width="1534.100321" height="64.462709"/>
         <text class="cls-5" transform="translate(18.89127 173.246582)"><tspan x="0" y="0">PREVIOUS RESULT</tspan></text>
         <g id="player1">
-          <text id="player1_x5F_country" class="cls-3" transform="translate(21.889313 113.26123)"><tspan x="0" y="0">AUT</tspan></text>
+          <text id="modern_player_ioc" class="cls-3" transform="translate(21.889313 113.26123)"><tspan x="0" y="0">AUT</tspan></text>
           <g id="flag1_x5F_placeholder">
             <rect class="cls-2" x="138.458008" y="74.938477" width="64.489746" height="43.32666"/>
             <path class="cls-20" d="M202.447968,75.438477v42.326752h-63.490112v-42.326752h63.490112M203.447968,74.438477h-65.490112v44.326752h65.490112v-44.326752h0Z"/>
@@ -148,7 +148,7 @@
             <rect class="cls-15" x="138.957857" y="75.438489" width="63.490106" height="42.326737"/>
             <rect class="cls-14" x="138.957857" y="89.547402" width="63.490106" height="14.108912"/>
           </g>
-          <text id="player1_x5F_name" class="cls-8" transform="translate(228.713043 108.111816)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text id="modern_player_name" class="cls-8" transform="translate(228.713043 108.111816)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
         </g>
         <g id="logo">
           <path class="cls-14" d="M1148.896678-.000196h366.672354c10.227703,0,18.5313,8.303597,18.5313,18.5313v110.394118h-403.734954V18.531104C1130.365378,8.303401,1138.668975-.000196,1148.896678-.000196Z"/>

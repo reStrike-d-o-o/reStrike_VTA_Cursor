@@ -23,6 +23,7 @@
     <script>
         const RETRY_DELAY_MS = 2000;
         const MAX_RETRIES = 5;
+        const eventQueue = [];
         let scoreboardInstance = null;
         let roundDuration = 120;
         let ws = null;
@@ -60,6 +61,10 @@
         }
 
         function initialize() {
+            if (scoreboardInstance) {
+                flushQueuedEvents();
+                return;
+            }
             const obj = document.getElementById('scoreboard-svg');
             const doc = obj?.contentDocument || obj?.contentWindow?.document;
             const svg = doc?.querySelector('svg');
@@ -75,6 +80,7 @@
 
             scoreboardInstance = new ScoreboardOverlay(svg);
             updateConnectionStatus(false);
+            flushQueuedEvents();
         }
 
         function parseTime(value) {
@@ -105,32 +111,135 @@
             }
         }
 
-        function handle(event) {
-            if (!scoreboardInstance || !event) return;
+        function determineEventType(payload) {
+            if (!payload) return '';
+            const candidate = payload.type || payload.event_type || payload.eventType || payload.kind;
+            return typeof candidate === 'string' ? candidate.toLowerCase() : '';
+        }
 
-            const payload = event.data && typeof event.data === 'object' ? event.data : event;
-            const eventType = typeof payload.type === 'string'
-                ? payload.type
-                : typeof payload.event_type === 'string'
-                    ? payload.event_type
-                    : '';
+        function normalizeAthlete(input) {
+            if (!input) return { name: '', country: '' };
+            if (typeof input === 'string') {
+                return { name: input, country: '' };
+            }
+
+            const first = input.first_name || input.firstName || '';
+            const last = input.last_name || input.lastName || '';
+            const joined = [first, last].filter(Boolean).join(' ').trim();
+            const nameCandidates = [
+                input.long,
+                input.display_name,
+                input.displayName,
+                input.full_name,
+                input.fullName,
+                input.name,
+                input.nickname,
+                joined,
+                input.short_name,
+                input.shortName
+            ];
+            const countryCandidates = [
+                input.country_code,
+                input.countryCode,
+                input.country,
+                input.ioc,
+                input.iocCode,
+                input.ioc_code,
+                input.flag,
+                input.nation,
+                input.nationality
+            ];
+            const name = nameCandidates.find(val => typeof val === 'string' && val.trim().length) || '';
+            const countryRaw = countryCandidates.find(val => typeof val === 'string' && val.trim().length) || '';
+            return { name, country: countryRaw.toUpperCase() };
+        }
+
+        function updateNameAndCountry(side, info) {
+            if (!info) return;
+            if (info.name) {
+                scoreboardInstance.updatePlayerName(side, info.name);
+            }
+            if (info.country) {
+                scoreboardInstance.updateCountry(side, info.country);
+            }
+        }
+
+        function extractWarnings(payload) {
+            if (!payload) return null;
+            const fromFields = {
+                blue: payload.athlete1_warnings ?? payload.blue_warnings ?? payload.blueWarnings ?? payload.blue ?? payload.warnings1 ?? payload.wg1 ?? null,
+                red: payload.athlete2_warnings ?? payload.red_warnings ?? payload.redWarnings ?? payload.red ?? payload.warnings2 ?? payload.wg2 ?? null
+            };
+
+            let blueValue = fromFields.blue;
+            let redValue = fromFields.red;
+
+            if ((blueValue == null || redValue == null) && typeof payload.raw_data === 'string') {
+                const raw = payload.raw_data.trim();
+                const maybeJson = parseMaybeJson(raw);
+                if (maybeJson && typeof maybeJson === 'object') {
+                    blueValue = blueValue ?? maybeJson.athlete1_warnings ?? maybeJson.wg1 ?? maybeJson.blue ?? maybeJson.athlete1;
+                    redValue = redValue ?? maybeJson.athlete2_warnings ?? maybeJson.wg2 ?? maybeJson.red ?? maybeJson.athlete2;
+                } else {
+                    const match = raw.match(/wg1;(\d+);wg2;(\d+)/i);
+                    if (match) {
+                        blueValue = parseInt(match[1], 10);
+                        redValue = parseInt(match[2], 10);
+                    }
+                }
+            }
+
+            if ((blueValue == null || redValue == null) && payload.description) {
+                const match = String(payload.description).match(/Athlete1:\s*(\d+).*Athlete2:\s*(\d+)/i);
+                if (match) {
+                    blueValue = parseInt(match[1], 10);
+                    redValue = parseInt(match[2], 10);
+                }
+            }
+
+            if (blueValue == null && redValue == null) {
+                return null;
+            }
+
+            const toNumber = (value) => {
+                if (value == null) return null;
+                if (typeof value === 'number') return value;
+                if (typeof value === 'string') {
+                    const match = value.trim().match(/\d+/);
+                    if (match) return parseInt(match[0], 10);
+                }
+                return null;
+            };
+
+            const parsedBlue = toNumber(blueValue);
+            const parsedRed = toNumber(redValue);
+            return { blue: parsedBlue, red: parsedRed };
+        }
+
+        function flushQueuedEvents() {
+            if (!scoreboardInstance || !eventQueue.length) return;
+            while (eventQueue.length) {
+                const next = eventQueue.shift();
+                processEvent(next);
+            }
+        }
+
+        function processEvent(payload) {
+            if (!scoreboardInstance || !payload) return;
+            const eventType = determineEventType(payload);
 
             switch (eventType) {
                 case 'athletes': {
-                    const blue = payload.athlete1 || payload.blue || {};
-                    const red = payload.athlete2 || payload.red || {};
-                    if (blue.long) scoreboardInstance.updatePlayerName('blue', blue.long);
-                    if (red.long) scoreboardInstance.updatePlayerName('red', red.long);
-                    const blueCountry = blue.country || blue.iocCode;
-                    const redCountry = red.country || red.iocCode;
-                    if (blueCountry) scoreboardInstance.updateCountry('blue', blueCountry);
-                    if (redCountry) scoreboardInstance.updateCountry('red', redCountry);
+                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const blueSource = payload.athlete1 || payload.blue || payload.player1 || raw?.athlete1 || raw?.blue || {};
+                    const redSource = payload.athlete2 || payload.red || payload.player2 || raw?.athlete2 || raw?.red || {};
+                    updateNameAndCountry('blue', normalizeAthlete(blueSource));
+                    updateNameAndCountry('red', normalizeAthlete(redSource));
                     break;
                 }
                 case 'match_config': {
-                    const raw = parseMaybeJson(payload.raw_data);
-                    const structured = payload.structured_data || payload;
-                    const data = raw && typeof raw === 'object' ? raw : structured;
+                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const data = raw && typeof raw === 'object' ? raw : (payload.structured_data || payload);
                     if (data) {
                         if (data.round_duration != null) {
                             const parsed = parseInt(data.round_duration, 10);
@@ -139,40 +248,112 @@
                             }
                         }
                         if (typeof scoreboardInstance.updateMatchInfo === 'function') {
-                            scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category);
+                            scoreboardInstance.updateMatchInfo(data.weight, data.division ?? data.gender, data.category ?? data.phase);
                         }
-                        if (data.number && scoreboardInstance.svg) {
-                            const element = scoreboardInstance.svg.getElementById('matchNumber');
-                            if (element) {
-                                element.textContent = `#${data.number}`;
-                            }
+                        if (typeof scoreboardInstance.updateMatchNumber === 'function' && data.number != null) {
+                            scoreboardInstance.updateMatchNumber(data.number);
+                        }
+                        scoreboardInstance.applyNewMatchEffect(roundDuration, data.current_round || 1);
+                    }
+                    break;
+                }
+                case 'current_scores':
+                case 'score_update':
+                case 'score': {
+                    const parsedRaw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const source = parsedRaw && typeof parsedRaw === 'object' ? parsedRaw : payload;
+                    const blueScore = source.athlete1_score ?? source?.athlete1?.score ?? source.blue ?? 0;
+                    const redScore = source.athlete2_score ?? source?.athlete2?.score ?? source.red ?? 0;
+                    scoreboardInstance.updateScore('blue', Number(blueScore) || 0);
+                    scoreboardInstance.updateScore('red', Number(redScore) || 0);
+                    break;
+                }
+                case 'warnings':
+                case 'gamjeom':
+                case 'gam_jeom':
+                case 'wg':
+                case 'penalty':
+                case 'penalties':
+                case 'foul':
+                case 'fouls': {
+                    const warnings = extractWarnings(payload);
+                    if (warnings) {
+                        if (warnings.blue != null) {
+                            scoreboardInstance.updatePenalties('blue', null, warnings.blue);
+                        }
+                        if (warnings.red != null) {
+                            scoreboardInstance.updatePenalties('red', null, warnings.red);
                         }
                     }
                     break;
                 }
-                case 'current_scores': {
-                    const parsedRaw = parseMaybeJson(payload.raw_data);
-                    const source = parsedRaw && typeof parsedRaw === 'object' ? parsedRaw : payload;
-                    const blueScore = source.athlete1_score ?? source?.athlete1?.score ?? 0;
-                    const redScore = source.athlete2_score ?? source?.athlete2?.score ?? 0;
-                    scoreboardInstance.updateScore('blue', blueScore);
-                    scoreboardInstance.updateScore('red', redScore);
+                case 'injury':
+                case 'injury_time':
+                case 'ij': {
+                    let timeValue = payload.time || payload.injury_time || payload.value || null;
+                    if (!timeValue && typeof payload.raw_data === 'string') {
+                        const raw = payload.raw_data.trim();
+                        const maybeJson = parseMaybeJson(raw);
+                        if (maybeJson && typeof maybeJson === 'object') {
+                            timeValue = maybeJson.time || maybeJson.injury_time;
+                        } else {
+                            const match = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
+                            if (match) {
+                                timeValue = match[1];
+                                if (match[2]) payload.action = match[2];
+                            }
+                        }
+                    }
+
+                    if (timeValue) {
+                        scoreboardInstance.updateInjuryTime(timeValue);
+                    }
+
+                    const visibility = (payload.action || payload.visibility || payload.state || '').toLowerCase();
+                    if (visibility === 'show' || visibility === 'visible' || visibility === 'start') {
+                        scoreboardInstance.showInjurySection();
+                    } else if (visibility === 'hide' || visibility === 'hidden' || visibility === 'clear' || visibility === 'reset' || visibility === 'stop') {
+                        scoreboardInstance.hideInjurySection();
+                        scoreboardInstance.resetInjuryTime();
+                    } else if (timeValue) {
+                        scoreboardInstance.showInjurySection();
+                    }
                     break;
                 }
-                case 'clock': {
-                    if (payload.time) {
-                        const t = parseTime(payload.time);
-                        scoreboardInstance.updateTimer(t.minutes, t.seconds);
+                case 'winner_rounds':
+                case 'winnerrounds': {
+                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const source = raw && typeof raw === 'object' ? raw : payload;
+                    const rounds = [source.round1_winner, source.round2_winner, source.round3_winner].map(val => Number(val));
+                    const blueWins = rounds.filter(val => val === 1).length;
+                    const redWins = rounds.filter(val => val === 2).length;
+                    scoreboardInstance.updateRoundWins('blue', blueWins);
+                    scoreboardInstance.updateRoundWins('red', redWins);
+                    break;
+                }
+                case 'clock':
+                case 'timer':
+                case 'match_timer': {
+                    const target = payload.time ?? payload.timer ?? payload.remaining ?? payload.clock;
+                    if (target != null) {
+                        const { minutes, seconds } = parseTime(String(target));
+                        scoreboardInstance.updateTimer(minutes, seconds);
                     }
                     break;
                 }
                 case 'round': {
-                    const round = payload.current_round ?? payload.round;
-                    if (round != null) {
-                        scoreboardInstance.updateRound(round);
+                    const roundNumber = payload.current_round ?? payload.round ?? payload.roundNumber;
+                    if (roundNumber != null) {
+                        scoreboardInstance.updateRound(roundNumber);
                         const mins = Math.floor(roundDuration / 60);
                         const secs = roundDuration % 60;
                         scoreboardInstance.updateTimer(mins, secs);
+                        scoreboardInstance.updateScore('blue', 0);
+                        scoreboardInstance.updateScore('red', 0);
+                        scoreboardInstance.updatePenalties('blue', null, 0);
+                        scoreboardInstance.updatePenalties('red', null, 0);
+                        scoreboardInstance.hideInjurySection();
+                        scoreboardInstance.resetInjuryTime();
                     }
                     break;
                 }
@@ -181,9 +362,39 @@
                         const t = parseTime(payload.time);
                         scoreboardInstance.updateTimer(t.minutes, t.seconds);
                     }
+                    if (payload.raw_data && typeof payload.raw_data === 'string') {
+                        const raw = payload.raw_data.trim();
+                        const matchWarnings = raw.match(/wg1;(\d+);wg2;(\d+)/i);
+                        if (matchWarnings) {
+                            scoreboardInstance.updatePenalties('blue', null, parseInt(matchWarnings[1], 10));
+                            scoreboardInstance.updatePenalties('red', null, parseInt(matchWarnings[2], 10));
+                            break;
+                        }
+                        const matchInjury = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
+                        if (matchInjury) {
+                            scoreboardInstance.updateInjuryTime(matchInjury[1]);
+                            const action = (matchInjury[2] || '').toLowerCase();
+                            if (action === 'show') scoreboardInstance.showInjurySection();
+                            else if (action === 'hide' || action === 'reset') {
+                                scoreboardInstance.hideInjurySection();
+                                scoreboardInstance.resetInjuryTime();
+                            }
+                        }
+                    }
                     break;
                 }
             }
+        }
+
+        function handle(event) {
+            if (!event) return;
+            const payload = event.data && typeof event.data === 'object' ? event.data : event;
+            if (!payload || typeof payload !== 'object') return;
+            if (!scoreboardInstance) {
+                eventQueue.push(payload);
+                return;
+            }
+            processEvent(payload);
         }
 
         function teardownWebSocket() {

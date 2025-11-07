@@ -6,7 +6,7 @@
 // Utility function to properly capitalize names (first letter of each word)
 function capitalizeName(name) {
   if (!name) return '';
-  return name.toLowerCase().split(' ').map(word => 
+  return name.toLowerCase().split(' ').map(word =>
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ');
 }
@@ -23,10 +23,10 @@ class ScoreboardOverlay {
   initialize() {
     // Set initial transparency
     this.setTransparency(this.transparency);
-    
+
     // Apply default theme
     this.applyTheme(this.currentTheme);
-    
+
     // Ensure we have a resolvable match info element for overlays lacking explicit id
     this.ensureMatchInfoElement();
 
@@ -81,7 +81,10 @@ class ScoreboardOverlay {
   // Update player names
   updatePlayerName(player, name) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const nameElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Name', 'player1Name'] : ['athlete2Name', 'player2Name']);
+    const candidateIds = player === 'blue'
+      ? ['modern_player1Name', 'athlete1Name', 'player1Name']
+      : ['modern_player2Name', 'athlete2Name', 'player2Name'];
+    const nameElement = this.getSvgElementAny(candidateIds);
     if (nameElement) {
       const raw = (name == null ? '' : String(name));
       // Preserve case for IOC/country codes (2-4 uppercase letters/digits)
@@ -89,7 +92,7 @@ class ScoreboardOverlay {
       nameElement.textContent = display;
       console.log(`✅ Updated ${player} player name: ${display}`);
     } else {
-      console.warn(`⚠️ Could not find ${elementId} element`);
+      console.warn(`⚠️ Could not find name element for ${player} (tried: ${candidateIds.join(', ')})`);
     }
   }
 
@@ -99,20 +102,22 @@ class ScoreboardOverlay {
   // Update player scores
   updateScore(player, score) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const elementId = player === 'blue' ? 'player1Score' : 'player2Score';
+    const candidateIds = player === 'blue'
+      ? ['modern_player1Score', 'player1Score', 'athlete1Score']
+      : ['modern_player2Score', 'player2Score', 'athlete2Score'];
+    const elementId = candidateIds[1];
     console.log(`🎯 Updating score for ${player} player, id: ${elementId}, score: ${score}`);
     console.log(`🎯 SVG element:`, this.svg);
-    
-    const scoreElement = this.getSvgElementAny([elementId, elementId.replace('player', 'athlete')]);
+    const scoreElement = this.getSvgElementAny(candidateIds);
     console.log(`🎯 Found score element:`, scoreElement);
-    
+
     if (scoreElement) {
       this.setTextForElementOrGroup(scoreElement, score);
       scoreElement.classList.add('score-update');
       setTimeout(() => scoreElement.classList.remove('score-update'), 500);
       console.log(`✅ Updated ${player} player score: ${score}`);
     } else {
-      console.warn(`⚠️ Could not find ${elementId} element`);
+      console.warn(`⚠️ Could not find score element for ${player} (tried: ${candidateIds.join(', ')})`);
       console.warn(`⚠️ Available elements with 'Score' in ID:`, Array.from(this.svg.querySelectorAll('[id*="Score"]')).map(el => el.id));
     }
   }
@@ -122,7 +127,11 @@ class ScoreboardOverlay {
   // Update player countries (flags)
   updateCountry(player, country) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const flagElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Flag', 'player1Flag'] : ['athlete2Flag', 'player2Flag']);
+    const flagElement = this.getSvgElementAny(
+      player === 'blue'
+        ? ['modern_player1Flag', 'athlete1Flag', 'player1Flag']
+        : ['modern_player2Flag', 'athlete2Flag', 'player2Flag']
+    );
     if (flagElement) {
       // Add or update a single image sized to the first inner rect (stable frame)
       try {
@@ -176,24 +185,43 @@ class ScoreboardOverlay {
   // Update penalties and warnings
   updatePenalties(player, penalties, warnings) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const penaltiesElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Warnings', 'player1Fouls'] : ['athlete2Warnings', 'player2Fouls']);
+    const penaltyIdCandidates = player === 'blue'
+      ? ['modern_player1Fouls', 'modern_gam_jeom_player1', 'athlete1Warnings', 'player1Fouls']
+      : ['modern_player2Fouls', 'modern_gam_jeom_player2', 'athlete2Warnings', 'player2Fouls'];
+    const penaltiesElement = this.getSvgElementAny(penaltyIdCandidates);
     if (penaltiesElement) {
-      const value = (warnings != null ? warnings : penalties) || 0;
+      const rawValue = (warnings != null ? warnings : penalties);
+      let numerator = 0;
+      if (rawValue != null) {
+        if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+          numerator = rawValue;
+        } else {
+          const textValue = String(rawValue).trim();
+          const match = textValue.match(/^(\d+)/);
+          if (match) numerator = parseInt(match[1], 10);
+        }
+      }
+      if (!Number.isFinite(numerator)) numerator = 0;
+      numerator = Math.max(0, Math.min(5, Math.floor(numerator)));
+      const displayValue = `${numerator}/5`;
       // Update text content robustly (handles <text><tspan>..</tspan></text>)
       const tspan = penaltiesElement.querySelector('tspan');
-      if (tspan) tspan.textContent = String(value);
-      else this.setTextForElementOrGroup(penaltiesElement, String(value));
+      if (tspan) tspan.textContent = displayValue;
+      else this.setTextForElementOrGroup(penaltiesElement, displayValue);
       // Also update by strict IDs to avoid selector drift
       try {
-        const strictId = player === 'blue' ? 'player1Fouls' : 'player2Fouls';
-        const strictEl = this.svg.getElementById(strictId);
-        if (strictEl) {
+        const strictIds = player === 'blue'
+          ? ['modern_player1Fouls', 'player1Fouls']
+          : ['modern_player2Fouls', 'player2Fouls'];
+        for (const strictId of strictIds) {
+          const strictEl = this.svg.getElementById(strictId);
+          if (!strictEl) continue;
           const ts = strictEl.querySelector('tspan');
-          if (ts) ts.textContent = String(value);
-          else strictEl.textContent = String(value);
+          if (ts) ts.textContent = displayValue;
+          else strictEl.textContent = displayValue;
           strictEl.style.display = 'block';
         }
-      } catch(_) {}
+      } catch (_) { /* noop */ }
       // Hide/show warnings background tile and number when zero
       const sideGroup = this.getSvgElementAny(player === 'blue' ? ['player1_x5F_blue', 'athlete1Group'] : ['player2_x5F_red', 'athlete2Group']);
       if (sideGroup) {
@@ -204,9 +232,9 @@ class ScoreboardOverlay {
       // Apply pop-out animation
       penaltiesElement.classList.add('update');
       setTimeout(() => penaltiesElement.classList.remove('update'), 500);
-      console.log(`✅ Updated ${player} player warnings: ${value}`);
+      console.log(`✅ Updated ${player} player warnings: ${displayValue}`);
     } else {
-      console.warn(`⚠️ Could not find ${elementId} element`);
+      console.warn(`⚠️ Could not find penalty element for ${player} (tried: ${penaltyIdCandidates.join(', ')})`);
     }
   }
 
@@ -215,7 +243,10 @@ class ScoreboardOverlay {
   // Update round wins
   updateRoundWins(player, wins) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
-    const winsElement = this.getSvgElementAny(player === 'blue' ? ['athlete1Rounds', 'player1Rounds'] : ['athlete2Rounds', 'player2Rounds']);
+    const roundIdCandidates = player === 'blue'
+      ? ['modern_player1Rounds', 'athlete1Rounds', 'player1Rounds']
+      : ['modern_player2Rounds', 'athlete2Rounds', 'player2Rounds'];
+    const winsElement = this.getSvgElementAny(roundIdCandidates);
     if (winsElement) {
       winsElement.textContent = wins || 0;
       // Apply pop-out animation
@@ -223,7 +254,7 @@ class ScoreboardOverlay {
       setTimeout(() => winsElement.classList.remove('update'), 500);
       console.log(`✅ Updated ${player} player rounds: ${wins || 0}`);
     } else {
-      console.warn(`⚠️ Could not find ${elementId} element`);
+      console.warn(`⚠️ Could not find rounds element for ${player} (tried: ${roundIdCandidates.join(', ')})`);
     }
   }
 
@@ -231,29 +262,31 @@ class ScoreboardOverlay {
 
   // Update match timer
   updateTimer(minutes, seconds) {
-    const timerElement = this.getSvgElement('matchTimer');
+    const timerElement = this.getSvgElementAny(['modern_match_time', 'matchTimer', 'time']);
     if (timerElement) {
       timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
       console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
     } else {
-      console.warn(`⚠️ Could not find matchTimer element`);
+      console.warn(`⚠️ Could not find match timer element (tried: modern_match_time, matchTimer, time)`);
     }
   }
 
   // Update current round
   updateRound(round) {
-    const roundElement = this.getSvgElementAny(['currentRound']);
+    const roundElement = this.getSvgElementAny(['modern_round_number', 'currentRound']);
     if (roundElement) {
-      roundElement.textContent = this.getOrdinalSuffix(round);
-      console.log(`✅ Updated current round: ${this.getOrdinalSuffix(round)}`);
+      const isModern = roundElement.id === 'modern_round_number';
+      const value = isModern ? `ROUND ${round}` : this.getOrdinalSuffix(round);
+      this.setTextForElementOrGroup(roundElement, value);
+      console.log(`✅ Updated current round: ${value}`);
     } else {
-      console.warn(`⚠️ Could not find currentRound element`);
+      console.warn(`⚠️ Could not find round element (tried: modern_round_number, currentRound)`);
     }
   }
 
   // Update injury time
   updateInjuryTime(time) {
-    const injuryElement = this.getSvgElement('injuryTime');
+    const injuryElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       // Handle both string format ("1:00") and separate parameters (minutes, seconds)
       if (typeof time === 'string') {
@@ -267,7 +300,7 @@ class ScoreboardOverlay {
         console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
       }
     } else {
-      console.warn(`⚠️ Could not find injuryTime element`);
+      console.warn(`⚠️ Could not find injury time element (tried: modern_injury_time, injuryTime, injury_x5F_time)`);
     }
   }
 
@@ -297,7 +330,7 @@ class ScoreboardOverlay {
 
   // Reset injury time to 0:00
   resetInjuryTime() {
-    const injuryElement = this.svg.getElementById('injuryTime');
+    const injuryElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       injuryElement.textContent = '0:00';
       console.log('✅ Injury time reset to 0:00');
@@ -309,46 +342,46 @@ class ScoreboardOverlay {
   // Apply new match effect (typewriter animation for new matches)
   applyNewMatchEffect(roundDuration = 120, currentRound = 1) {
     console.log('🎬 Applying new match effect with round duration:', roundDuration, 'and current round:', currentRound);
-    
+
     // Add a subtle animation to indicate new match data
     const elements = [
-      this.svg.getElementById('player1Name'),
-      this.svg.getElementById('player2Name'),
-      this.svg.getElementById('player1Score'),
-      this.svg.getElementById('player2Score'),
-      this.svg.getElementById('currentRound'),
-      this.svg.getElementById('matchTimer')
+      this.getSvgElementAny(['modern_player1Name', 'player1Name', 'athlete1Name']),
+      this.getSvgElementAny(['modern_player2Name', 'player2Name', 'athlete2Name']),
+      this.getSvgElementAny(['modern_player1Score', 'player1Score', 'athlete1Score']),
+      this.getSvgElementAny(['modern_player2Score', 'player2Score', 'athlete2Score']),
+      this.getSvgElementAny(['modern_round_number', 'currentRound']),
+      this.getSvgElementAny(['modern_match_time', 'matchTimer', 'time'])
     ];
-    
+
     elements.forEach((element, index) => {
       if (element) {
         // Add a brief flash effect
         element.style.transition = 'all 0.3s ease';
         element.style.transform = 'scale(1.05)';
         element.style.filter = 'brightness(1.2)';
-        
+
         setTimeout(() => {
           element.style.transform = 'scale(1)';
           element.style.filter = 'brightness(1)';
         }, 300 + (index * 50)); // Stagger the animations
       }
     });
-    
+
     // Reset scores and timer to initial state
     this.updateScore('blue', 0);
     this.updateScore('red', 0);
     this.updateRound(currentRound);
-    
+
     // Use provided round duration instead of hardcoded 2:00
     const minutes = Math.floor(roundDuration / 60);
     const seconds = roundDuration % 60;
     this.updateTimer(minutes, seconds);
-    
+
     this.updatePenalties('blue', null, 0);
     this.updatePenalties('red', null, 0);
     this.updateRoundWins('blue', 0);
     this.updateRoundWins('red', 0);
-    
+
     console.log('✅ New match effect applied');
   }
 
@@ -419,6 +452,69 @@ class ScoreboardOverlay {
     return s;
   }
 
+  // Derive modern gender label ("Men's under"/"Women's over") and stripped weight value
+  deriveGenderWeightLabels(weightSource, options = {}) {
+    const toAscii = (value) => String(value ?? '').replace(/[’‘]/g, "'").trim();
+    const rawWeight = toAscii(weightSource);
+    const normalizedWeight = toAscii(options.normalizedWeight ?? rawWeight);
+    const divisionText = toAscii(options.division);
+    const categoryText = toAscii(options.category);
+
+    const genderSources = [rawWeight, divisionText, categoryText, normalizedWeight];
+    let genderWord = '';
+    for (const src of genderSources) {
+      if (!src) continue;
+      const lower = src.toLowerCase();
+      if (/\bwomen(?:'s)?\b/.test(lower) || /\bfemale\b/.test(lower) || /^w\b/.test(lower)) {
+        genderWord = "Women's";
+        break;
+      }
+      if (/\bmen(?:'s)?\b/.test(lower) || /\bmale\b/.test(lower) || /^m\b/.test(lower)) {
+        genderWord = "Men's";
+        break;
+      }
+    }
+    if (!genderWord && rawWeight) {
+      if (/^w\b/i.test(rawWeight)) genderWord = "Women's";
+      else if (/^m\b/i.test(rawWeight)) genderWord = "Men's";
+    }
+
+    let rangeWord = '';
+    if (/\+/.test(rawWeight)) rangeWord = 'over';
+    else if (/-/.test(rawWeight)) rangeWord = 'under';
+    else {
+      for (const src of genderSources) {
+        if (!src) continue;
+        const lower = src.toLowerCase();
+        if (/\bover\b/.test(lower)) { rangeWord = 'over'; break; }
+        if (/\bunder\b/.test(lower)) { rangeWord = 'under'; break; }
+      }
+    }
+    if (!rangeWord && genderWord) rangeWord = 'under';
+
+    const weightCandidates = [rawWeight, normalizedWeight, divisionText, categoryText];
+    let weightLabel = '';
+    for (const candidate of weightCandidates) {
+      if (!candidate) continue;
+      const match = candidate.match(/([+-]?\s*\d+(?:\.\d+)?\s*(?:kg|kgs|kilograms|lb|lbs|pounds))/i);
+      if (match) {
+        weightLabel = match[0].replace(/\s+/g, ' ').trim();
+        break;
+      }
+    }
+    if (!weightLabel && normalizedWeight) {
+      const cleaned = this.normalizeWeightLabel(normalizedWeight);
+      weightLabel = cleaned.replace(/^[MW]\s*/i, '').replace(/^[MW](?=[+-])/, '').trim();
+    }
+    weightLabel = weightLabel.replace(/[’‘]/g, "'");
+
+    const genderLabel = genderWord ? `${genderWord}${rangeWord ? ` ${rangeWord}` : ''}` : '';
+    return {
+      genderLabel,
+      weightLabel
+    };
+  }
+
   // Update combined match info (weight, division, category)
   updateMatchInfo(weight, division, category) {
     // Normalize/abbreviate
@@ -430,6 +526,18 @@ class ScoreboardOverlay {
     // Build display with separators
     const leftSegment = [segWeight, segDivision].filter(Boolean).join(' | ');
     const rightSegment = segCategory ? ` | ${segCategory}` : '';
+
+    const rawWeight = (weight || '').trim();
+    const { genderLabel, weightLabel } = this.deriveGenderWeightLabels(rawWeight, {
+      normalizedWeight: segWeight,
+      division,
+      category
+    });
+
+    const modernGender = this.getSvgElementAny(['modern_gender']);
+    const modernWeight = this.getSvgElementAny(['modern_weight']);
+    if (modernGender) modernGender.textContent = genderLabel || '';
+    if (modernWeight) modernWeight.textContent = weightLabel ? ` ${weightLabel}` : '';
 
     const matchInfoElement = this.getSvgElementAny(['matchInfo']);
     if (!matchInfoElement) { console.warn('⚠️ Could not find matchInfo element'); return; }
@@ -503,9 +611,10 @@ class ScoreboardOverlay {
   updateMatchNumber(num) {
     const raw = (num == null) ? '' : String(num).trim();
     const normalized = raw.replace(/^0+/, '') || '0';
-    const target = this.getSvgElementAny(['matchNumber', 'match']);
+    const target = this.getSvgElementAny(['modern_match_number', 'matchNumber', 'match']);
     if (target) {
-      this.setTextForElementOrGroup(target, normalized);
+      const displayValue = target.id === 'modern_match_number' ? raw : normalized;
+      this.setTextForElementOrGroup(target, displayValue);
       try {
         // Center the match number within its background rect if available
         const bg = this.getSvgElementAny(['match_x5F_bg', 'match_bg']);
@@ -515,7 +624,7 @@ class ScoreboardOverlay {
           // Extract current translateY from transform
           const tr = target.getAttribute('transform');
           let y = 0;
-          if (tr && /translate\(([^,\s]+)[,\s]+([^\)]+)\)/.test(tr)) {
+          if (tr && /translate\(([^,\s]+)[,\s]+([^)]+)\)/.test(tr)) {
             y = parseFloat(RegExp.$2) || 0;
           }
           target.setAttribute('text-anchor', 'middle');
@@ -525,16 +634,14 @@ class ScoreboardOverlay {
     }
   }
 
-  // (Removed) setLogoImage: Logo is now authored directly in SVG; no JS sizing/positioning
-
   // Injury helpers
   setInjuryTime(minutes, seconds) {
-    const t = this.getSvgElementAny(['injuryTime']);
-    if (t) this.setTextForElementOrGroup(t, `${minutes}:${String(seconds).padStart(2,'0')}`);
+    const t = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
+    if (t) this.setTextForElementOrGroup(t, `${minutes}:${String(seconds).padStart(2, '0')}`);
   }
   setInjuryVisible(visible) {
-    const t = this.getSvgElementAny(['injuryTime']);
-    const bg = this.getSvgElementAny(['injury_x5F_time_x5F_bg','injuryBg']);
+    const t = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
+    const bg = this.getSvgElementAny(['modern_injury_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
     if (t) t.style.display = visible ? 'block' : 'none';
     if (bg) bg.style.display = visible ? 'block' : 'none';
     // Toggle logo positions only by visibility (no geometry changes)
@@ -606,7 +713,7 @@ class ScoreboardOverlay {
     }
   }
 
-                    
+
 
   // Get ordinal suffix for round numbers
   getOrdinalSuffix(num) {
@@ -641,7 +748,7 @@ class ScoreboardOverlay {
   // Apply theme colors
   applyTheme(theme) {
     const root = this.svg;
-    
+
     switch (theme) {
       case 'olympic':
         root.style.setProperty('--header-color', '#1B9DA3');
@@ -702,10 +809,10 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
   initialize() {
     // Set initial transparency
     this.setTransparency(this.transparency);
-    
+
     // Apply default theme
     this.applyTheme(this.currentTheme);
-    
+
     console.log('✅ Player Introduction Overlay initialized');
   }
 
@@ -739,7 +846,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
       } else {
         nameElement.textContent = capitalizeName(name);
       }
-      
+
       console.log(`✅ Updated Player 1 name: ${capitalizeName(name)}`);
     }
   }
@@ -761,84 +868,84 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
       } else {
         nameElement.textContent = capitalizeName(name);
       }
-      
+
       console.log(`✅ Updated Player 2 name: ${capitalizeName(name)}`);
     }
   }
 
   // Update Player 1 flag
   updatePlayer1Flag(countryCode) {
-    const flagElement = this.getSvgElement('leftPlayerFlag');
+    const flagElement = this.getSvgElementAny(['modern_player1Flag', 'leftPlayerFlag']);
     if (flagElement) {
       flagElement.setAttribute('href', `/assets/flags/svg/${countryCode}.svg`);
-      
-             // Adjust glass effect rectangle after flag loads
-       const adjustLeftFlag = () => {
-         // Get the actual rendered width of the flag
-         const flagRect = flagElement.getBoundingClientRect();
-         const flagWidth = flagRect.width;
-         
-         if (flagWidth > 0) {
-           // Update the glass effect rectangle width
-           const glassRect = this.svg.getElementById('leftPlayerFlagGlass');
-           if (glassRect) {
-             glassRect.setAttribute('width', flagWidth.toString());
-           }
-           
-           console.log(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
-         } else {
-           // If width is not available yet, try again after a short delay
-           setTimeout(adjustLeftFlag, 100);
-         }
-       };
-      
+
+      // Adjust glass effect rectangle after flag loads
+      const adjustLeftFlag = () => {
+        // Get the actual rendered width of the flag
+        const flagRect = flagElement.getBoundingClientRect();
+        const flagWidth = flagRect.width;
+
+        if (flagWidth > 0) {
+          // Update the glass effect rectangle width
+          const glassRect = this.getSvgElementAny(['modern_player1FlagGlass', 'leftPlayerFlagGlass']);
+          if (glassRect) {
+            glassRect.setAttribute('width', flagWidth.toString());
+          }
+
+          console.log(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
+        } else {
+          // If width is not available yet, try again after a short delay
+          setTimeout(adjustLeftFlag, 100);
+        }
+      };
+
       flagElement.onload = adjustLeftFlag;
       setTimeout(adjustLeftFlag, 50);
-      
+
       console.log(`✅ Updated Player 1 flag: ${countryCode}`);
     }
   }
 
   // Update Player 2 flag
   updatePlayer2Flag(countryCode) {
-    const flagElement = this.getSvgElement('rightPlayerFlag');
+    const flagElement = this.getSvgElementAny(['modern_player2Flag', 'rightPlayerFlag']);
     if (flagElement) {
       flagElement.setAttribute('href', `/assets/flags/svg/${countryCode}.svg`);
-      
-             // Dynamically adjust position after flag loads to ensure 20px right padding
-       const adjustFlagPosition = () => {
-         // Get the actual rendered width of the flag
-         const flagRect = flagElement.getBoundingClientRect();
-         const flagWidth = flagRect.width;
-         
-         if (flagWidth > 0) {
-           // Calculate new x position to ensure 20px right padding
-           // Red rectangle starts at x=1660, so flag should end at x=1640
-           const newX = 1640 - flagWidth;
-           
-           // Update flag position
-           flagElement.setAttribute('x', newX.toString());
-           
-           // Also update the glass effect rectangle position and width
-           const glassRect = this.svg.getElementById('rightPlayerFlagGlass');
-           if (glassRect) {
-             glassRect.setAttribute('x', newX.toString());
-             glassRect.setAttribute('width', flagWidth.toString());
-           }
-           
-           console.log(`✅ Updated Player 2 flag position: x=${newX}, width=${flagWidth}`);
-         } else {
-           // If width is not available yet, try again after a short delay
-           setTimeout(adjustFlagPosition, 100);
-         }
-       };
-      
+
+      // Dynamically adjust position after flag loads to ensure 20px right padding
+      const adjustFlagPosition = () => {
+        // Get the actual rendered width of the flag
+        const flagRect = flagElement.getBoundingClientRect();
+        const flagWidth = flagRect.width;
+
+        if (flagWidth > 0) {
+          // Calculate new x position to ensure 20px right padding
+          // Red rectangle starts at x=1660, so flag should end at x=1640
+          const newX = 1640 - flagWidth;
+
+          // Update flag position
+          flagElement.setAttribute('x', newX.toString());
+
+          // Also update the glass effect rectangle position and width
+          const glassRect = this.getSvgElementAny(['modern_player2FlagGlass', 'rightPlayerFlagGlass']);
+          if (glassRect) {
+            glassRect.setAttribute('x', newX.toString());
+            glassRect.setAttribute('width', flagWidth.toString());
+          }
+
+          console.log(`✅ Updated Player 2 flag position: x=${newX}, width=${flagWidth}`);
+        } else {
+          // If width is not available yet, try again after a short delay
+          setTimeout(adjustFlagPosition, 100);
+        }
+      };
+
       // Wait for the flag to load and then adjust position
       flagElement.onload = adjustFlagPosition;
-      
+
       // Also try immediately in case the flag is already loaded
       setTimeout(adjustFlagPosition, 50);
-      
+
       console.log(`✅ Updated Player 2 flag: ${countryCode}`);
     }
   }
@@ -858,7 +965,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
     if (nameElement) {
       const newText = `${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`;
       nameElement.textContent = newText;
-      
+
       console.log(`✅ Updated VS string: ${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`);
     }
   }
@@ -876,21 +983,51 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 // Winner Announcement Overlay Class
 class WinnerAnnouncementOverlay extends ScoreboardOverlay {
   updateWinner(name, country, seed, score) {
-    this.updateElement('winnerName', name);
-    this.updateElement('winnerCountry', country);
-    this.updateElement('winnerSeed', `(${seed})`);
-    this.updateElement('finalScore', score);
+    if (name != null) {
+      this.updateElementAny(['winnerName', 'player_x5F_name', 'modern_winner_name'], name);
+    }
+    if (country != null) {
+      const formatted = String(country).trim().toUpperCase();
+      this.updateElementAny(['winnerCountry', 'country_x5F_name', 'modern_winner_ioc'], formatted);
+    }
+    if (seed != null && seed !== '') {
+      this.updateElementAny(['winnerSeed', 'modern_winner_seed'], `(${seed})`);
+    }
+    if (score != null) {
+      this.updateElementAny(['finalScore', 'modern_final_score'], score);
+    }
   }
 
   updateMatchDetails(category, type, number) {
-    this.updateElement('matchWeight', category);
-    this.updateElement('matchCategory', type);
-    this.updateElement('matchNumber', `MATCH #${number}`);
+    if (category != null) {
+      const rawCategory = String(category).trim();
+      const { genderLabel, weightLabel } = this.deriveGenderWeightLabels(rawCategory, {
+        normalizedWeight: rawCategory
+      });
+      this.updateElementAny(['matchWeight'], rawCategory);
+      this.updateElementAny(['modern_gender'], genderLabel || '');
+      this.updateElementAny(['modern_weight'], weightLabel ? ` ${weightLabel}` : '');
+    }
+    if (type != null) {
+      this.updateElementAny(['matchCategory'], type);
+      this.updateElementAny(['modern_phase'], type);
+    }
+    if (number != null) {
+      const rawNumber = String(number).trim();
+      this.updateElementAny(['matchNumber'], `MATCH #${rawNumber}`);
+      this.updateElementAny(['modern_match_number'], rawNumber);
+    }
+  }
+
+  updateElementAny(ids, value) {
+    const candidates = Array.isArray(ids) ? ids : [ids];
+    const element = this.getSvgElementAny(candidates);
+    if (!element) return;
+    this.setTextForElementOrGroup(element, value);
   }
 
   updateElement(id, value) {
-    const element = this.svg.getElementById(id);
-    if (element) element.textContent = value;
+    this.updateElementAny([id], value);
   }
 }
 
@@ -933,7 +1070,7 @@ class VictoryCeremonyOverlay extends ScoreboardOverlay {
     this.updateElement('eventType', eventInfo.type);
     this.updateElement('ceremonyTitle', eventInfo.title);
     this.updateElement('ceremonyDate', eventInfo.date);
-    
+
     // Update gold medalist
     if (medalists.gold) {
       this.updateElement('goldPlayerCountry', medalists.gold.country);
@@ -941,7 +1078,7 @@ class VictoryCeremonyOverlay extends ScoreboardOverlay {
       this.updateElement('goldPlayerSeed', `(${medalists.gold.seed})`);
       this.updateElement('goldPlayerScore', `Final Score: ${medalists.gold.score}`);
     }
-    
+
     // Update silver medalist
     if (medalists.silver) {
       this.updateElement('silverPlayerCountry', medalists.silver.country);
@@ -949,7 +1086,7 @@ class VictoryCeremonyOverlay extends ScoreboardOverlay {
       this.updateElement('silverPlayerSeed', `(${medalists.silver.seed})`);
       this.updateElement('silverPlayerScore', `Final Score: ${medalists.silver.score}`);
     }
-    
+
     // Update bronze medalists
     if (medalists.bronze1) {
       this.updateElement('bronze1PlayerCountry', medalists.bronze1.country);
@@ -957,14 +1094,14 @@ class VictoryCeremonyOverlay extends ScoreboardOverlay {
       this.updateElement('bronze1PlayerSeed', `(${medalists.bronze1.seed})`);
       this.updateElement('bronze1PlayerScore', `Final Score: ${medalists.bronze1.score}`);
     }
-    
+
     if (medalists.bronze2) {
       this.updateElement('bronze2PlayerCountry', medalists.bronze2.country);
       this.updateElement('bronze2PlayerName', medalists.bronze2.name);
       this.updateElement('bronze2PlayerSeed', `(${medalists.bronze2.seed})`);
       this.updateElement('bronze2PlayerScore', `Final Score: ${medalists.bronze2.score}`);
     }
-    
+
     // Add ceremony animations
     this.addCeremonyAnimations();
   }
@@ -975,7 +1112,7 @@ class VictoryCeremonyOverlay extends ScoreboardOverlay {
     const silverSection = this.svg.getElementById('silverSection');
     const bronze1Section = this.svg.getElementById('bronze1Section');
     const bronze2Section = this.svg.getElementById('bronze2Section');
-    
+
     if (goldSection) goldSection.classList.add('gold-section');
     if (silverSection) silverSection.classList.add('silver-section');
     if (bronze1Section) bronze1Section.classList.add('bronze-section');
@@ -1003,4 +1140,4 @@ if (typeof module !== 'undefined' && module.exports) {
   window.WinnerAnnouncementOverlay = WinnerAnnouncementOverlay;
   window.PreviousResultsOverlay = PreviousResultsOverlay;
   window.VictoryCeremonyOverlay = VictoryCeremonyOverlay;
-} 
+}

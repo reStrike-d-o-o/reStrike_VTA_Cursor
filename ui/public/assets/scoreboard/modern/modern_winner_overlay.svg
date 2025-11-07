@@ -95,7 +95,7 @@
       <g id="winner_x5F_overlay">
         <g id="player_x5F_winner">
           <rect class="cls-4" x=".00001" y="193.388139" width="1534.100321" height="65.99946"/>
-          <text id="country_x5F_name" class="cls-11" transform="translate(20.88932 243.046143)"><tspan x="0" y="0">AUT</tspan></text>
+          <text id="modern_winner_ioc" class="cls-11" transform="translate(20.88932 243.046143)"><tspan x="0" y="0">AUT</tspan></text>
           <rect class="cls-16" x="1130.365378" y="193.388139" width="403.734954" height="65.99946"/>
           <g id="flag_x5F_placeholder">
             <rect class="cls-6" x="138.458008" y="204.724609" width="64.489746" height="43.326172"/>
@@ -105,12 +105,12 @@
             <rect class="cls-14" x="138.957857" y="205.2245" width="63.490106" height="42.326737"/>
             <rect class="cls-13" x="138.957857" y="219.333413" width="63.490106" height="14.108912"/>
           </g>
-          <text id="player_x5F_name" class="cls-9" transform="translate(227.713051 239.075439)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
+          <text id="modern_winner_name" class="cls-9" transform="translate(227.713051 239.075439)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
           <text class="cls-1" transform="translate(1239.154922 242.225098)"><tspan x="0" y="0">WINNER</tspan></text>
         </g>
         <path class="cls-13" d="M1515.087936,64.278701H18.531407C8.296852,64.278701.000107,72.575447.000107,82.810001v46.115429h1533.619079v-46.115479c0-10.234527-8.296723-18.53125-18.53125-18.53125Z"/>
         <rect class="cls-12" x=".00001" y="128.92543" width="1534.100321" height="64.462709"/>
-        <text class="cls-2" transform="translate(18.89127 173.246826)"><tspan x="0" y="0">SEMI FINALS</tspan></text>
+        <text class="cls-2" transform="translate(18.89127 173.246826)"><tspan id="modern_phase" x="0" y="0">SEMI FINALS</tspan></text>
         <g id="logo">
           <path class="cls-13" d="M1148.896678.000012h366.672354c10.227703,0,18.5313,8.303597,18.5313,18.5313v110.394118h-403.734954V18.531312C1130.365378,8.303609,1138.668975.000012,1148.896678.000012Z"/>
           <g>
@@ -151,7 +151,7 @@
             <path d="M1252.421094,106.535582c6.428289-8.457466,26.95328-37.421929,33.449635-54.764391-2.411542,6.443225-8.915863,11.828618-21.529338,19.998173l-4.842572,12.925995-8.000066,21.352238c.038908.25178.460103,1.096097.92234.487984"/>
           </g>
         </g>
-        <text class="cls-3" transform="translate(21.236485 109.885498)"><tspan class="cls-10" x="0" y="0">Men’s under</tspan><tspan class="cls-18" x="202.814941" y="0" xml:space="preserve"> 68kg</tspan></text>
+        <text class="cls-3" transform="translate(21.236485 109.885498)"><tspan id="modern_gender" class="cls-10" x="0" y="0">Men’s under</tspan><tspan id="modern_weight" class="cls-18" x="202.814941" y="0" xml:space="preserve"> 68kg</tspan></text>
       </g>
     </g>
   </g>
