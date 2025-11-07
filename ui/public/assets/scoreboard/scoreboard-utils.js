@@ -78,6 +78,15 @@ class ScoreboardOverlay {
     el.textContent = value;
   }
 
+  expectsGamJeomFractionFormat() {
+    if (this._expectsGamJeomFraction !== undefined) {
+      return this._expectsGamJeomFraction;
+    }
+    const hasModernGamJeomIds = Boolean(this.getSvgElementAny(['modern_gam_jeom_player1', 'modern_gam_jeom_player2']));
+    this._expectsGamJeomFraction = hasModernGamJeomIds;
+    return this._expectsGamJeomFraction;
+  }
+
   // Update player names
   updatePlayerName(player, name) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
@@ -126,6 +135,7 @@ class ScoreboardOverlay {
 
   // Update player countries (flags)
   updateCountry(player, country) {
+    const code = (country || '').toString().trim().toUpperCase();
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const flagElement = this.getSvgElementAny(
       player === 'blue'
@@ -158,13 +168,13 @@ class ScoreboardOverlay {
         imageEl.setAttribute('height', String(Math.max(1, h)));
         imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         imageEl.style.pointerEvents = 'none';
-        const url = `/assets/flags/svg/${country}.svg`;
+        const url = `/assets/flags/svg/${code}.svg`;
         imageEl.setAttribute('href', url);
         imageEl.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
       } catch (_) {
         // ignore
       }
-      console.log(`✅ Updated ${player} player country flag: ${country}`);
+      console.log(`✅ Updated ${player} player country flag: ${code}`);
     } else {
       console.warn(`⚠️ Could not find flag element for ${player}`);
     }
@@ -203,7 +213,8 @@ class ScoreboardOverlay {
       }
       if (!Number.isFinite(numerator)) numerator = 0;
       numerator = Math.max(0, Math.min(5, Math.floor(numerator)));
-      const displayValue = `${numerator}/5`;
+      const showFraction = this.expectsGamJeomFractionFormat();
+      const displayValue = showFraction ? `${numerator}/5` : String(numerator);
       // Update text content robustly (handles <text><tspan>..</tspan></text>)
       const tspan = penaltiesElement.querySelector('tspan');
       if (tspan) tspan.textContent = displayValue;
@@ -544,61 +555,11 @@ class ScoreboardOverlay {
 
     const tspans = matchInfoElement.querySelectorAll('tspan');
     if (tspans.length >= 2) {
-      // Update texts
+      const normalizedRight = leftSegment ? rightSegment : (segCategory || '');
       tspans[0].textContent = leftSegment || '';
-      tspans[1].textContent = rightSegment || '';
-
-      // Ensure consistent styling (bold) across both tspans
+      tspans[1].textContent = normalizedRight;
       const cls0 = tspans[0].getAttribute('class');
       if (cls0) { tspans[1].setAttribute('class', cls0); }
-
-      // Recalculate x for the second tspan to avoid overlap
-      try {
-        // Ensure rendering applies before measuring
-        const baseX = parseFloat(tspans[0].getAttribute('x') || '0');
-        // Force layout
-        const bbox = tspans[0].getBBox();
-        const measuredWidth = bbox ? bbox.width : 0;
-        const padding = 0; // rely on leading space in second tspan (" | ...")
-        const newX = isNaN(baseX) ? (bbox.x + measuredWidth + padding) : (baseX + measuredWidth + padding);
-        tspans[1].setAttribute('x', String(newX));
-        // Keep same y as first unless explicitly defined
-        if (!tspans[1].getAttribute('y') && tspans[0].getAttribute('y')) {
-          tspans[1].setAttribute('y', tspans[0].getAttribute('y'));
-        }
-
-        // Ensure combined text does not overflow its background
-        const bg = this.svg.getElementById('tournament_x5F_name_x5F_bg') || this.svg.getElementById('tournamentNameBg') || this.svg.getElementById('tournament_bg') || this.svg.getElementById('BG');
-        if (bg) {
-          const bgBox = bg.getBBox();
-          const span2Box = tspans[1].getBBox();
-          const rightEdge = span2Box.x + span2Box.width;
-          const allowedRight = bgBox.x + bgBox.width - 2; // small padding
-
-          if (rightEdge > allowedRight && segCategory) {
-            // Try stricter abbreviation for category (e.g., Bronze -> BMD)
-            const strict = this.abbreviateCategoryStrict(segCategory);
-            const newRightText = ` | ${strict}`;
-            tspans[1].textContent = newRightText;
-            if (cls0) { tspans[1].setAttribute('class', cls0); }
-            // Re-measure after update
-            const span2Box2 = tspans[1].getBBox();
-            if (span2Box2.x + span2Box2.width > allowedRight) {
-              // Remove separator
-              const tighter = strict;
-              tspans[1].textContent = ` ${tighter}`;
-              if (cls0) { tspans[1].setAttribute('class', cls0); }
-              const span2Box3 = tspans[1].getBBox();
-              if (span2Box3.x + span2Box3.width > allowedRight) {
-                // Drop category entirely as last resort
-                tspans[1].textContent = '';
-              }
-            }
-          }
-        }
-      } catch (_) {
-        // Fallback: leave original positioning
-      }
     } else if (tspans.length === 1) {
       tspans[0].textContent = `${leftSegment}${rightSegment}`.trim();
     } else {
@@ -615,22 +576,6 @@ class ScoreboardOverlay {
     if (target) {
       const displayValue = target.id === 'modern_match_number' ? raw : normalized;
       this.setTextForElementOrGroup(target, displayValue);
-      try {
-        // Center the match number within its background rect if available
-        const bg = this.getSvgElementAny(['match_x5F_bg', 'match_bg']);
-        if (bg && bg.getBBox) {
-          const bb = bg.getBBox();
-          const centerX = bb.x + (bb.width / 2);
-          // Extract current translateY from transform
-          const tr = target.getAttribute('transform');
-          let y = 0;
-          if (tr && /translate\(([^,\s]+)[,\s]+([^)]+)\)/.test(tr)) {
-            y = parseFloat(RegExp.$2) || 0;
-          }
-          target.setAttribute('text-anchor', 'middle');
-          target.setAttribute('transform', `translate(${centerX} ${y})`);
-        }
-      } catch (_) { /* ignore alignment errors */ }
     }
   }
 

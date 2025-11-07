@@ -1,11 +1,16 @@
 // Ensures embedded SVG documents (loaded via <object>) can use app-provided fonts.
 // It injects @font-face rules from /assets/fonts/fonts.css into the SVG's <defs> as a <style> tag.
 
-(function() {
+
+(function () {
+  var cachedCssPromise = null;
+
   function fetchFontsCss() {
-    return fetch('/assets/fonts/fonts.css', { cache: 'force-cache' })
-      .then(function(res) { return res.text(); })
-      .catch(function() { return ''; });
+    if (cachedCssPromise) return cachedCssPromise;
+    cachedCssPromise = fetch('/assets/fonts/fonts.css', { cache: 'force-cache' })
+      .then(function (res) { return res.text(); })
+      .catch(function () { return ''; });
+    return cachedCssPromise;
   }
 
   function injectCssIntoSvg(svgDocument, cssText) {
@@ -34,24 +39,35 @@
     var svgDoc = objectEl.contentDocument;
     if (!svgDoc) return;
 
-    fetchFontsCss().then(function(cssText) {
+    fetchFontsCss().then(function (cssText) {
       injectCssIntoSvg(svgDoc, cssText);
     });
   }
 
-  function initForObject(selector) {
-    var obj = document.querySelector(selector);
+  function initForObject(target) {
+    var obj = null;
+    if (typeof target === 'string') {
+      obj = document.querySelector(target);
+    } else if (target && typeof target === 'object' && target.nodeType === 1) {
+      obj = target;
+    }
     if (!obj) return;
     if (obj.contentDocument) {
       onObjectLoad(obj);
     }
-    obj.addEventListener('load', function() { onObjectLoad(obj); });
+    obj.addEventListener('load', function () { onObjectLoad(obj); });
+  }
+
+  function initForDocument(svgDocument) {
+    if (!svgDocument || !svgDocument.documentElement) return;
+    fetchFontsCss().then(function (cssText) {
+      injectCssIntoSvg(svgDocument, cssText);
+    });
   }
 
   // Expose minimal API if needed by other scripts
   window.ScoreboardFontInjector = {
-    initForObject: initForObject
+    initForObject: initForObject,
+    initForDocument: initForDocument
   };
 })();
-
-
