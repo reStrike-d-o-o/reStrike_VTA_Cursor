@@ -274,8 +274,8 @@ class ScoreboardOverlay {
     const code = this.normalizeFlagCode(country);
     const imageEl = this.setFlagForElementCandidates(
       player === 'blue'
-        ? ['modern_player1Flag', 'athlete1Flag', 'player1Flag']
-        : ['modern_player2Flag', 'athlete2Flag', 'player2Flag'],
+        ? ['modern_player1Flag', 'athlete1Flag', 'player1Flag', 'flag1', 'flag1_x5F_placeholder', 'leftPlayerFlag']
+        : ['modern_player2Flag', 'athlete2Flag', 'player2Flag', 'flag2', 'flag2_x5F_placeholder', 'rightPlayerFlag'],
       code
     );
 
@@ -544,12 +544,13 @@ class ScoreboardOverlay {
     const d = String(divisionRaw).trim();
     // Normalize to lower for checks
     const dl = d.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ');
+    const sanitized = dl.replace(/\./g, '');
     // Under N patterns
     let m = dl.match(/^under\s*(\d{1,2})$/);
     if (!m) m = dl.match(/^u\s*-?\s*(\d{1,2})$/);
     if (m) return `U${m[1]}`;
     // Explicit mappings per user rules
-    if (/^senior[s]?$/.test(dl)) return 'SEN';
+    if (/^sen(?:ior)?s?$/.test(sanitized)) return '';
     if (/^(junior|juniors|u18|under 18|u 18|u-18)$/.test(dl)) return 'JUN';
     if (/^(cadet|cadets|u15|under 15|u 15|u-15)$/.test(dl)) return 'CAD';
     if (/^masters?$/.test(dl) || /^veterans?$/.test(dl)) return 'MAS';
@@ -940,7 +941,10 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 1 flag
   updatePlayer1Flag(countryCode) {
-    const imageEl = this.setFlagForElementCandidates(['modern_player1Flag', 'leftPlayerFlag'], countryCode);
+    const imageEl = this.setFlagForElementCandidates(
+      ['modern_player1Flag', 'leftPlayerFlag', 'flag1', 'flag1_x5F_placeholder'],
+      countryCode
+    );
     if (!imageEl) return;
 
     const adjustLeftFlag = () => {
@@ -964,7 +968,10 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
 
   // Update Player 2 flag
   updatePlayer2Flag(countryCode) {
-    const imageEl = this.setFlagForElementCandidates(['modern_player2Flag', 'rightPlayerFlag'], countryCode);
+    const imageEl = this.setFlagForElementCandidates(
+      ['modern_player2Flag', 'rightPlayerFlag', 'flag2', 'flag2_x5F_placeholder'],
+      countryCode
+    );
     if (!imageEl) return;
 
     const adjustFlagPosition = () => {
@@ -1028,8 +1035,9 @@ class WinnerAnnouncementOverlay extends ScoreboardOverlay {
       this.updateElementAny(['winnerName', 'player_x5F_name', 'modern_winner_name'], name);
     }
     if (country != null) {
-      const formatted = String(country).trim().toUpperCase();
+      const formatted = this.normalizeFlagCode(country);
       this.updateElementAny(['winnerCountry', 'country_x5F_name', 'modern_winner_ioc'], formatted);
+      this.setFlagForElementCandidates(['modern_winner_flag', 'flag', 'flag_x5F_placeholder'], formatted);
     }
     if (seed != null && seed !== '') {
       this.updateElementAny(['winnerSeed', 'modern_winner_seed'], `(${seed})`);
@@ -1075,31 +1083,143 @@ class WinnerAnnouncementOverlay extends ScoreboardOverlay {
 // Previous Results Overlay Class
 class PreviousResultsOverlay extends ScoreboardOverlay {
   updatePlayerInfo(name, country, seed, wins, losses, winRate) {
-    this.updateElement('playerName', name);
-    this.updateElement('playerName2', name);
-    this.updateElement('playerCountry', country);
-    this.updateElement('playerSeed', `(${seed})`);
-    this.updateElement('totalWins', wins);
-    this.updateElement('totalLosses', losses);
-    this.updateElement('winRate', `${winRate}%`);
-  }
+    if (name != null) {
+      this.updateElement(['modern_player_name', 'playerName', 'playerName2'], name);
+      this.updateElement(['playerName2', 'playerSecondaryName'], name);
+    }
 
-  updateMatchResult(matchNumber, opponent, result, score) {
-    const resultElement = this.svg.getElementById(`match${matchNumber}Result`);
-    if (resultElement) {
-      resultElement.textContent = `${result} ${score}`;
-      resultElement.setAttribute('fill', result === 'WIN' ? '#10b981' : '#ef4444');
+    if (country != null) {
+      const code = this.normalizeFlagCode(country);
+      this.updateElement(['modern_player_ioc', 'playerCountry'], code);
+      this.setFlagForElementCandidates(['flag1', 'flag1_x5F_placeholder', 'playerFlag'], code);
+    }
+
+    if (seed != null) {
+      const seedValue = seed === '' ? '' : `(${seed})`;
+      this.updateElement(['playerSeed', 'modern_player_seed'], seedValue);
+    }
+
+    if (wins != null) this.updateElement(['totalWins', 'modern_total_wins'], wins);
+    if (losses != null) this.updateElement(['totalLosses', 'modern_total_losses'], losses);
+    if (winRate != null) {
+      const rateValue = winRate === '' ? '' : `${winRate}%`;
+      this.updateElement(['winRate', 'modern_win_rate'], rateValue);
     }
   }
 
-  updateTournamentInfo(tournament, weightClass) {
-    this.updateElement('tournamentName', tournament);
-    this.updateElement('weightClass', weightClass);
+  updateMatchResult(matchNumber, opponent, result, score, winType) {
+    const index = Number.parseInt(matchNumber, 10);
+    if (!Number.isFinite(index) || index < 1) return;
+
+    const opponentInfo = this.parseOpponent(opponent);
+    const normalizedResult = (result ?? '').toString().trim();
+    const normalizedScore = score == null ? '' : String(score).trim();
+    const normalizedWinType = winType == null ? normalizedResult : String(winType).trim();
+
+    const resultElement = this.getSvgElementAny([
+      `modern_result${index}`,
+      `match${index}Result`,
+      `result${index}`
+    ]);
+    if (resultElement) {
+      const displayResult = normalizedResult.toUpperCase();
+      const shortResult = displayResult.length > 1 ? displayResult[0] : displayResult;
+      this.setTextForElementOrGroup(resultElement, shortResult);
+      if (displayResult) {
+        const isWin = displayResult.startsWith('W');
+        resultElement.setAttribute('fill', isWin ? '#10b981' : '#ef4444');
+      }
+    }
+
+    this.updateElement([
+      `modern_win_type${index}`,
+      `winType${index}`
+    ], normalizedWinType);
+
+    this.updateElement([
+      `modern_score${index}`,
+      `match${index}Score`,
+      `score${index}`
+    ], normalizedScore);
+
+    if (opponentInfo.name || opponentInfo.display) {
+      this.updateElement([
+        `modern_opponent${index}_name`,
+        `opponent${index}Name`
+      ], opponentInfo.name || opponentInfo.display);
+    }
+
+    this.updateElement([
+      `modern_opponent${index}_ioc`,
+      `opponent${index}Country`
+    ], opponentInfo.code);
+
+    const flagIndex = Math.max(2, Math.min(4, index + 1));
+    this.setFlagForElementCandidates([
+      `flag${flagIndex}`,
+      `flag${flagIndex}_x5F_placeholder`,
+      `opponent${index}Flag`
+    ], opponentInfo.code);
   }
 
-  updateElement(id, value) {
-    const element = this.svg.getElementById(id);
-    if (element) element.textContent = value;
+  updateTournamentInfo(tournament, weightClass) {
+    if (tournament != null) {
+      this.updateElement(['modern_tournament_name', 'tournamentName'], tournament);
+    }
+    if (weightClass != null) {
+      this.updateElement(['modern_weight_class', 'weightClass'], weightClass);
+    }
+  }
+
+  parseOpponent(opponent) {
+    if (opponent == null) {
+      return { code: '', name: '', display: '' };
+    }
+
+    if (typeof opponent === 'object') {
+      const code = this.normalizeFlagCode(opponent.ioc || opponent.code || opponent.country || '');
+      const name = opponent.name || opponent.fullName || opponent.displayName || '';
+      const display = opponent.display || [code, name].filter(Boolean).join(code && name ? ' - ' : '') || name || code;
+      return { code, name, display };
+    }
+
+    const raw = String(opponent).trim();
+    let code = '';
+    let name = '';
+    let remainder = raw;
+
+    const hyphenMatch = raw.match(/^\s*([A-Z]{2,3})\s*[-–|]\s*(.+)$/);
+    if (hyphenMatch) {
+      code = hyphenMatch[1];
+      remainder = hyphenMatch[2];
+    } else {
+      const parenMatch = raw.match(/^\s*(.+?)\s*\(([A-Z]{2,3})\)\s*$/);
+      if (parenMatch) {
+        remainder = parenMatch[1];
+        code = parenMatch[2];
+      } else if (/^[A-Z]{2,3}$/.test(raw)) {
+        code = raw;
+        remainder = '';
+      }
+    }
+
+    name = remainder.trim();
+    if (!name && code) {
+      name = raw.replace(code, '').replace(/^[-–|]+/, '').trim();
+    }
+
+    return {
+      code: this.normalizeFlagCode(code),
+      name,
+      display: raw
+    };
+  }
+
+  updateElement(ids, value) {
+    const candidates = Array.isArray(ids) ? ids : [ids];
+    const element = this.getSvgElementAny(candidates);
+    if (!element) return;
+    this.setTextForElementOrGroup(element, value == null ? '' : String(value));
   }
 }
 
