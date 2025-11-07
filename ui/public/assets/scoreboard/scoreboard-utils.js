@@ -873,6 +873,135 @@ class ScoreboardOverlay {
   }
 }
 
+// Player Stat Overlay Class
+class PlayerStatOverlay extends ScoreboardOverlay {
+  constructor(svgElement) {
+    super(svgElement);
+  }
+
+  static formatStatValue(value) {
+    if (value == null) return '--';
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    const text = String(value).trim();
+    return text.length ? text : '--';
+  }
+
+  normalizeSide(side) {
+    const raw = (side ?? '').toString().toLowerCase();
+    if (raw.includes('red') || raw.includes('2')) return 'red';
+    return 'blue';
+  }
+
+  normalizeStatKey(input) {
+    if (!input) return null;
+    const compact = String(input).toLowerCase().replace(/[^a-z]/g, '');
+    return PlayerStatOverlay.STAT_KEY_MAP[compact] || null;
+  }
+
+  getStatIds(side, stat) {
+    const entry = PlayerStatOverlay.STAT_ID_MAP[stat];
+    if (!entry) return [];
+    return entry[side] || [];
+  }
+
+  updatePlayerStat(side, statKey, value) {
+    const normalizedSide = this.normalizeSide(side);
+    const canonicalStat = this.normalizeStatKey(statKey);
+    if (!canonicalStat) {
+      console.warn(`⚠️ Unknown stat key "${statKey}"`);
+      return;
+    }
+    const candidates = this.getStatIds(normalizedSide, canonicalStat);
+    const target = this.getSvgElementAny(candidates);
+    if (!target) {
+      console.warn(`⚠️ Could not find ${canonicalStat} element for ${normalizedSide} (tried: ${candidates.join(', ')})`);
+      return;
+    }
+    const display = PlayerStatOverlay.formatStatValue(value);
+    this.setTextForElementOrGroup(target, display);
+    console.log(`✅ Updated ${normalizedSide} ${canonicalStat}: ${display}`);
+  }
+
+  updatePlayerStats(side, stats = {}) {
+    if (!stats || typeof stats !== 'object') {
+      this.clearPlayerStats(side);
+      return;
+    }
+    const normalizedSide = this.normalizeSide(side);
+    let countryCode;
+    for (const key of ['country', 'flag', 'ioc', 'countryCode']) {
+      if (Object.prototype.hasOwnProperty.call(stats, key)) {
+        countryCode = stats[key];
+        break;
+      }
+    }
+    if (countryCode !== undefined) {
+      this.updateCountry(normalizedSide, countryCode);
+    }
+
+    ['legLength', 'height', 'weight', 'age'].forEach((stat) => {
+      if (Object.prototype.hasOwnProperty.call(stats, stat)) {
+        this.updatePlayerStat(normalizedSide, stat, stats[stat]);
+      }
+    });
+  }
+
+  clearPlayerStats(side) {
+    const normalizedSide = this.normalizeSide(side);
+    ['legLength', 'height', 'weight', 'age'].forEach((stat) => {
+      this.updatePlayerStat(normalizedSide, stat, null);
+    });
+    this.updateCountry(normalizedSide, '');
+  }
+
+  updateDivisionLabel(label) {
+    const container = this.getSvgElementAny(['modern_division_label', 'modern_title_info']);
+    if (!container) {
+      console.warn('⚠️ Could not find division label container');
+      return;
+    }
+    let target = container;
+    if (container.id === 'modern_title_info') {
+      target = Array.from(container.querySelectorAll('text')).find((el) => !el.id);
+    }
+    if (!target) {
+      console.warn('⚠️ Could not resolve division label text node');
+      return;
+    }
+    const value = label == null ? '' : String(label);
+    this.setTextForElementOrGroup(target, value);
+    console.log(`✅ Updated division label: ${value}`);
+  }
+}
+
+PlayerStatOverlay.STAT_KEY_MAP = {
+  leglength: 'legLength',
+  leg: 'legLength',
+  leglen: 'legLength',
+  height: 'height',
+  weight: 'weight',
+  age: 'age'
+};
+
+PlayerStatOverlay.STAT_ID_MAP = {
+  legLength: {
+    blue: ['modern_player1_leg_length', 'player1LegLength'],
+    red: ['modern_player2_leg_length', 'player2LegLength']
+  },
+  height: {
+    blue: ['modern_player1_height', 'player1Height'],
+    red: ['modern_player2_height', 'player2Height']
+  },
+  weight: {
+    blue: ['modern_player1_weight', 'player1Weight'],
+    red: ['modern_player2_weight', 'player2Weight']
+  },
+  age: {
+    blue: ['modern_player1_age', 'player1Age'],
+    red: ['modern_player2_age', 'player2Age']
+  }
+};
+
 // Player Introduction Overlay Class
 class PlayerIntroductionOverlay extends ScoreboardOverlay {
   constructor(svgElement) {

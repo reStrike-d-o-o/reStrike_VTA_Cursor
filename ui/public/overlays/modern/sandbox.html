@@ -341,6 +341,26 @@
                     }
                 },
                 {
+                    key: 'playerStats',
+                    title: 'Player Stats',
+                    description: 'Side-by-side biometrics overlay',
+                    svgPath: '/assets/scoreboard/modern/modern_player_stat_overlay.svg',
+                    ctor: window.PlayerStatOverlay,
+                    smoke(instance) {
+                        instance.updateDivisionLabel("Women's -80kg / Semi Final");
+                        instance.updateCountry('blue', 'AUT');
+                        instance.updateCountry('red', 'CRO');
+                        instance.updatePlayerStats('blue', { legLength: 110, height: 191, weight: 80, age: 21 });
+                        instance.updatePlayerStats('red', { legLength: 118, height: 197, weight: 84, age: 22 });
+                        return 'player stats populated';
+                    },
+                    reset(instance) {
+                        instance.updateDivisionLabel('Division / Round');
+                        instance.clearPlayerStats('blue');
+                        instance.clearPlayerStats('red');
+                    }
+                },
+                {
                     key: 'intro',
                     title: 'Player Introduction',
                     description: 'Versus slate before the match',
