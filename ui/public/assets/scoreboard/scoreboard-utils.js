@@ -227,8 +227,8 @@ class ScoreboardOverlay {
   updatePlayerName(player, name) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const candidateIds = player === 'blue'
-      ? ['modern_player1Name', 'athlete1Name', 'player1Name']
-      : ['modern_player2Name', 'athlete2Name', 'player2Name'];
+      ? ['modern_player1Name', 'modern_player1_name', 'athlete1Name', 'player1Name']
+      : ['modern_player2Name', 'modern_player2_name', 'athlete2Name', 'player2Name'];
     const nameElement = this.getSvgElementAny(candidateIds);
     if (nameElement) {
       const raw = (name == null ? '' : String(name));
@@ -274,8 +274,8 @@ class ScoreboardOverlay {
     const code = this.normalizeFlagCode(country);
     const imageEl = this.setFlagForElementCandidates(
       player === 'blue'
-        ? ['modern_player1Flag', 'athlete1Flag', 'player1Flag', 'flag1', 'flag1_x5F_placeholder', 'leftPlayerFlag']
-        : ['modern_player2Flag', 'athlete2Flag', 'player2Flag', 'flag2', 'flag2_x5F_placeholder', 'rightPlayerFlag'],
+        ? ['modern_player1Flag', 'modern_player1_flag', 'athlete1Flag', 'player1Flag', 'flag1', 'flag1_x5F_placeholder', 'leftPlayerFlag']
+        : ['modern_player2Flag', 'modern_player2_flag', 'athlete2Flag', 'player2Flag', 'flag2', 'flag2_x5F_placeholder', 'rightPlayerFlag'],
       code
     );
 
@@ -283,6 +283,14 @@ class ScoreboardOverlay {
       console.log(`✅ Updated ${player} player country flag: ${code}`);
     } else {
       console.warn(`⚠️ Could not find flag element for ${player}`);
+    }
+
+    const labelCandidates = player === 'blue'
+      ? ['modern_player1IOC', 'modern_player1_ioc', 'modern_player1Country', 'player1Country', 'athlete1Country']
+      : ['modern_player2IOC', 'modern_player2_ioc', 'modern_player2Country', 'player2Country', 'athlete2Country'];
+    const labelElement = this.getSvgElementAny(labelCandidates);
+    if (labelElement) {
+      this.setTextForElementOrGroup(labelElement, code);
     }
   }
 
@@ -980,16 +988,53 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
         setTimeout(adjustFlagPosition, 100);
         return;
       }
-      const newX = 1640 - flagWidth;
-      imageEl.setAttribute('x', newX.toString());
+
+      const container = this.getSvgElementAny([
+        'modern_player2Flag',
+        'rightPlayerFlag',
+        'flag2',
+        'flag2_x5F_placeholder'
+      ]);
+
+      let anchorRight = Number.parseFloat(imageEl.dataset.anchorRight || '');
+      let leftBoundary = Number.NaN;
+
+      if (container) {
+        const rect = container.querySelector('rect');
+        if (rect) {
+          const rectX = Number.parseFloat(rect.getAttribute('x') || '');
+          const rectWidth = Number.parseFloat(rect.getAttribute('width') || '');
+          if (Number.isFinite(rectX) && Number.isFinite(rectWidth)) {
+            leftBoundary = rectX;
+            anchorRight = rectX + rectWidth;
+          }
+        }
+      }
+
+      if (!Number.isFinite(anchorRight)) {
+        const initialX = Number.parseFloat(imageEl.getAttribute('x') || '');
+        const initialWidth = Number.parseFloat(imageEl.getAttribute('width') || '');
+        const inferredRight = Number.isFinite(initialX) && Number.isFinite(initialWidth)
+          ? initialX + initialWidth
+          : Number.NaN;
+        anchorRight = Number.isFinite(inferredRight) ? inferredRight : 1640;
+      }
+
+      imageEl.dataset.anchorRight = String(anchorRight);
+
+      const computedLeft = anchorRight - flagWidth;
+      const targetX = Number.isFinite(leftBoundary)
+        ? Math.max(leftBoundary, computedLeft)
+        : computedLeft;
+      imageEl.setAttribute('x', targetX.toString());
 
       const glassRect = this.getSvgElementAny(['modern_player2FlagGlass', 'rightPlayerFlagGlass']);
       if (glassRect) {
-        glassRect.setAttribute('x', newX.toString());
+        glassRect.setAttribute('x', targetX.toString());
         glassRect.setAttribute('width', flagWidth.toString());
       }
 
-      console.log(`✅ Updated Player 2 flag position: x=${newX}, width=${flagWidth}`);
+      console.log(`✅ Updated Player 2 flag position: x=${targetX}, width=${flagWidth}`);
     };
 
     this.onSvgImageLoad(imageEl, adjustFlagPosition);

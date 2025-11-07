@@ -6,5 +6,7 @@
     "editor.acceptSuggestionOnCommitCharacter": true,
     "git.enableSmartCommit": false,
     "github.copilot.chat.customInstructionsInSystemMessage": true,
-    "testing.showAllMessages": false
+    "testing.showAllMessages": false,
+    "builder.command": "cargo turi dev",
+    "builder.serverUrl": "http://localhost:3000"
 }
