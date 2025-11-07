@@ -191,11 +191,41 @@
           <text id="modern_player2_name" class="cls-11" transform="translate(227.713043 310.075439)"><tspan x="0" y="0">L. ANDRICH</tspan></text>
           <rect class="cls-18" x="1328.363876" y="264.388327" width="139.736816" height="65.999268"/>
           <g id="modern_player2_results">
-            <text id="modern_player2_r1" class="cls-14" transform="translate(1153.16803 310.102539)"><tspan x="0" y="0">2</tspan></text>
-            <text id="modern_player2_r2" class="cls-14" transform="translate(1219.167542 310.102539)"><tspan x="0" y="0">2</tspan></text>
-            <text id="modern_player2_r3" class="cls-14" transform="translate(1283.684631 309.887695)"><tspan x="0" y="0">0</tspan></text>
-            <text id="modern_player2_current_round" class="cls-14" transform="translate(1388.035645 310.101807)"><tspan x="0" y="0">2</tspan></text>
-            <text id="modern_player2_gj" class="cls-14" transform="translate(1489.421387 309.887451)"><tspan x="0" y="0">0</tspan></text>
+            <text
+              id="modern_player2_r1"
+              class="cls-14"
+              transform="translate(1153.16803 310.102539)"
+            >
+              <tspan x="0" y="0">2</tspan>
+            </text>
+            <text
+              id="modern_player2_r2"
+              class="cls-14"
+              transform="translate(1219.167542 310.102539)"
+            >
+              <tspan x="0" y="0">2</tspan>
+            </text>
+            <text
+              id="modern_player2_r3"
+              class="cls-14"
+              transform="translate(1283.684631 309.887695)"
+            >
+              <tspan x="0" y="0">0</tspan>
+            </text>
+            <text
+              id="modern_player2_current_round"
+              class="cls-14"
+              transform="translate(1388.035645 310.101807)"
+            >
+              <tspan x="0" y="0">2</tspan>
+            </text>
+            <text
+              id="modern_player2_gj"
+              class="cls-14"
+              transform="translate(1489.421387 309.887451)"
+            >
+              <tspan x="0" y="0">0</tspan>
+            </text>
           </g>
           <g id="divider-2" data-name="divider">
             <line class="cls-2" x1="1196.364838" y1="275.981041" x2="1196.364838" y2="318.794988"/>
