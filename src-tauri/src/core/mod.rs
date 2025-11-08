@@ -1,6 +1,7 @@
 //! Core application functionality and initialization
 
 pub mod app;
+pub mod pss_listener;
 // pub mod config;
 // pub mod state;
 

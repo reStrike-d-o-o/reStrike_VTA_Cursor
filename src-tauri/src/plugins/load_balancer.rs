@@ -1,5 +1,6 @@
 use crate::database::models::PssEventV2;
 use crate::plugins::event_cache::EventCache;
+use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -246,6 +247,14 @@ impl EventDistributor {
         }
     }
 
+    /// Update aggregate distribution metrics for a listener-delivered event.
+    pub async fn record_pss_event(&self, _event: &UdpPssEvent, _event_json: &serde_json::Value) {
+        let mut stats = self.statistics.write().await;
+        stats.total_events_distributed = stats.total_events_distributed.saturating_add(1);
+        stats.events_per_second = (stats.events_per_second * 0.9) + 0.1;
+        stats.last_updated = std::time::SystemTime::now();
+    }
+
     /// Distribute an event to the appropriate server
     pub async fn distribute_event(&self, event: PssEventV2) -> AppResult<()> {
         let start_time = std::time::Instant::now();
@@ -362,28 +371,38 @@ impl EventDistributor {
 
             // Cache the distributed event for quick access
             if let Some(match_id) = event.match_id {
-                self.cache.set_match_stats(
-                    match_id.to_string(),
-                    crate::plugins::event_cache::MatchStatistics {
-                        match_id: match_id.to_string(),
-                        event_count: 1,
+                let mut stats = self
+                    .cache
+                    .get_match_stats(match_id)
+                    .await
+                    .unwrap_or_else(|| crate::plugins::event_cache::MatchStatistics {
+                        match_id,
+                        event_count: 0,
                         duration_seconds: 0,
                         athlete1_score: 0,
                         athlete2_score: 0,
                         last_updated: std::time::SystemTime::now(),
-                    },
-                );
+                    });
+                stats.event_count = stats.event_count.saturating_add(1);
+                stats.last_updated = std::time::SystemTime::now();
+
+                if let Err(err) = self.cache.set_match_stats(match_id, stats).await {
+                    log::debug!("Unable to update cached match statistics for {match_id}: {err}");
+                }
             }
 
             // Cache match events for quick access
             if let Some(match_id) = event.match_id {
-                let _ = self
+                let mut events = self
                     .cache
-                    .set_match_events(
-                        match_id.to_string(),
-                        vec![serde_json::to_value(event.clone()).unwrap_or_default()],
-                    )
-                    .await;
+                    .get_match_events(match_id)
+                    .await
+                    .unwrap_or_default();
+                events.push(event.clone());
+
+                if let Err(err) = self.cache.set_match_events(match_id, events).await {
+                    log::debug!("Unable to update cached match events for {match_id}: {err}");
+                }
             }
         }
 

@@ -1,11 +1,15 @@
+use crate::database::models::PssEventV2 as DbPssEvent;
+use crate::plugins::event_cache::{
+    AthleteStatistics, EventCache, MatchStatistics, TournamentStatistics,
+};
+use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
+use crate::AppResult;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{mpsc, RwLock, broadcast};
-use tokio::time::{Duration, interval};
-use serde::{Serialize, Deserialize};
-use crate::database::models::PssEvent as PssEvent;
-use crate::plugins::event_cache::{EventCache, AthleteStatistics, TournamentStatistics, MatchStatistics};
-use crate::AppResult;
+use std::time::Instant;
+use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::time::{interval, Duration};
 
 /// Event stream configuration
 #[derive(Debug, Clone)]
@@ -31,14 +35,15 @@ impl Default for EventStreamConfig {
 
 /// Event stream processor for real-time event handling
 pub struct EventStreamProcessor {
-    event_tx: mpsc::UnboundedSender<PssEvent>,
-    event_rx: Option<mpsc::UnboundedReceiver<PssEvent>>,
-    broadcast_tx: broadcast::Sender<PssEvent>,
+    event_tx: mpsc::UnboundedSender<DbPssEvent>,
+    event_rx: Option<mpsc::UnboundedReceiver<DbPssEvent>>,
+    broadcast_tx: broadcast::Sender<DbPssEvent>,
     cache: Arc<EventCache>,
     config: EventStreamConfig,
     processors: Arc<RwLock<Vec<tokio::task::JoinHandle<()>>>>,
     analytics_task: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
     statistics: Arc<RwLock<StreamStatistics>>,
+    raw_metrics: Arc<RwLock<RawMetrics>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +67,12 @@ impl Default for StreamStatistics {
             last_updated: std::time::SystemTime::now(),
         }
     }
+}
+
+#[derive(Debug, Default)]
+struct RawMetrics {
+    last_tick: Option<Instant>,
+    events_since_tick: u64,
 }
 
 /// Real-time analytics data
@@ -95,20 +106,21 @@ impl EventStreamProcessor {
             processors: Arc::new(RwLock::new(Vec::new())),
             analytics_task: Arc::new(RwLock::new(None)),
             statistics: Arc::new(RwLock::new(StreamStatistics::default())),
+            raw_metrics: Arc::new(RwLock::new(RawMetrics::default())),
         }
     }
 
     /// Start the event stream processor
     pub async fn start(&mut self) -> AppResult<()> {
         log::info!("Starting Event Stream Processor...");
-        
+
         // Start event processing loop
         let event_rx = self.event_rx.take().unwrap();
         let broadcast_tx = self.broadcast_tx.clone();
         let cache = self.cache.clone();
         let config = self.config.clone();
         let statistics = self.statistics.clone();
-        
+
         let _processor_handle = tokio::spawn(async move {
             Self::event_processing_loop(event_rx, broadcast_tx, cache, config, statistics).await;
         });
@@ -116,8 +128,9 @@ impl EventStreamProcessor {
         // Start analytics task if enabled
         if self.config.enable_real_time_analytics {
             let cache_clone = self.cache.clone();
-            let analytics_interval = Duration::from_millis(self.config.analytics_update_interval_ms);
-            
+            let analytics_interval =
+                Duration::from_millis(self.config.analytics_update_interval_ms);
+
             let analytics_handle = tokio::spawn(async move {
                 Self::analytics_update_loop(cache_clone, analytics_interval).await;
             });
@@ -131,7 +144,7 @@ impl EventStreamProcessor {
             let broadcast_rx = self.broadcast_tx.subscribe();
             let cache_clone = self.cache.clone();
             let statistics_clone = self.statistics.clone();
-            
+
             let processor_handle = tokio::spawn(async move {
                 Self::event_processor_worker(i, broadcast_rx, cache_clone, statistics_clone).await;
             });
@@ -140,14 +153,17 @@ impl EventStreamProcessor {
             processors.push(processor_handle);
         }
 
-        log::info!("Event Stream Processor started with {} workers", self.config.max_concurrent_processors);
+        log::info!(
+            "Event Stream Processor started with {} workers",
+            self.config.max_concurrent_processors
+        );
         Ok(())
     }
 
     /// Stop the event stream processor
     pub async fn stop(&self) -> AppResult<()> {
         log::info!("Stopping Event Stream Processor...");
-        
+
         // Stop analytics task
         if let Some(analytics_handle) = self.analytics_task.write().await.take() {
             analytics_handle.abort();
@@ -164,14 +180,54 @@ impl EventStreamProcessor {
     }
 
     /// Send an event to the stream
-    pub async fn send_event(&self, event: PssEvent) -> AppResult<()> {
-        self.event_tx.send(event)
-            .map_err(|e| crate::AppError::ConfigError(format!("Failed to send event to stream: {}", e)))?;
+    pub async fn send_event(&self, event: DbPssEvent) -> AppResult<()> {
+        self.event_tx.send(event).map_err(|e| {
+            crate::AppError::ConfigError(format!("Failed to send event to stream: {}", e))
+        })?;
+        Ok(())
+    }
+
+    /// Record a live UDP event for downstream metrics without enqueueing database work.
+    pub async fn record_pss_event(
+        &self,
+        _event: &UdpPssEvent,
+        _event_json: &serde_json::Value,
+    ) -> AppResult<()> {
+        let now = Instant::now();
+
+        {
+            let mut metrics = self.raw_metrics.write().await;
+            if let Some(last_tick) = metrics.last_tick {
+                metrics.events_since_tick += 1;
+                let elapsed = now.duration_since(last_tick);
+                if elapsed >= std::time::Duration::from_secs(1) {
+                    let elapsed_secs = elapsed.as_secs_f64().max(f64::EPSILON);
+                    let events = metrics.events_since_tick as f64;
+                    metrics.events_since_tick = 0;
+                    metrics.last_tick = Some(now);
+
+                    let mut stats = self.statistics.write().await;
+                    stats.events_per_second = events / elapsed_secs;
+                    stats.active_processors = self.config.max_concurrent_processors;
+                    stats.last_updated = std::time::SystemTime::now();
+                }
+            } else {
+                metrics.last_tick = Some(now);
+                metrics.events_since_tick = 1;
+            }
+        }
+
+        {
+            let mut stats = self.statistics.write().await;
+            stats.total_events_processed = stats.total_events_processed.saturating_add(1);
+            stats.last_updated = std::time::SystemTime::now();
+        }
+
         Ok(())
     }
 
     /// Subscribe to event stream
-    pub fn subscribe(&self) -> broadcast::Receiver<PssEvent> {
+    pub fn subscribe(&self) -> broadcast::Receiver<DbPssEvent> {
         self.broadcast_tx.subscribe()
     }
 
@@ -182,8 +238,8 @@ impl EventStreamProcessor {
 
     /// Main event processing loop
     async fn event_processing_loop(
-        mut event_rx: mpsc::UnboundedReceiver<PssEvent>,
-        broadcast_tx: broadcast::Sender<PssEvent>,
+        mut event_rx: mpsc::UnboundedReceiver<DbPssEvent>,
+        broadcast_tx: broadcast::Sender<DbPssEvent>,
         cache: Arc<EventCache>,
         config: EventStreamConfig,
         statistics: Arc<RwLock<StreamStatistics>>,
@@ -200,7 +256,7 @@ impl EventStreamProcessor {
                     match event {
                         Some(event) => {
                             event_buffer.push(event);
-                            
+
                             // Process buffer if it's full
                             if event_buffer.len() >= config.buffer_size {
                                 Self::process_event_batch(&event_buffer, &broadcast_tx, &cache).await;
@@ -214,7 +270,7 @@ impl EventStreamProcessor {
                         }
                     }
                 }
-                
+
                 // Periodic processing
                 _ = interval.tick() => {
                     if !event_buffer.is_empty() {
@@ -222,7 +278,7 @@ impl EventStreamProcessor {
                         events_processed += event_buffer.len() as u64;
                         event_buffer.clear();
                     }
-                    
+
                     // Update statistics
                     let elapsed = start_time.elapsed();
                     if elapsed.as_secs() > 0 {
@@ -238,8 +294,8 @@ impl EventStreamProcessor {
 
     /// Process a batch of events
     async fn process_event_batch(
-        events: &[PssEvent],
-        broadcast_tx: &broadcast::Sender<PssEvent>,
+        events: &[DbPssEvent],
+        broadcast_tx: &broadcast::Sender<DbPssEvent>,
         cache: &Arc<EventCache>,
     ) {
         for event in events {
@@ -258,45 +314,46 @@ impl EventStreamProcessor {
     /// Event processor worker
     async fn event_processor_worker(
         worker_id: usize,
-        mut broadcast_rx: broadcast::Receiver<PssEvent>,
+        mut broadcast_rx: broadcast::Receiver<DbPssEvent>,
         cache: Arc<EventCache>,
         statistics: Arc<RwLock<StreamStatistics>>,
     ) {
         log::info!("Event processor worker {} started", worker_id);
-        
+
         let mut processing_times = Vec::new();
-        
+
         while let Ok(event) = broadcast_rx.recv().await {
             let start_time = std::time::Instant::now();
-            
+
             // Process the event
             if let Err(e) = Self::process_single_event(&cache, &event).await {
                 log::error!("Worker {} failed to process event: {}", worker_id, e);
             }
-            
+
             let processing_time = start_time.elapsed();
             processing_times.push(processing_time.as_millis() as f64);
-            
+
             // Keep only last 100 processing times for average calculation
             if processing_times.len() > 100 {
                 processing_times.remove(0);
             }
-            
+
             // Update statistics
             let mut stats = statistics.write().await;
-            stats.average_processing_time_ms = processing_times.iter().sum::<f64>() / processing_times.len() as f64;
+            stats.average_processing_time_ms =
+                processing_times.iter().sum::<f64>() / processing_times.len() as f64;
         }
-        
+
         log::info!("Event processor worker {} stopped", worker_id);
     }
 
     /// Analytics update loop
     async fn analytics_update_loop(cache: Arc<EventCache>, interval_duration: Duration) {
         let mut interval_timer = interval(interval_duration);
-        
+
         loop {
             interval_timer.tick().await;
-            
+
             // Update real-time analytics
             if let Err(e) = Self::update_real_time_analytics(&cache).await {
                 log::warn!("Failed to update analytics: {}", e);
@@ -305,30 +362,20 @@ impl EventStreamProcessor {
     }
 
     /// Update cache for a specific event
-    async fn update_cache_for_event(cache: &Arc<EventCache>, event: &PssEvent) -> AppResult<()> {
-        // Invalidate relevant caches when new events arrive
-        if let Some(tournament_id) = event.tournament_id {
-            cache.invalidate_tournament(tournament_id).await?;
-        }
-        
+    async fn update_cache_for_event(cache: &Arc<EventCache>, event: &DbPssEvent) -> AppResult<()> {
         if let Some(match_id) = event.match_id {
             cache.invalidate_match(match_id).await?;
         }
-        
-        // Update athlete cache if event involves athletes
-        // Note: PssEventV2 doesn't have athlete_id field, would need to extract from parsed_data
-        // For now, we'll skip athlete-specific cache invalidation
-        
+
         Ok(())
     }
 
     /// Process a single event
-    async fn process_single_event(cache: &Arc<EventCache>, event: &PssEvent) -> AppResult<()> {
-        // Update match statistics if match_id is present
+    async fn process_single_event(cache: &Arc<EventCache>, event: &DbPssEvent) -> AppResult<()> {
         if let Some(match_id) = event.match_id {
             Self::update_match_statistics(cache, match_id, event).await?;
         }
-        
+
         Ok(())
     }
 
@@ -336,10 +383,12 @@ impl EventStreamProcessor {
     async fn update_athlete_statistics(
         cache: &Arc<EventCache>,
         athlete_id: i64,
-        _event: &PssEventV2,
+        _event: &DbPssEvent,
     ) -> AppResult<()> {
         // Get current stats or create new ones
-        let mut stats = cache.get_athlete_stats(athlete_id).await
+        let mut stats = cache
+            .get_athlete_stats(athlete_id)
+            .await
             .unwrap_or_else(|| AthleteStatistics {
                 athlete_id,
                 total_events: 0,
@@ -368,10 +417,12 @@ impl EventStreamProcessor {
     async fn update_match_statistics(
         cache: &Arc<EventCache>,
         match_id: i64,
-        _event: &PssEventV2,
+        _event: &DbPssEvent,
     ) -> AppResult<()> {
         // Get current stats or create new ones
-        let mut stats = cache.get_match_stats(match_id).await
+        let mut stats = cache
+            .get_match_stats(match_id)
+            .await
             .unwrap_or_else(|| MatchStatistics {
                 match_id,
                 event_count: 0,
@@ -400,21 +451,21 @@ impl EventStreamProcessor {
 
 /// Event stream subscriber for consuming events
 pub struct EventStreamSubscriber {
-    rx: broadcast::Receiver<PssEventV2>,
+    rx: broadcast::Receiver<DbPssEvent>,
 }
 
 impl EventStreamSubscriber {
-    pub fn new(rx: broadcast::Receiver<PssEventV2>) -> Self {
+    pub fn new(rx: broadcast::Receiver<DbPssEvent>) -> Self {
         Self { rx }
     }
 
     /// Receive the next event
-    pub async fn recv(&mut self) -> Result<PssEventV2, broadcast::error::RecvError> {
+    pub async fn recv(&mut self) -> Result<DbPssEvent, broadcast::error::RecvError> {
         self.rx.recv().await
     }
 
     /// Try to receive an event without blocking
-    pub fn try_recv(&mut self) -> Result<PssEventV2, broadcast::error::TryRecvError> {
+    pub fn try_recv(&mut self) -> Result<DbPssEvent, broadcast::error::TryRecvError> {
         self.rx.try_recv()
     }
-} 
+}

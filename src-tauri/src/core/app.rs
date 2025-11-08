@@ -1,5 +1,6 @@
 //! Main application class and lifecycle management
 
+use crate::core::pss_listener::PssListener;
 use crate::openapi::{OpenApiManager, OpenApiRuntime};
 use crate::plugins::plugin_triggers::TriggerPlugin;
 #[cfg(feature = "youtube")]
@@ -31,10 +32,6 @@ use std::sync::{
 };
 use tauri::{Emitter, Manager};
 use tokio::sync::{broadcast, Mutex, RwLock};
-
-// Global PSS event broadcaster for real-time event emission to WebSocket overlays
-static PSS_EVENT_BROADCASTER: std::sync::OnceLock<broadcast::Sender<serde_json::Value>> =
-    std::sync::OnceLock::new();
 
 // Global Tauri app handle for real-time event emission to frontend
 static TAURI_APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
@@ -93,6 +90,7 @@ pub struct App {
     event_stream_processor: Arc<EventStreamProcessor>,
     event_distributor: Arc<EventDistributor>,
     advanced_analytics: Arc<AdvancedAnalytics>,
+    pss_listener: Arc<PssListener>,
     // Track last launched mpv process to close it when match resumes or challenge is resolved
     mpv_child: Arc<Mutex<Option<Child>>>,
     shutdown_prompted: Arc<AtomicBool>,
@@ -106,9 +104,6 @@ impl App {
     /// Create a new application instance
     pub async fn new() -> AppResult<Self> {
         log::info!("Creating new application instance...");
-
-        // Initialize global PSS event broadcaster for WebSocket overlays
-        PSS_EVENT_BROADCASTER.get_or_init(|| broadcast::channel(1000).0); // Large buffer for real-time performance
 
         let state = Arc::new(RwLock::new(AppState::default()));
 
@@ -295,6 +290,10 @@ impl App {
         let advanced_analytics = Arc::new(AdvancedAnalytics::new(event_cache.clone()));
         log::info!("Advanced analytics initialized");
 
+        let pss_listener = Arc::new(PssListener::new(1000));
+        PssListener::set_global(pss_listener.clone());
+        log::info!("PSS listener initialized");
+
         // Initialize WebSocket plugin for HTML overlays
         let (event_tx, _event_rx) =
             tokio::sync::mpsc::unbounded_channel::<crate::plugins::plugin_udp::PssEvent>();
@@ -357,6 +356,7 @@ impl App {
             event_stream_processor,
             event_distributor,
             advanced_analytics,
+            pss_listener,
             mpv_child: Arc::new(Mutex::new(None)),
             shutdown_prompted: Arc::new(AtomicBool::new(false)),
             pss_websocket_task: Arc::new(tokio::sync::Mutex::new(None)),
@@ -841,6 +841,10 @@ impl App {
 
     pub fn advanced_analytics(&self) -> &Arc<AdvancedAnalytics> {
         &self.advanced_analytics
+    }
+
+    pub fn pss_listener(&self) -> &Arc<PssListener> {
+        &self.pss_listener
     }
 
     /// Trigger instant round replay: save replay buffer, resolve last file within configured wait, launch mpv
@@ -1366,12 +1370,7 @@ impl App {
             }
         }
 
-        // Broadcast to WebSocket overlays
-        if let Some(broadcaster) = PSS_EVENT_BROADCASTER.get() {
-            if let Err(e) = broadcaster.send(event_json) {
-                log::warn!("Failed to broadcast PSS event to WebSocket overlays: {e}");
-            }
-        }
+        PssListener::broadcast_global(None, event_json);
     }
 
     /// Emit a custom event name to frontend with JSON payload
@@ -1401,9 +1400,7 @@ impl App {
 
     /// Get a receiver for PSS events (for WebSocket plugin)
     pub fn subscribe_to_pss_events() -> Option<broadcast::Receiver<serde_json::Value>> {
-        PSS_EVENT_BROADCASTER
-            .get()
-            .map(|broadcaster| broadcaster.subscribe())
+        PssListener::subscribe_json_global()
     }
 
     /// Handle PSS events and forward them to WebSocket clients
@@ -1438,7 +1435,9 @@ impl App {
             // Emit to frontend via Tauri events
             let event_json =
                 crate::plugins::plugin_udp::UdpServer::convert_pss_event_to_json(&event);
+            let listener_json = event_json.clone();
             Self::emit_pss_event(event_json);
+            PssListener::broadcast_global(Some(event.clone()), listener_json);
 
             // Forward to recording event handler for automatic recording control
             #[cfg(feature = "obs-obws")]

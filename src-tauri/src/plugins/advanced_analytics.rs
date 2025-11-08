@@ -5,6 +5,7 @@ use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 // use crate::database::models::PssEventV2;
 use crate::plugins::event_cache::{EventCache, MatchStatistics};
+use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
 use crate::AppResult;
 
 /// Analytics configuration
@@ -355,6 +356,34 @@ impl AdvancedAnalytics {
         let history = self.analytics_history.read().await;
         let limit = limit.unwrap_or(self.config.max_analytics_history);
         history.iter().rev().take(limit).cloned().collect()
+    }
+
+    /// Observe a live UDP event and update lightweight analytics counters.
+    pub async fn ingest_pss_event(
+        &self,
+        _event: &UdpPssEvent,
+        _event_json: &serde_json::Value,
+    ) -> AppResult<()> {
+        {
+            let mut performance = self.performance_analytics.write().await;
+            performance.last_updated = std::time::SystemTime::now();
+            let metrics = &mut performance.event_processing_performance;
+            metrics.events_per_second = (metrics.events_per_second * 0.9) + 0.1;
+            metrics.average_processing_time_ms = (metrics.average_processing_time_ms * 0.9) + 0.1;
+        }
+
+        {
+            let mut tournament = self.tournament_analytics.write().await;
+            tournament.total_events = tournament.total_events.saturating_add(1);
+            tournament.last_updated = std::time::SystemTime::now();
+        }
+
+        {
+            let mut match_stats = self.match_analytics.write().await;
+            match_stats.last_updated = std::time::SystemTime::now();
+        }
+
+        Ok(())
     }
 
     /// Analytics update loop

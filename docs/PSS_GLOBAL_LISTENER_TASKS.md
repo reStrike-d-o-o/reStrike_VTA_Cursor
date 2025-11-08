@@ -49,5 +49,11 @@ _Last updated: 2025-11-07_
 - Trigger plugin is not subscribed to live traffic yet; listener should provide a filtered feed instead of relying on manual preview calls.
 - Placeholder `event_stream`/`event_cache` modules still compile but are no-ops; ensure the listener either replaces or removes them to avoid future confusion.
 
+### Implementation Notes — 2025-11-08
+- Introduced `core::pss_listener::PssListener` as the central dispatcher with dual broadcast channels (JSON for existing overlays/UI, envelopes for future raw-event subscribers).
+- `App::handle_udp_events` now feeds the listener alongside the low-latency Tauri event emission, while `App::emit_pss_event` pushes manual events through the same pipeline.
+- WebSocket bridging uses the listener subscription transparently, maintaining zero-buffer scoreboard updates.
+- Added unit coverage for the listener broadcast paths to guard regressions as additional consumers are wired in.
+
 ## Parking Lot
 - Clarify whether additional PSS streams (e.g., `hl*`, `brk`, `wrd`) need default handlers in the listener before UI integration.

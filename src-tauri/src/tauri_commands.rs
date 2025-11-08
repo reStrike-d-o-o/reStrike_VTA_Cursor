@@ -5672,7 +5672,10 @@ pub async fn get_cache_statistics(
 
 #[tauri::command]
 pub async fn clear_cache(app: tauri::State<'_, crate::core::app::App>) -> Result<(), tauri::Error> {
-    app.event_cache().clear_all().await;
+    app.event_cache()
+        .clear_all()
+        .await
+        .map_err(|e| tauri::Error::from(anyhow::anyhow!("Failed to clear cache: {e}")))?;
     Ok(())
 }
 
@@ -5681,7 +5684,14 @@ pub async fn invalidate_tournament_cache(
     app: tauri::State<'_, crate::core::app::App>,
     tournament_id: i64,
 ) -> Result<(), tauri::Error> {
-    app.event_cache().invalidate_tournament(tournament_id).await;
+    app.event_cache()
+        .invalidate_tournament(tournament_id)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(anyhow::anyhow!(
+                "Failed to invalidate tournament cache {tournament_id}: {e}"
+            ))
+        })?;
     Ok(())
 }
 
@@ -5690,7 +5700,14 @@ pub async fn invalidate_match_cache(
     app: tauri::State<'_, crate::core::app::App>,
     match_id: i64,
 ) -> Result<(), tauri::Error> {
-    app.event_cache().invalidate_match(match_id).await;
+    app.event_cache()
+        .invalidate_match(match_id)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(anyhow::anyhow!(
+                "Failed to invalidate match cache {match_id}: {e}"
+            ))
+        })?;
     Ok(())
 }
 
@@ -5712,7 +5729,14 @@ pub async fn send_event_to_stream(
     app: tauri::State<'_, crate::core::app::App>,
     event: crate::database::models::PssEventV2,
 ) -> Result<(), tauri::Error> {
-    app.event_stream_processor().send_event(event).await;
+    app.event_stream_processor()
+        .send_event(event)
+        .await
+        .map_err(|e| {
+            tauri::Error::from(anyhow::anyhow!(
+                "Failed to enqueue event for stream processing: {e}"
+            ))
+        })?;
     Ok(())
 }
 
