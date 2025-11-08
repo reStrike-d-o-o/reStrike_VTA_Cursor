@@ -2,12 +2,13 @@ use crate::database::models::PssEventV2 as DbPssEvent;
 use crate::plugins::event_cache::{
     AthleteStatistics, EventCache, MatchStatistics, TournamentStatistics,
 };
+use crate::plugins::plugin_database::DatabasePlugin;
 use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
 use crate::AppResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration as StdDuration, Instant, SystemTime};
 use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::time::{interval, Duration};
 
@@ -39,11 +40,13 @@ pub struct EventStreamProcessor {
     event_rx: Option<mpsc::UnboundedReceiver<DbPssEvent>>,
     broadcast_tx: broadcast::Sender<DbPssEvent>,
     cache: Arc<EventCache>,
+    database: Arc<DatabasePlugin>,
     config: EventStreamConfig,
     processors: Arc<RwLock<Vec<tokio::task::JoinHandle<()>>>>,
     analytics_task: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
     statistics: Arc<RwLock<StreamStatistics>>,
     raw_metrics: Arc<RwLock<RawMetrics>>,
+    match_athlete_cache: Arc<RwLock<HashMap<i64, MatchAthleteCacheEntry>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,6 +78,24 @@ struct RawMetrics {
     events_since_tick: u64,
 }
 
+const MATCH_ATHLETE_CACHE_TTL: StdDuration = StdDuration::from_secs(30);
+
+#[derive(Debug, Clone)]
+struct MatchAthleteCacheEntry {
+    athlete1_id: Option<i64>,
+    athlete2_id: Option<i64>,
+    fetched_at: SystemTime,
+}
+
+impl MatchAthleteCacheEntry {
+    fn is_stale(&self) -> bool {
+        self.fetched_at
+            .elapsed()
+            .map(|elapsed| elapsed > MATCH_ATHLETE_CACHE_TTL)
+            .unwrap_or(true)
+    }
+}
+
 /// Real-time analytics data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealTimeAnalytics {
@@ -89,11 +110,15 @@ pub struct RealTimeAnalytics {
 }
 
 impl EventStreamProcessor {
-    pub fn new(cache: Arc<EventCache>) -> Self {
-        Self::with_config(cache, EventStreamConfig::default())
+    pub fn new(cache: Arc<EventCache>, database: Arc<DatabasePlugin>) -> Self {
+        Self::with_config(cache, database, EventStreamConfig::default())
     }
 
-    pub fn with_config(cache: Arc<EventCache>, config: EventStreamConfig) -> Self {
+    pub fn with_config(
+        cache: Arc<EventCache>,
+        database: Arc<DatabasePlugin>,
+        config: EventStreamConfig,
+    ) -> Self {
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         let (broadcast_tx, _) = broadcast::channel(config.buffer_size);
 
@@ -102,11 +127,13 @@ impl EventStreamProcessor {
             event_rx: Some(event_rx),
             broadcast_tx,
             cache,
+            database,
             config,
             processors: Arc::new(RwLock::new(Vec::new())),
             analytics_task: Arc::new(RwLock::new(None)),
             statistics: Arc::new(RwLock::new(StreamStatistics::default())),
             raw_metrics: Arc::new(RwLock::new(RawMetrics::default())),
+            match_athlete_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -143,10 +170,20 @@ impl EventStreamProcessor {
         for i in 0..self.config.max_concurrent_processors {
             let broadcast_rx = self.broadcast_tx.subscribe();
             let cache_clone = self.cache.clone();
+            let database_clone = self.database.clone();
+            let match_cache_clone = self.match_athlete_cache.clone();
             let statistics_clone = self.statistics.clone();
 
             let processor_handle = tokio::spawn(async move {
-                Self::event_processor_worker(i, broadcast_rx, cache_clone, statistics_clone).await;
+                Self::event_processor_worker(
+                    i,
+                    broadcast_rx,
+                    cache_clone,
+                    database_clone,
+                    match_cache_clone,
+                    statistics_clone,
+                )
+                .await;
             });
 
             let mut processors = self.processors.write().await;
@@ -316,6 +353,8 @@ impl EventStreamProcessor {
         worker_id: usize,
         mut broadcast_rx: broadcast::Receiver<DbPssEvent>,
         cache: Arc<EventCache>,
+        database: Arc<DatabasePlugin>,
+        match_cache: Arc<RwLock<HashMap<i64, MatchAthleteCacheEntry>>>,
         statistics: Arc<RwLock<StreamStatistics>>,
     ) {
         log::info!("Event processor worker {} started", worker_id);
@@ -326,7 +365,9 @@ impl EventStreamProcessor {
             let start_time = std::time::Instant::now();
 
             // Process the event
-            if let Err(e) = Self::process_single_event(&cache, &event).await {
+            if let Err(e) =
+                Self::process_single_event(&cache, &database, &match_cache, &event).await
+            {
                 log::error!("Worker {} failed to process event: {}", worker_id, e);
             }
 
@@ -370,10 +411,123 @@ impl EventStreamProcessor {
         Ok(())
     }
 
+    fn parse_udp_event(event: &DbPssEvent) -> Option<UdpPssEvent> {
+        event
+            .parsed_data
+            .as_ref()
+            .and_then(|payload| serde_json::from_str::<UdpPssEvent>(payload).ok())
+    }
+
+    async fn resolve_match_athletes(
+        database: &Arc<DatabasePlugin>,
+        cache: &Arc<RwLock<HashMap<i64, MatchAthleteCacheEntry>>>,
+        match_id: i64,
+    ) -> AppResult<Option<MatchAthleteCacheEntry>> {
+        if let Some(entry) = cache.read().await.get(&match_id) {
+            if !entry.is_stale() {
+                return Ok(Some(entry.clone()));
+            }
+        }
+
+        let lookup = database.get_pss_match_athletes(match_id).await?;
+        if lookup.is_empty() {
+            let placeholder = MatchAthleteCacheEntry {
+                athlete1_id: None,
+                athlete2_id: None,
+                fetched_at: SystemTime::now(),
+            };
+            cache.write().await.insert(match_id, placeholder);
+            return Ok(None);
+        }
+
+        let mut record = MatchAthleteCacheEntry {
+            athlete1_id: None,
+            athlete2_id: None,
+            fetched_at: SystemTime::now(),
+        };
+
+        for (match_athlete, _athlete) in lookup {
+            match match_athlete.athlete_position {
+                1 => record.athlete1_id = Some(match_athlete.athlete_id),
+                2 => record.athlete2_id = Some(match_athlete.athlete_id),
+                _ => {}
+            }
+        }
+
+        let mut cache_write = cache.write().await;
+        cache_write.insert(match_id, record.clone());
+        Ok(Some(record))
+    }
+
+    fn collect_athlete_targets(
+        participants: &MatchAthleteCacheEntry,
+        event: &UdpPssEvent,
+    ) -> Vec<i64> {
+        let mut targets = Vec::new();
+        let mut push_side = |side: u8| match side {
+            1 => {
+                if let Some(id) = participants.athlete1_id {
+                    targets.push(id);
+                }
+            }
+            2 => {
+                if let Some(id) = participants.athlete2_id {
+                    targets.push(id);
+                }
+            }
+            _ => {}
+        };
+
+        match event {
+            UdpPssEvent::Points { athlete, .. }
+            | UdpPssEvent::HitLevel { athlete, .. }
+            | UdpPssEvent::Injury { athlete, .. } => push_side(*athlete),
+            UdpPssEvent::Warnings { .. } | UdpPssEvent::WinnerRounds { .. } => {
+                if let Some(id) = participants.athlete1_id {
+                    targets.push(id);
+                }
+                if let Some(id) = participants.athlete2_id {
+                    targets.push(id);
+                }
+            }
+            _ => {}
+        }
+
+        targets
+    }
+
+    fn points_for_type(point_type: u8) -> u64 {
+        match point_type {
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            4 => 2,
+            5 => 3,
+            _ => 1,
+        }
+    }
+
     /// Process a single event
-    async fn process_single_event(cache: &Arc<EventCache>, event: &DbPssEvent) -> AppResult<()> {
+    async fn process_single_event(
+        cache: &Arc<EventCache>,
+        database: &Arc<DatabasePlugin>,
+        match_cache: &Arc<RwLock<HashMap<i64, MatchAthleteCacheEntry>>>,
+        event: &DbPssEvent,
+    ) -> AppResult<()> {
         if let Some(match_id) = event.match_id {
             Self::update_match_statistics(cache, match_id, event).await?;
+
+            if let Some(parsed_event) = Self::parse_udp_event(event) {
+                if let Some(participants) =
+                    Self::resolve_match_athletes(database, match_cache, match_id).await?
+                {
+                    let athlete_ids = Self::collect_athlete_targets(&participants, &parsed_event);
+                    for athlete_id in athlete_ids {
+                        Self::update_athlete_statistics(cache, athlete_id, event, &parsed_event)
+                            .await?;
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -384,6 +538,7 @@ impl EventStreamProcessor {
         cache: &Arc<EventCache>,
         athlete_id: i64,
         _event: &DbPssEvent,
+        udp_event: &UdpPssEvent,
     ) -> AppResult<()> {
         // Get current stats or create new ones
         let mut stats = cache
@@ -396,17 +551,34 @@ impl EventStreamProcessor {
                 total_warnings: 0,
                 total_injuries: 0,
                 avg_hit_level: 0.0,
-                last_updated: std::time::SystemTime::now(),
+                last_updated: SystemTime::now(),
             });
 
-        // Update based on event type
-        stats.total_events += 1;
-        stats.last_updated = std::time::SystemTime::now();
+        stats.total_events = stats.total_events.saturating_add(1);
+        stats.last_updated = SystemTime::now();
 
-        // Note: PssEventV2 has event_type_id (i64), not event_type (String)
-        // We would need to map event_type_id to string codes or use a different approach
-        // For now, we'll just increment total_events
-        stats.total_events += 1;
+        match udp_event {
+            UdpPssEvent::Points { point_type, .. } => {
+                stats.total_points = stats
+                    .total_points
+                    .saturating_add(Self::points_for_type(*point_type));
+            }
+            UdpPssEvent::Warnings { .. } => {
+                stats.total_warnings = stats.total_warnings.saturating_add(1);
+            }
+            UdpPssEvent::Injury { .. } => {
+                stats.total_injuries = stats.total_injuries.saturating_add(1);
+            }
+            UdpPssEvent::HitLevel { level, .. } => {
+                if stats.avg_hit_level <= 0.0 {
+                    stats.avg_hit_level = *level as f64;
+                } else {
+                    // Lightweight smoothing to avoid needing a separate hit count tally
+                    stats.avg_hit_level = (stats.avg_hit_level * 0.8) + (*level as f64 * 0.2);
+                }
+            }
+            _ => {}
+        }
 
         // Update cache
         cache.set_athlete_stats(athlete_id, stats).await?;

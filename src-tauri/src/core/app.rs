@@ -275,14 +275,19 @@ impl App {
 
         let protocol_manager_arc = Arc::new(protocol_manager.clone());
         let database_plugin_arc = Arc::new(database_plugin.clone());
-        let udp_plugin = UdpPlugin::new(udp_event_tx, protocol_manager_arc, database_plugin_arc);
+        let udp_plugin = UdpPlugin::new(
+            udp_event_tx,
+            protocol_manager_arc.clone(),
+            database_plugin_arc.clone(),
+        );
         log::info!("UDP plugin initialized");
 
         // Initialize Phase 3: Advanced Scaling Components
         let event_cache = Arc::new(EventCache::new());
         log::info!("Event cache initialized");
 
-        let mut event_stream_processor = EventStreamProcessor::new(event_cache.clone());
+        let mut event_stream_processor =
+            EventStreamProcessor::new(event_cache.clone(), database_plugin_arc.clone());
         if let Err(err) = event_stream_processor.start().await {
             log::warn!("Failed to start event stream processor: {err}");
         } else {
