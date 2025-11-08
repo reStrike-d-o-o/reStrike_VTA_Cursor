@@ -4,6 +4,7 @@ use crate::types::AppResult;
 use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use serde_json;
+use std::env;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Notify};
@@ -195,23 +196,55 @@ impl WebSocketServer {
 
     pub async fn start(&self, port: u16) -> AppResult<()> {
         log::info!("Starting WebSocket server on port {port}");
-        let addr = format!("127.0.0.1:{port}");
 
-        let listener = match TcpListener::bind(&addr).await {
-            Ok(listener) => listener,
+        let requested_host = env::var("RESTRIKE_WS_BIND_ADDRESS")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "0.0.0.0".to_string());
+
+        let primary_addr = format!("{requested_host}:{port}");
+
+        let listener = match TcpListener::bind(&primary_addr).await {
+            Ok(listener) => {
+                if requested_host == "0.0.0.0" {
+                    log::info!(
+                        "WebSocket server bound to all interfaces on port {port}; remote overlays should pass ?wsHost=<this-machine-ip>"
+                    );
+                } else {
+                    log::info!("WebSocket server bound to {primary_addr}");
+                }
+                listener
+            }
             Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
                 let message = format!(
-                    "WebSocket port {port} is already in use. Another instance may be running; skipping overlay server startup."
+                    "WebSocket port {port} is already in use (requested host {requested_host}); another instance may be running."
                 );
                 log::warn!("{message}");
                 self.broadcast_error(message.clone());
                 return Err(AppError::ConfigError(message));
             }
             Err(err) => {
-                let message = format!("Failed to bind WebSocket server on {addr}: {err}");
-                log::error!("{message}");
-                self.broadcast_error(message.clone());
-                return Err(AppError::ConfigError(message));
+                log::warn!(
+                    "Failed to bind WebSocket server on {primary_addr}: {err:?}; attempting loopback fallback"
+                );
+                let loopback_addr = format!("127.0.0.1:{port}");
+                match TcpListener::bind(&loopback_addr).await {
+                    Ok(listener) => {
+                        log::info!(
+                            "WebSocket server fallback bound to {loopback_addr}; remote overlays must explicitly set wsHost=127.0.0.1 from the same machine"
+                        );
+                        listener
+                    }
+                    Err(fallback_err) => {
+                        let message = format!(
+                            "Failed to bind WebSocket server on {primary_addr} and fallback {loopback_addr}: {fallback_err}"
+                        );
+                        log::error!("{message}");
+                        self.broadcast_error(message.clone());
+                        return Err(AppError::ConfigError(message));
+                    }
+                }
             }
         };
 
