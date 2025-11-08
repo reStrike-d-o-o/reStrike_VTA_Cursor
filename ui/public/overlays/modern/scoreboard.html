@@ -134,6 +134,7 @@
                 input.fullName,
                 input.name,
                 input.nickname,
+                input.short,
                 joined,
                 input.short_name,
                 input.shortName
@@ -231,8 +232,22 @@
             switch (eventType) {
                 case 'athletes': {
                     const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
-                    const blueSource = payload.athlete1 || payload.blue || payload.player1 || raw?.athlete1 || raw?.blue || {};
-                    const redSource = payload.athlete2 || payload.red || payload.player2 || raw?.athlete2 || raw?.red || {};
+                    const blueStructured = (payload.athlete1_short || payload.athlete1_long || payload.athlete1_country)
+                        ? {
+                            short: payload.athlete1_short,
+                            long: payload.athlete1_long || payload.athlete1_short,
+                            country: payload.athlete1_country
+                        }
+                        : null;
+                    const redStructured = (payload.athlete2_short || payload.athlete2_long || payload.athlete2_country)
+                        ? {
+                            short: payload.athlete2_short,
+                            long: payload.athlete2_long || payload.athlete2_short,
+                            country: payload.athlete2_country
+                        }
+                        : null;
+                    const blueSource = payload.athlete1 || payload.blue || payload.player1 || blueStructured || raw?.athlete1 || raw?.blue || {};
+                    const redSource = payload.athlete2 || payload.red || payload.player2 || redStructured || raw?.athlete2 || raw?.red || {};
                     updateNameAndCountry('blue', normalizeAthlete(blueSource));
                     updateNameAndCountry('red', normalizeAthlete(redSource));
                     break;
