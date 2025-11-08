@@ -106,12 +106,67 @@ impl WebSocketServer {
         format!("{minutes:02}:{secs:02}")
     }
 
+    /// Parse clock payloads like "2:00" or "120" into total seconds
+    fn parse_time_to_seconds(time: &str) -> Option<u32> {
+        let trimmed = time.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+
+        let parts: Vec<&str> = trimmed.split(':').collect();
+
+        match parts.len() {
+            1 => parts[0].trim().parse::<u32>().ok(),
+            2 => {
+                let minutes_str = parts[0].trim();
+                let minutes = minutes_str.parse::<u32>().ok()?;
+
+                // Seconds sometimes include trailing annotations; consume leading digits only
+                let mut seconds_digits = String::new();
+                for ch in parts[1].trim().chars() {
+                    if ch.is_ascii_digit() {
+                        seconds_digits.push(ch);
+                    } else {
+                        break;
+                    }
+                }
+
+                let seconds = if seconds_digits.is_empty() {
+                    parts[1].trim().parse::<u32>().ok()?
+                } else {
+                    seconds_digits.parse::<u32>().ok()?
+                };
+
+                if seconds >= 60 {
+                    return None;
+                }
+
+                Some(minutes * 60 + seconds)
+            }
+            _ => None,
+        }
+    }
+
+    /// Normalize time strings to mm:ss for comparisons
+    fn normalize_time_string(time: &str) -> String {
+        if let Some(total_seconds) = Self::parse_time_to_seconds(time) {
+            return Self::format_time_from_seconds(total_seconds);
+        }
+        time.trim().to_string()
+    }
+
     /// Check if the clock time matches the expected round duration start time
     fn is_match_start_time(&self, time: &str) -> bool {
         if let Ok(round_duration_guard) = self.round_duration.lock() {
             if let Some(duration) = *round_duration_guard {
+                if let Some(current_seconds) = Self::parse_time_to_seconds(time) {
+                    if current_seconds == duration {
+                        return true;
+                    }
+                }
+
                 let expected_time = Self::format_time_from_seconds(duration);
-                time == expected_time
+                Self::normalize_time_string(time) == Self::normalize_time_string(&expected_time)
             } else {
                 false
             }
