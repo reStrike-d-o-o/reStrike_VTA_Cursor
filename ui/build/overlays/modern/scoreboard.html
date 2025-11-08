@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/overlays/modern/scoreboard.css">
 </head>
+
 <body>
     <div id="connection-status" class="connection-status"></div>
     <div id="scoreboard-container">
@@ -19,15 +21,494 @@
     <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
     <script src="/assets/scoreboard/scoreboard-utils.js"></script>
     <script>
-        let scoreboardInstance = null; let isConnected=false; let roundDuration=120;
-        function updateConnectionStatus(c){const e=document.getElementById('connection-status');if(c)e.classList.add('connected');else e.classList.remove('connected');}
-        function initialize(){const o=document.getElementById('scoreboard-svg');const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ if(typeof ScoreboardOverlay==='undefined'){ setTimeout(initialize,1000); return;} scoreboardInstance=new ScoreboardOverlay(d.querySelector('svg')); updateConnectionStatus(false);} else { setTimeout(initialize,1000);} }
-        function handle(e){ if(!scoreboardInstance) return; switch(e.type){ case 'athletes': if(e.athlete1?.long) scoreboardInstance.updatePlayerName('blue', e.athlete1.long); if(e.athlete2?.long) scoreboardInstance.updatePlayerName('red', e.athlete2.long); if(e.athlete1?.country) scoreboardInstance.updateCountry('blue', e.athlete1.country); if(e.athlete2?.country) scoreboardInstance.updateCountry('red', e.athlete2.country); break; case 'match_config': const d=e.raw_data?JSON.parse(e.raw_data):(e.structured_data||e); if(d.round_duration!==undefined&&d.round_duration!==null) roundDuration=parseInt(d.round_duration); if(d.weight||d.division||d.category) scoreboardInstance.updateMatchInfo(d.weight,d.division,d.category); if(d.number){ const el=scoreboardInstance.svg.getElementById('matchNumber'); if(el) el.textContent=`#${d.number}`;} break; case 'current_scores': const sc=e.raw_data?JSON.parse(e.raw_data):e; const b=sc.athlete1_score??sc?.athlete1?.score??0; const r=sc.athlete2_score??sc?.athlete2?.score??0; scoreboardInstance.updateScore('blue', b); scoreboardInstance.updateScore('red', r); break; case 'clock': if(e.time){ let m=0,s=0; if(e.time.includes(':')){const p=e.time.split(':'); m=parseInt(p[0])||0; s=parseInt(p[1])||0;} else { s=parseInt(e.time)||0;} scoreboardInstance.updateTimer(m,s);} break; case 'round': const rn=e.current_round??e.round??null; if(rn!==null){ scoreboardInstance.updateRound(rn); const m=Math.floor(roundDuration/60), s=roundDuration%60; scoreboardInstance.updateTimer(m,s);} break; }}
-        let ws=null, tries=0; const max=5, delay=2000; function connect(){ try{ const h=window.location.hostname; const w=(h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${w}:3001`; ws=new WebSocket(url); ws.onopen=()=>{updateConnectionStatus(true); tries=0;}; ws.onmessage=(ev)=>{ try{ const d=JSON.parse(ev.data); if(d.type==='pss_event') handle(d.data);}catch(_){}}; ws.onclose=()=>{updateConnectionStatus(false); if(tries<max){tries++; setTimeout(connect,delay);} }; ws.onerror=()=>updateConnectionStatus(false);}catch(_){updateConnectionStatus(false);} }
-        document.addEventListener('DOMContentLoaded',()=>{ const o=document.getElementById('scoreboard-svg'); if(window.ScoreboardFontInjector){ window.ScoreboardFontInjector.initForObject('#scoreboard-svg'); } o.addEventListener('load', initialize); connect(); if(o.contentDocument) initialize(); });
-        window.ModernScoreboard={handle};
+        const RETRY_DELAY_MS = 2000;
+        const MAX_RETRIES = 5;
+        const eventQueue = [];
+        let scoreboardInstance = null;
+        let roundDuration = 120;
+        let ws = null;
+        let retryCount = 0;
+
+        function updateConnectionStatus(connected) {
+            const el = document.getElementById('connection-status');
+            if (!el) return;
+            if (connected) {
+                el.classList.add('connected');
+            } else {
+                el.classList.remove('connected');
+            }
+        }
+
+        function resolveWebSocketUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const explicitUrl = params.get('wsUrl');
+                if (explicitUrl) {
+                    return explicitUrl;
+                }
+
+                const protocol = window.location.protocol;
+                let host = params.get('wsHost') || window.location.hostname || '127.0.0.1';
+                if (host === 'localhost' || protocol !== 'http:' && protocol !== 'https:') {
+                    host = '127.0.0.1';
+                }
+                const port = params.get('wsPort') || '3001';
+                const wsProtocol = protocol === 'https:' ? 'wss' : 'ws';
+                return `${wsProtocol}://${host}:${port}`;
+            } catch (_error) {
+                return 'ws://127.0.0.1:3001';
+            }
+        }
+
+        function initialize() {
+            if (scoreboardInstance) {
+                flushQueuedEvents();
+                return;
+            }
+            const obj = document.getElementById('scoreboard-svg');
+            const doc = obj?.contentDocument || obj?.contentWindow?.document;
+            const svg = doc?.querySelector('svg');
+            if (!svg) {
+                setTimeout(initialize, 500);
+                return;
+            }
+
+            if (typeof ScoreboardOverlay === 'undefined') {
+                setTimeout(initialize, 500);
+                return;
+            }
+
+            scoreboardInstance = new ScoreboardOverlay(svg);
+            updateConnectionStatus(false);
+            flushQueuedEvents();
+        }
+
+        function parseTime(value) {
+            if (!value) {
+                return { minutes: 0, seconds: 0 };
+            }
+            if (value.includes(':')) {
+                const parts = value.split(':');
+                const minutes = parseInt(parts[0] ?? '0', 10) || 0;
+                const seconds = parseInt(parts[1] ?? '0', 10) || 0;
+                return { minutes, seconds };
+            }
+            const totalSeconds = parseInt(value, 10) || 0;
+            return {
+                minutes: Math.floor(totalSeconds / 60),
+                seconds: totalSeconds % 60,
+            };
+        }
+
+        function parseMaybeJson(value) {
+            if (typeof value !== 'string') {
+                return null;
+            }
+            try {
+                return JSON.parse(value);
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        function determineEventType(payload) {
+            if (!payload) return '';
+            const candidate = payload.type || payload.event_type || payload.eventType || payload.kind;
+            return typeof candidate === 'string' ? candidate.toLowerCase() : '';
+        }
+
+        function normalizeAthlete(input) {
+            if (!input) return { name: '', country: '' };
+            if (typeof input === 'string') {
+                return { name: input, country: '' };
+            }
+
+            const first = input.first_name || input.firstName || '';
+            const last = input.last_name || input.lastName || '';
+            const joined = [first, last].filter(Boolean).join(' ').trim();
+            const nameCandidates = [
+                input.long,
+                input.display_name,
+                input.displayName,
+                input.full_name,
+                input.fullName,
+                input.name,
+                input.nickname,
+                input.short,
+                joined,
+                input.short_name,
+                input.shortName
+            ];
+            const countryCandidates = [
+                input.country_code,
+                input.countryCode,
+                input.country,
+                input.ioc,
+                input.iocCode,
+                input.ioc_code,
+                input.flag,
+                input.nation,
+                input.nationality
+            ];
+            const name = nameCandidates.find(val => typeof val === 'string' && val.trim().length) || '';
+            const countryRaw = countryCandidates.find(val => typeof val === 'string' && val.trim().length) || '';
+            return { name, country: countryRaw.toUpperCase() };
+        }
+
+        function updateNameAndCountry(side, info) {
+            if (!info) return;
+            if (info.name) {
+                scoreboardInstance.updatePlayerName(side, info.name);
+            }
+            if (info.country) {
+                scoreboardInstance.updateCountry(side, info.country);
+            }
+        }
+
+        function extractWarnings(payload) {
+            if (!payload) return null;
+            const fromFields = {
+                blue: payload.athlete1_warnings ?? payload.blue_warnings ?? payload.blueWarnings ?? payload.blue ?? payload.warnings1 ?? payload.wg1 ?? null,
+                red: payload.athlete2_warnings ?? payload.red_warnings ?? payload.redWarnings ?? payload.red ?? payload.warnings2 ?? payload.wg2 ?? null
+            };
+
+            let blueValue = fromFields.blue;
+            let redValue = fromFields.red;
+
+            if ((blueValue == null || redValue == null) && typeof payload.raw_data === 'string') {
+                const raw = payload.raw_data.trim();
+                const maybeJson = parseMaybeJson(raw);
+                if (maybeJson && typeof maybeJson === 'object') {
+                    blueValue = blueValue ?? maybeJson.athlete1_warnings ?? maybeJson.wg1 ?? maybeJson.blue ?? maybeJson.athlete1;
+                    redValue = redValue ?? maybeJson.athlete2_warnings ?? maybeJson.wg2 ?? maybeJson.red ?? maybeJson.athlete2;
+                } else {
+                    const match = raw.match(/wg1;(\d+);wg2;(\d+)/i);
+                    if (match) {
+                        blueValue = parseInt(match[1], 10);
+                        redValue = parseInt(match[2], 10);
+                    }
+                }
+            }
+
+            if ((blueValue == null || redValue == null) && payload.description) {
+                const match = String(payload.description).match(/Athlete1:\s*(\d+).*Athlete2:\s*(\d+)/i);
+                if (match) {
+                    blueValue = parseInt(match[1], 10);
+                    redValue = parseInt(match[2], 10);
+                }
+            }
+
+            if (blueValue == null && redValue == null) {
+                return null;
+            }
+
+            const toNumber = (value) => {
+                if (value == null) return null;
+                if (typeof value === 'number') return value;
+                if (typeof value === 'string') {
+                    const match = value.trim().match(/\d+/);
+                    if (match) return parseInt(match[0], 10);
+                }
+                return null;
+            };
+
+            const parsedBlue = toNumber(blueValue);
+            const parsedRed = toNumber(redValue);
+            return { blue: parsedBlue, red: parsedRed };
+        }
+
+        function flushQueuedEvents() {
+            if (!scoreboardInstance || !eventQueue.length) return;
+            while (eventQueue.length) {
+                const next = eventQueue.shift();
+                processEvent(next);
+            }
+        }
+
+        function processEvent(payload) {
+            if (!scoreboardInstance || !payload) return;
+            const eventType = determineEventType(payload);
+
+            switch (eventType) {
+                case 'athletes': {
+                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const blueStructured = (payload.athlete1_short || payload.athlete1_long || payload.athlete1_country)
+                        ? {
+                            short: payload.athlete1_short,
+                            long: payload.athlete1_long || payload.athlete1_short,
+                            country: payload.athlete1_country
+                        }
+                        : null;
+                    const redStructured = (payload.athlete2_short || payload.athlete2_long || payload.athlete2_country)
+                        ? {
+                            short: payload.athlete2_short,
+                            long: payload.athlete2_long || payload.athlete2_short,
+                            country: payload.athlete2_country
+                        }
+                        : null;
+                    const blueSource = payload.athlete1 || payload.blue || payload.player1 || blueStructured || raw?.athlete1 || raw?.blue || {};
+                    const redSource = payload.athlete2 || payload.red || payload.player2 || redStructured || raw?.athlete2 || raw?.red || {};
+                    updateNameAndCountry('blue', normalizeAthlete(blueSource));
+                    updateNameAndCountry('red', normalizeAthlete(redSource));
+                    break;
+                }
+                case 'match_config': {
+                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const data = raw && typeof raw === 'object' ? raw : (payload.structured_data || payload);
+                    if (data) {
+                        if (data.round_duration != null) {
+                            const parsed = parseInt(data.round_duration, 10);
+                            if (!Number.isNaN(parsed)) {
+                                roundDuration = parsed;
+                            }
+                        }
+                        if (typeof scoreboardInstance.updateMatchInfo === 'function') {
+                            scoreboardInstance.updateMatchInfo(data.weight, data.division ?? data.gender, data.category ?? data.phase);
+                        }
+                        if (typeof scoreboardInstance.updateMatchNumber === 'function' && data.number != null) {
+                            scoreboardInstance.updateMatchNumber(data.number);
+                        }
+                        scoreboardInstance.applyNewMatchEffect(roundDuration, data.current_round || 1);
+                    }
+                    break;
+                }
+                case 'current_scores':
+                case 'score_update':
+                case 'score': {
+                    const parsedRaw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const source = parsedRaw && typeof parsedRaw === 'object' ? parsedRaw : payload;
+                    const blueScore = source.athlete1_score ?? source?.athlete1?.score ?? source.blue ?? 0;
+                    const redScore = source.athlete2_score ?? source?.athlete2?.score ?? source.red ?? 0;
+                    scoreboardInstance.updateScore('blue', Number(blueScore) || 0);
+                    scoreboardInstance.updateScore('red', Number(redScore) || 0);
+                    break;
+                }
+                case 'warnings':
+                case 'gamjeom':
+                case 'gam_jeom':
+                case 'wg':
+                case 'penalty':
+                case 'penalties':
+                case 'foul':
+                case 'fouls': {
+                    const warnings = extractWarnings(payload);
+                    if (warnings) {
+                        if (warnings.blue != null) {
+                            scoreboardInstance.updatePenalties('blue', null, warnings.blue);
+                        }
+                        if (warnings.red != null) {
+                            scoreboardInstance.updatePenalties('red', null, warnings.red);
+                        }
+                    }
+                    break;
+                }
+                case 'injury':
+                case 'injury_time':
+                case 'ij': {
+                    let timeValue = payload.time || payload.injury_time || payload.value || null;
+                    if (!timeValue && typeof payload.raw_data === 'string') {
+                        const raw = payload.raw_data.trim();
+                        const maybeJson = parseMaybeJson(raw);
+                        if (maybeJson && typeof maybeJson === 'object') {
+                            timeValue = maybeJson.time || maybeJson.injury_time;
+                        } else {
+                            const match = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
+                            if (match) {
+                                timeValue = match[1];
+                                if (match[2]) payload.action = match[2];
+                            }
+                        }
+                    }
+
+                    if (timeValue) {
+                        scoreboardInstance.updateInjuryTime(timeValue);
+                    }
+
+                    const visibility = (payload.action || payload.visibility || payload.state || '').toLowerCase();
+                    if (visibility === 'show' || visibility === 'visible' || visibility === 'start') {
+                        scoreboardInstance.showInjurySection();
+                    } else if (visibility === 'hide' || visibility === 'hidden' || visibility === 'clear' || visibility === 'reset' || visibility === 'stop') {
+                        scoreboardInstance.hideInjurySection();
+                        scoreboardInstance.resetInjuryTime();
+                    } else if (timeValue) {
+                        scoreboardInstance.showInjurySection();
+                    }
+                    break;
+                }
+                case 'winner_rounds':
+                case 'winnerrounds': {
+                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
+                    const source = raw && typeof raw === 'object' ? raw : payload;
+                    const rounds = [source.round1_winner, source.round2_winner, source.round3_winner].map(val => Number(val));
+                    const blueWins = rounds.filter(val => val === 1).length;
+                    const redWins = rounds.filter(val => val === 2).length;
+                    scoreboardInstance.updateRoundWins('blue', blueWins);
+                    scoreboardInstance.updateRoundWins('red', redWins);
+                    break;
+                }
+                case 'clock':
+                case 'timer':
+                case 'match_timer': {
+                    const target = payload.time ?? payload.timer ?? payload.remaining ?? payload.clock;
+                    if (target != null) {
+                        const { minutes, seconds } = parseTime(String(target));
+                        scoreboardInstance.updateTimer(minutes, seconds);
+                    }
+                    break;
+                }
+                case 'round': {
+                    const roundNumber = payload.current_round ?? payload.round ?? payload.roundNumber;
+                    if (roundNumber != null) {
+                        scoreboardInstance.updateRound(roundNumber);
+                        const mins = Math.floor(roundDuration / 60);
+                        const secs = roundDuration % 60;
+                        scoreboardInstance.updateTimer(mins, secs);
+                        scoreboardInstance.updateScore('blue', 0);
+                        scoreboardInstance.updateScore('red', 0);
+                        scoreboardInstance.updatePenalties('blue', null, 0);
+                        scoreboardInstance.updatePenalties('red', null, 0);
+                        scoreboardInstance.hideInjurySection();
+                        scoreboardInstance.resetInjuryTime();
+                    }
+                    break;
+                }
+                default: {
+                    if (payload.time) {
+                        const t = parseTime(payload.time);
+                        scoreboardInstance.updateTimer(t.minutes, t.seconds);
+                    }
+                    if (payload.raw_data && typeof payload.raw_data === 'string') {
+                        const raw = payload.raw_data.trim();
+                        const matchWarnings = raw.match(/wg1;(\d+);wg2;(\d+)/i);
+                        if (matchWarnings) {
+                            scoreboardInstance.updatePenalties('blue', null, parseInt(matchWarnings[1], 10));
+                            scoreboardInstance.updatePenalties('red', null, parseInt(matchWarnings[2], 10));
+                            break;
+                        }
+                        const matchInjury = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
+                        if (matchInjury) {
+                            scoreboardInstance.updateInjuryTime(matchInjury[1]);
+                            const action = (matchInjury[2] || '').toLowerCase();
+                            if (action === 'show') scoreboardInstance.showInjurySection();
+                            else if (action === 'hide' || action === 'reset') {
+                                scoreboardInstance.hideInjurySection();
+                                scoreboardInstance.resetInjuryTime();
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        function handle(event) {
+            if (!event) return;
+            const payload = event.data && typeof event.data === 'object' ? event.data : event;
+            if (!payload || typeof payload !== 'object') return;
+            if (!scoreboardInstance) {
+                eventQueue.push(payload);
+                return;
+            }
+            processEvent(payload);
+        }
+
+        function teardownWebSocket() {
+            if (!ws) return;
+            ws.onopen = null;
+            ws.onclose = null;
+            ws.onerror = null;
+            ws.onmessage = null;
+            try {
+                ws.close();
+            } catch (_error) { }
+            ws = null;
+        }
+
+        function scheduleReconnect() {
+            if (retryCount >= MAX_RETRIES) {
+                return;
+            }
+            retryCount += 1;
+            window.setTimeout(connect, RETRY_DELAY_MS);
+        }
+
+        function connect() {
+            teardownWebSocket();
+            const url = resolveWebSocketUrl();
+
+            try {
+                ws = new WebSocket(url);
+            } catch (_error) {
+                updateConnectionStatus(false);
+                scheduleReconnect();
+                return;
+            }
+
+            ws.onopen = () => {
+                retryCount = 0;
+                updateConnectionStatus(true);
+            };
+
+            ws.onerror = () => {
+                updateConnectionStatus(false);
+            };
+
+            ws.onclose = () => {
+                updateConnectionStatus(false);
+                scheduleReconnect();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed?.type === 'pss_event') {
+                        handle(parsed.data);
+                    } else if (parsed?.type === 'connection') {
+                        updateConnectionStatus(Boolean(parsed.connected));
+                    }
+                } catch (_error) { }
+            };
+        }
+
+        function attachFallbackListeners() {
+            window.addEventListener('pss-event', (event) => {
+                if (event?.detail) {
+                    handle(event.detail);
+                }
+            });
+
+            window.addEventListener('storage', (event) => {
+                if (event.key !== 'pss_event' || !event.newValue) {
+                    return;
+                }
+                try {
+                    const payload = JSON.parse(event.newValue);
+                    if (payload?.type === 'pss_event') {
+                        handle(payload.data ?? payload);
+                    }
+                } catch (_error) { }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const obj = document.getElementById('scoreboard-svg');
+            if (window.ScoreboardFontInjector) {
+                window.ScoreboardFontInjector.initForObject('#scoreboard-svg');
+            }
+            obj?.addEventListener('load', initialize);
+            if (obj?.contentDocument) {
+                initialize();
+            }
+            attachFallbackListeners();
+            connect();
+        });
+
+        window.ModernScoreboard = {
+            handle,
+            reconnect: connect,
+            resolveWebSocketUrl,
+        };
     </script>
 </body>
+
 </html>
-
-
