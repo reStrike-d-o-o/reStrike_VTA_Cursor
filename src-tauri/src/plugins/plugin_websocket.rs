@@ -666,24 +666,34 @@ impl WebSocketServer {
 
         // Only filter out events if match hasn't started AND this is not a Clock event
         if !match_started {
-            match event {
-                PssEvent::Clock { .. } | PssEvent::Round { .. } => {
-                    // Allow Clock and Round events to pass through for time/round tracking
-                }
-                _ => {
-                    return WebSocketMessage::PssEvent {
-                        event_type: "pre_match".to_string(),
-                        event_code: "O".to_string(), // Won't show in table
-                        athlete: "".to_string(),
-                        round: current_round.unwrap_or(1), // Use last known round or 1
-                        time: "0:00".to_string(),          // Pre-match events always use 0:00
-                        timestamp: Utc::now().to_rfc3339(),
-                        raw_data: "".to_string(),
-                        description: "Pre-match event (hidden)".to_string(),
-                        action: None,
-                        structured_data: serde_json::json!({}),
-                    };
-                }
+            let allow_pre_match = matches!(
+                event,
+                PssEvent::Clock { .. }
+                    | PssEvent::Round { .. }
+                    | PssEvent::Athletes { .. }
+                    | PssEvent::MatchConfig { .. }
+                    | PssEvent::CurrentScores { .. }
+                    | PssEvent::Scores { .. }
+                    | PssEvent::Warnings { .. }
+                    | PssEvent::Injury { .. }
+                    | PssEvent::WinnerRounds { .. }
+                    | PssEvent::FightLoaded
+                    | PssEvent::FightReady
+            );
+
+            if !allow_pre_match {
+                return WebSocketMessage::PssEvent {
+                    event_type: "pre_match".to_string(),
+                    event_code: "O".to_string(), // Won't show in table
+                    athlete: "".to_string(),
+                    round: current_round.unwrap_or(1), // Use last known round or 1
+                    time: "0:00".to_string(),          // Pre-match events always use 0:00
+                    timestamp: Utc::now().to_rfc3339(),
+                    raw_data: "".to_string(),
+                    description: "Pre-match event (hidden)".to_string(),
+                    action: None,
+                    structured_data: serde_json::json!({}),
+                };
             }
         }
 
