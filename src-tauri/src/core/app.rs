@@ -1,6 +1,6 @@
 //! Main application class and lifecycle management
 
-use crate::core::pss_listener::PssListener;
+use crate::core::pss_listener::{PssEventEnvelope, PssListener};
 use crate::openapi::{OpenApiManager, OpenApiRuntime};
 use crate::plugins::plugin_triggers::TriggerPlugin;
 #[cfg(feature = "youtube")]
@@ -98,6 +98,7 @@ pub struct App {
     udp_event_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
     obs_health_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
     pss_stats_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    pss_subsystem_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl App {
@@ -281,14 +282,29 @@ impl App {
         let event_cache = Arc::new(EventCache::new());
         log::info!("Event cache initialized");
 
-        let event_stream_processor = Arc::new(EventStreamProcessor::new(event_cache.clone()));
-        log::info!("Event stream processor initialized");
+        let mut event_stream_processor = EventStreamProcessor::new(event_cache.clone());
+        if let Err(err) = event_stream_processor.start().await {
+            log::warn!("Failed to start event stream processor: {err}");
+        } else {
+            log::info!("Event stream processor started");
+        }
+        let event_stream_processor = Arc::new(event_stream_processor);
 
-        let event_distributor = Arc::new(EventDistributor::new(event_cache.clone()));
-        log::info!("Event distributor initialized");
+        let mut event_distributor = EventDistributor::new(event_cache.clone());
+        if let Err(err) = event_distributor.start().await {
+            log::warn!("Failed to start event distributor: {err}");
+        } else {
+            log::info!("Event distributor started");
+        }
+        let event_distributor = Arc::new(event_distributor);
 
-        let advanced_analytics = Arc::new(AdvancedAnalytics::new(event_cache.clone()));
-        log::info!("Advanced analytics initialized");
+        let mut advanced_analytics = AdvancedAnalytics::new(event_cache.clone());
+        if let Err(err) = advanced_analytics.start().await {
+            log::warn!("Failed to start advanced analytics: {err}");
+        } else {
+            log::info!("Advanced analytics started");
+        }
+        let advanced_analytics = Arc::new(advanced_analytics);
 
         let pss_listener = Arc::new(PssListener::new(1000));
         PssListener::set_global(pss_listener.clone());
@@ -363,6 +379,7 @@ impl App {
             udp_event_task: Arc::new(tokio::sync::Mutex::new(None)),
             obs_health_task: Arc::new(tokio::sync::Mutex::new(None)),
             pss_stats_task: Arc::new(tokio::sync::Mutex::new(None)),
+            pss_subsystem_task: Arc::new(tokio::sync::Mutex::new(None)),
         })
     }
 
@@ -425,6 +442,24 @@ impl App {
                     log::info!("UDP event handler started");
                 }
             }
+        }
+
+        if let Some(envelope_rx) = PssListener::subscribe_envelope_global() {
+            let event_stream = Arc::clone(self.event_stream_processor());
+            let event_distributor = Arc::clone(self.event_distributor());
+            let advanced_analytics = Arc::clone(self.advanced_analytics());
+            let handle = tokio::task::spawn(async move {
+                Self::route_pss_envelopes(
+                    envelope_rx,
+                    event_stream,
+                    event_distributor,
+                    advanced_analytics,
+                )
+                .await;
+            });
+            let mut guard = self.pss_subsystem_task.lock().await;
+            *guard = Some(handle);
+            log::info!("Listener bridge connected for analytics, stream, and distribution");
         }
 
         log::info!("Application started successfully");
@@ -591,10 +626,29 @@ impl App {
         }
 
         {
+            let mut task_guard = self.pss_subsystem_task.lock().await;
+            if let Some(task) = task_guard.take() {
+                task.abort();
+            }
+        }
+
+        {
             let websocket_plugin = self.websocket_plugin.lock().await;
             if let Err(err) = websocket_plugin.stop().await {
                 log::warn!("Failed to stop WebSocket server cleanly: {err}");
             }
+        }
+
+        if let Err(err) = self.event_stream_processor().stop().await {
+            log::warn!("Event stream processor stop error: {err}");
+        }
+
+        if let Err(err) = self.event_distributor().stop().await {
+            log::warn!("Event distributor stop error: {err}");
+        }
+
+        if let Err(err) = self.advanced_analytics().stop().await {
+            log::warn!("Advanced analytics stop error: {err}");
         }
 
         self.udp_plugin.stop().await?;
@@ -1363,14 +1417,28 @@ impl App {
 
     /// Emit a PSS event to both WebSocket overlays and Tauri frontend
     pub fn emit_pss_event(event_json: serde_json::Value) {
-        // Emit to frontend via Tauri events
+        Self::emit_pss_event_internal(None, event_json);
+    }
+
+    /// Emit a PSS event that originated from the UDP listener with its raw representation.
+    pub fn emit_pss_event_with_raw(
+        raw_event: crate::plugins::plugin_udp::PssEvent,
+        event_json: serde_json::Value,
+    ) {
+        Self::emit_pss_event_internal(Some(raw_event), event_json);
+    }
+
+    fn emit_pss_event_internal(
+        raw_event: Option<crate::plugins::plugin_udp::PssEvent>,
+        event_json: serde_json::Value,
+    ) {
         if let Some(app_handle) = TAURI_APP_HANDLE.get() {
             if let Err(e) = app_handle.emit("pss_event", event_json.clone()) {
                 log::warn!("Failed to emit PSS event to frontend: {e}");
             }
         }
 
-        PssListener::broadcast_global(None, event_json);
+        PssListener::broadcast_global(raw_event, event_json);
     }
 
     /// Emit a custom event name to frontend with JSON payload
@@ -1435,9 +1503,7 @@ impl App {
             // Emit to frontend via Tauri events
             let event_json =
                 crate::plugins::plugin_udp::UdpServer::convert_pss_event_to_json(&event);
-            let listener_json = event_json.clone();
-            Self::emit_pss_event(event_json);
-            PssListener::broadcast_global(Some(event.clone()), listener_json);
+            Self::emit_pss_event_with_raw(event.clone(), event_json);
 
             // Forward to recording event handler for automatic recording control
             #[cfg(feature = "obs-obws")]
@@ -1511,6 +1577,37 @@ impl App {
         }
 
         log::info!("UDP event handler stopped");
+    }
+
+    async fn route_pss_envelopes(
+        mut envelope_rx: broadcast::Receiver<PssEventEnvelope>,
+        event_stream: Arc<EventStreamProcessor>,
+        event_distributor: Arc<EventDistributor>,
+        advanced_analytics: Arc<AdvancedAnalytics>,
+    ) {
+        log::info!("PSS subsystem bridge started");
+
+        while let Ok(envelope) = envelope_rx.recv().await {
+            if let Err(err) = event_stream
+                .record_pss_event(&envelope.raw, &envelope.json)
+                .await
+            {
+                log::debug!("Event stream metric update failed: {err}");
+            }
+
+            event_distributor
+                .record_pss_event(&envelope.raw, &envelope.json)
+                .await;
+
+            if let Err(err) = advanced_analytics
+                .ingest_pss_event(&envelope.raw, &envelope.json)
+                .await
+            {
+                log::debug!("Advanced analytics ingest failed: {err}");
+            }
+        }
+
+        log::warn!("PSS subsystem bridge stopped");
     }
 }
 
