@@ -1,7 +1,7 @@
 use crate::core::app::App;
 use crate::database::operations::TournamentOperations;
 use crate::plugins::obs_obws::manager::ObsManager;
-use crate::plugins::obs_obws::types::ObsReplayBufferStatus;
+use crate::plugins::obs_obws::types::{ObsConnectionStatus, ObsReplayBufferStatus};
 use crate::plugins::obs_obws::ObsPathGenerator;
 use crate::plugins::obs_obws::PathGeneratorConfig;
 use crate::plugins::plugin_udp::PssEvent;
@@ -148,6 +148,30 @@ impl ObsRecordingEventHandler {
             pending_p2_flag: Arc::new(Mutex::new(None)),
             pending_match_number: Arc::new(Mutex::new(None)),
             pending_stop_task: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    async fn obs_connection_ready(&self, connection_name: &str, reason: &str) -> bool {
+        match self
+            .obs_manager
+            .get_connection_status(connection_name)
+            .await
+        {
+            Ok(ObsConnectionStatus::Authenticated) => true,
+            Ok(status) => {
+                log::info!(
+                    "OBS connection '{connection_name}' not ready ({status:?}); skipping {reason}"
+                );
+                println!(
+                    " OBS connection '{connection_name}' not ready ({status:?}); skipping {reason}"
+                );
+                false
+            }
+            Err(err) => {
+                log::warn!("OBS connection '{connection_name}' unavailable for {reason}: {err}");
+                println!(" OBS connection '{connection_name}' unavailable for {reason}: {err}");
+                false
+            }
         }
     }
 
@@ -335,14 +359,23 @@ impl ObsRecordingEventHandler {
         let config = { self.config.lock().unwrap().clone() };
         if let Some(connection_name) = config.obs_connection_name {
             // Attempt to stop recording immediately; ignore error if already stopped
-            if let Err(e) = self
-                .obs_manager
-                .stop_recording(Some(&connection_name))
+            if self
+                .obs_connection_ready(&connection_name, "immediate stop after new match")
                 .await
             {
-                log::warn!("Stop recording on new match failed (may already be stopped): {e}");
+                if let Err(e) = self
+                    .obs_manager
+                    .stop_recording(Some(&connection_name))
+                    .await
+                {
+                    log::warn!("Stop recording on new match failed (may already be stopped): {e}");
+                } else {
+                    log::info!("Recording stopped immediately for connection: {connection_name}");
+                }
             } else {
-                log::info!("Recording stopped immediately for connection: {connection_name}");
+                log::info!(
+                    "Skipping immediate stop for '{connection_name}' because OBS is offline"
+                );
             }
         }
         Ok(())
@@ -423,27 +456,38 @@ impl ObsRecordingEventHandler {
                         session.recording_path.clone(),
                         session.obs_connection_name.clone(),
                     ) {
-                        // Normalize path separators for OBS
-                        let dir_norm = dir.replace('\\', "/");
-                        // Print exactly what we're sending to OBS
-                        println!(
-                            " Sending to OBS '{conn_name}' record directory (day apply): {dir_norm}"
-                        );
-                        log::info!(
-                            "Sending to OBS '{conn_name}' record directory (day apply): {dir_norm}"
-                        );
-                        // Release the mutex before awaiting
-                        match self
-                            .obs_manager
-                            .set_record_directory(&dir_norm, Some(&conn_name))
+                        if self
+                            .obs_connection_ready(&conn_name, "record directory day apply")
                             .await
                         {
-                            Ok(()) => {
-                                let mut last = self.last_applied_directory_day.lock().unwrap();
-                                *last = Some(day_key);
-                                log::info!("Applied recording directory to OBS: {dir_norm}");
+                            // Normalize path separators for OBS
+                            let dir_norm = dir.replace('\\', "/");
+                            // Print exactly what we're sending to OBS
+                            println!(
+                                " Sending to OBS '{conn_name}' record directory (day apply): {dir_norm}"
+                            );
+                            log::info!(
+                                "Sending to OBS '{conn_name}' record directory (day apply): {dir_norm}"
+                            );
+                            // Release the mutex before awaiting
+                            match self
+                                .obs_manager
+                                .set_record_directory(&dir_norm, Some(&conn_name))
+                                .await
+                            {
+                                Ok(()) => {
+                                    let mut last = self.last_applied_directory_day.lock().unwrap();
+                                    *last = Some(day_key);
+                                    log::info!("Applied recording directory to OBS: {dir_norm}");
+                                }
+                                Err(e) => {
+                                    log::warn!("Failed to set record directory in OBS: {e}")
+                                }
                             }
-                            Err(e) => log::warn!("Failed to set record directory in OBS: {e}"),
+                        } else {
+                            log::info!(
+                                "Skipping record directory day apply for '{conn_name}' because OBS is offline"
+                            );
                         }
                     }
                 }
@@ -623,6 +667,11 @@ impl ObsRecordingEventHandler {
                     let _ = self.generate_recording_path(&mid).await;
                 }
             }
+
+            let obs_ready = self
+                .obs_connection_ready(&connection_name, "FightReady automation")
+                .await;
+
             if let Some(mut session) = self.get_current_session() {
                 log::info!(
                     " FightReady session snapshot: match_id={} match_db_id={:?} number={:?} p1={:?}/{:?} p2={:?}/{:?} path={:?} file={:?}",
@@ -650,22 +699,30 @@ impl ObsRecordingEventHandler {
                 );
                 // Apply directory (normalize separators) to be sure OBS accepts formatting update
                 if let Some(dir) = session.recording_path.clone() {
-                    let dir_norm = dir.replace('\\', "/");
-                    // Print exactly what we're sending to OBS
-                    println!(
-                        " Sending to OBS '{connection_name}' record directory (pre-start): {dir_norm}"
-                    );
-                    log::info!(
-                        "Sending to OBS '{connection_name}' record directory (pre-start): {dir_norm}"
-                    );
-                    if let Err(e) = self
-                        .obs_manager
-                        .set_record_directory(&dir_norm, Some(&connection_name))
-                        .await
-                    {
-                        log::warn!("Failed to set record directory before start: {e}");
+                    if obs_ready {
+                        let dir_norm = dir.replace('\\', "/");
+                        println!(
+                            " Sending to OBS '{connection_name}' record directory (pre-start): {dir_norm}"
+                        );
+                        log::info!(
+                            "Sending to OBS '{connection_name}' record directory (pre-start): {dir_norm}"
+                        );
+                        if let Err(e) = self
+                            .obs_manager
+                            .set_record_directory(&dir_norm, Some(&connection_name))
+                            .await
+                        {
+                            log::warn!("Failed to set record directory before start: {e}");
+                        } else {
+                            log::info!("Record directory ensured before start: {dir_norm}");
+                        }
                     } else {
-                        log::info!("Record directory ensured before start: {dir_norm}");
+                        log::info!(
+                            "Skipping record directory sync for '{connection_name}' because OBS is offline"
+                        );
+                        println!(
+                            " FightReady: OBS connection '{connection_name}' offline; skipping record directory sync"
+                        );
                     }
                 }
                 // Resolve filename template; if DB has none, fall back to default mapping
@@ -695,124 +752,140 @@ impl ObsRecordingEventHandler {
                     session.match_number = self.pending_match_number.lock().unwrap().clone();
                 }
                 let formatting = self.build_filename_formatting(&effective_template, &session);
-                // Print exactly what we're sending to OBS
-                println!(" Sending to OBS '{connection_name}' filename formatting: {formatting}");
-                log::info!("Sending to OBS '{connection_name}' filename formatting: {formatting}");
-                if let Err(e) = self
-                    .obs_manager
-                    .set_filename_formatting(&formatting, Some(&connection_name))
-                    .await
-                {
-                    log::warn!("Failed to set filename formatting: {e}");
-                } else {
-                    log::info!("Applied filename formatting to OBS: {formatting}");
-                    // Read-back verification
-                    match self
-                        .obs_manager
-                        .get_filename_formatting(Some(&connection_name))
-                        .await
-                    {
-                        Ok(current) => println!(" OBS current filename formatting='{current}'"),
-                        Err(err) => println!(" Failed to read back filename formatting: {err}"),
-                    }
-                }
-            }
-
-            // Small delay to allow OBS to commit profile updates before starting outputs
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-            // Ensure replay buffer is enabled and active before recording
-            match self
-                .obs_manager
-                .get_replay_buffer_status(Some(&connection_name))
-                .await
-            {
-                Ok(ObsReplayBufferStatus::Active) => {
-                    log::info!("Replay buffer already active");
-                    println!(" Replay buffer already active");
-                }
-                _ => {
-                    log::info!("Starting replay buffer before recording...");
-                    println!(" Starting replay buffer before recording...");
+                if obs_ready {
+                    println!(
+                        " Sending to OBS '{connection_name}' filename formatting: {formatting}"
+                    );
+                    log::info!(
+                        "Sending to OBS '{connection_name}' filename formatting: {formatting}"
+                    );
                     if let Err(e) = self
                         .obs_manager
-                        .start_replay_buffer(Some(&connection_name))
+                        .set_filename_formatting(&formatting, Some(&connection_name))
                         .await
                     {
-                        log::warn!("Failed to start replay buffer: {e}");
-                        println!("Failed to start replay buffer: {e}");
+                        log::warn!("Failed to set filename formatting: {e}");
                     } else {
-                        log::info!("Replay buffer started to satisfy recording invariant");
-                        println!(" Replay buffer started to satisfy recording invariant");
+                        log::info!("Applied filename formatting to OBS: {formatting}");
+                        // Read-back verification
+                        match self
+                            .obs_manager
+                            .get_filename_formatting(Some(&connection_name))
+                            .await
+                        {
+                            Ok(current) => println!(" OBS current filename formatting='{current}'"),
+                            Err(err) => println!(" Failed to read back filename formatting: {err}"),
+                        }
                     }
+                } else {
+                    log::info!(
+                        "Skipping filename formatting sync for '{connection_name}' because OBS is offline"
+                    );
+                    println!(
+                        " FightReady: OBS connection '{connection_name}' offline; skipping filename formatting sync"
+                    );
                 }
             }
 
-            // Update session state to recording
-            if config.auto_start_recording_on_match_begin {
-                self.update_session_state(RecordingState::Recording).await?;
-                // Start recording immediately via obws manager (authoritative)
-                log::info!("Starting OBS recording...");
-                println!(" Starting OBS recording...");
+            if obs_ready {
+                // Small delay to allow OBS to commit profile updates before starting outputs
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                // Ensure replay buffer is enabled and active before recording
                 match self
                     .obs_manager
-                    .start_recording(Some(&connection_name))
+                    .get_replay_buffer_status(Some(&connection_name))
                     .await
                 {
-                    Ok(()) => {
-                        log::info!("Recording started for connection: {connection_name}");
-                        println!(" Recording started for connection: {connection_name}");
-
-                        // Persist recording session start
-                        if let Some(session) = self.get_current_session() {
-                            if let Err(e) = self.start_recording_session(&session).await {
-                                log::error!("Failed to persist recording session start: {e}");
-                            }
-
-                            // Emit notification for recording started
-                            log::info!(
-                                "Emitting recording_started notification for match {}",
-                                session.match_id
-                            );
-                            // Note: Window access would need to be passed through or use a different approach
-                            // For now, we'll use println which can be captured by the frontend
-                            println!(
-                                "NOTIFICATION:recording_started:{}",
-                                serde_json::json!({
-                                    "match_id": session.match_id,
-                                    "connection_name": connection_name,
-                                    "timestamp": chrono::Utc::now().to_rfc3339()
-                                })
-                            );
-                        }
+                    Ok(ObsReplayBufferStatus::Active) => {
+                        log::info!("Replay buffer already active");
+                        println!(" Replay buffer already active");
                     }
-                    Err(e) => {
-                        log::error!("Failed to start recording via obws: {e}");
-                        println!("Failed to start recording via obws: {e}");
+                    _ => {
+                        log::info!("Starting replay buffer before recording...");
+                        println!(" Starting replay buffer before recording...");
+                        if let Err(e) = self
+                            .obs_manager
+                            .start_replay_buffer(Some(&connection_name))
+                            .await
+                        {
+                            log::warn!("Failed to start replay buffer: {e}");
+                            println!("Failed to start replay buffer: {e}");
+                        } else {
+                            log::info!("Replay buffer started to satisfy recording invariant");
+                            println!(" Replay buffer started to satisfy recording invariant");
+                        }
                     }
                 }
 
-                // Start a lightweight monitor to detect RecordingStopped and index deterministically
-                let mgr = self.obs_manager.clone();
-                let db_arc = self.database.clone();
-                let session_arc = self.current_session.clone();
-                let conn_clone = connection_name.clone();
-                tokio::spawn(async move {
-                    let _ = ObsRecordingEventHandler::wait_until_recording_stopped(
-                        mgr.clone(),
-                        conn_clone.clone(),
-                        120,
-                    )
-                    .await; // up to 120s
-                    let session_snapshot = { session_arc.lock().unwrap().clone() };
-                    let _ = ObsRecordingEventHandler::index_after_stop_with_snapshot(
-                        db_arc.clone(),
-                        session_snapshot,
-                    )
-                    .await;
-                });
+                // Update session state to recording
+                if config.auto_start_recording_on_match_begin {
+                    self.update_session_state(RecordingState::Recording).await?;
+                    // Start recording immediately via obws manager (authoritative)
+                    log::info!("Starting OBS recording...");
+                    println!(" Starting OBS recording...");
+                    match self
+                        .obs_manager
+                        .start_recording(Some(&connection_name))
+                        .await
+                    {
+                        Ok(()) => {
+                            log::info!("Recording started for connection: {connection_name}");
+                            println!(" Recording started for connection: {connection_name}");
+
+                            // Persist recording session start
+                            if let Some(session) = self.get_current_session() {
+                                if let Err(e) = self.start_recording_session(&session).await {
+                                    log::error!("Failed to persist recording session start: {e}");
+                                }
+
+                                // Emit notification for recording started
+                                log::info!(
+                                    "Emitting recording_started notification for match {}",
+                                    session.match_id
+                                );
+                                println!(
+                                    "NOTIFICATION:recording_started:{}",
+                                    serde_json::json!({
+                                        "match_id": session.match_id,
+                                        "connection_name": connection_name,
+                                        "timestamp": chrono::Utc::now().to_rfc3339()
+                                    })
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to start recording via obws: {e}");
+                            println!("Failed to start recording via obws: {e}");
+                        }
+                    }
+
+                    // Start a lightweight monitor to detect RecordingStopped and index deterministically
+                    let mgr = self.obs_manager.clone();
+                    let db_arc = self.database.clone();
+                    let session_arc = self.current_session.clone();
+                    let conn_clone = connection_name.clone();
+                    tokio::spawn(async move {
+                        let _ = ObsRecordingEventHandler::wait_until_recording_stopped(
+                            mgr.clone(),
+                            conn_clone.clone(),
+                            120,
+                        )
+                        .await; // up to 120s
+                        let session_snapshot = { session_arc.lock().unwrap().clone() };
+                        let _ = ObsRecordingEventHandler::index_after_stop_with_snapshot(
+                            db_arc.clone(),
+                            session_snapshot,
+                        )
+                        .await;
+                    });
+                } else {
+                    log::info!("Auto-start recording disabled by UI setting; not starting recording on FightReady");
+                }
             } else {
-                log::info!("Auto-start recording disabled by UI setting; not starting recording on FightReady");
+                log::info!(
+                    "FightReady: OBS connection '{connection_name}' offline; skipping replay buffer and recording triggers"
+                );
             }
         } else {
             log::warn!("FightReady: empty connection name resolved; skipping start");
@@ -873,97 +946,137 @@ impl ObsRecordingEventHandler {
 
             // Respect stop delay seconds, but allow cancellation by new match
             let delay_secs = config.stop_delay_seconds as u64;
+            let obs_ready = self
+                .obs_connection_ready(&connection_name, "winner stop")
+                .await;
             if delay_secs == 0 {
                 // Stop immediately, then wait for OBS to fully stop before indexing
-                if let Err(e) = self
-                    .obs_manager
-                    .stop_recording(Some(&connection_name))
-                    .await
-                {
-                    log::error!("Failed to stop recording via obws: {e}");
-                } else {
-                    log::info!("Recording stop requested for connection: {connection_name}");
-
-                    // Persist recording session stop
-                    if let Some(session) = self.get_current_session() {
-                        if let Err(e) = self
-                            .stop_recording_session_by_match_id(&session.match_id)
-                            .await
-                        {
-                            log::error!("Failed to persist recording session stop: {e}");
-                        }
-
-                        // Emit notification for recording stopped
-                        log::info!(
-                            "Emitting recording_stopped notification for match {}",
-                            session.match_id
-                        );
-                        println!(
-                            "NOTIFICATION:recording_stopped:{}",
-                            serde_json::json!({
-                                "match_id": session.match_id,
-                                "connection_name": connection_name,
-                                "timestamp": chrono::Utc::now().to_rfc3339()
-                            })
-                        );
-                    }
-
-                    // Wait until OBS reports Stopped (up to 30s), then index
-                    let _ = Self::wait_until_recording_stopped(
-                        self.obs_manager.clone(),
-                        connection_name.clone(),
-                        30,
-                    )
-                    .await;
-                    let _ = self.index_recording_after_stop().await;
-                }
-            } else {
-                log::info!("Scheduling stop in {delay_secs}s (will cancel if new match loads)");
-                let mgr = self.obs_manager.clone();
-                let conn = connection_name.clone();
-                let db = self.database.clone();
-                // Take a snapshot of the session before spawning to avoid holding a MutexGuard across await
-                let session_snapshot = { self.current_session.lock().unwrap().clone() };
-                let match_id_for_stop = session_snapshot
-                    .as_ref()
-                    .map(|s| s.match_id.clone())
-                    .unwrap_or_default();
-                // Abort any previous pending stop
-                if let Some(handle) = self.pending_stop_task.lock().unwrap().take() {
-                    handle.abort();
-                }
-                let handle = tokio::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
-                    if let Err(e) = mgr.stop_recording(Some(&conn)).await {
-                        log::error!("Delayed stop: failed to stop recording via obws: {e}");
+                if obs_ready {
+                    if let Err(e) = self
+                        .obs_manager
+                        .stop_recording(Some(&connection_name))
+                        .await
+                    {
+                        log::error!("Failed to stop recording via obws: {e}");
                     } else {
-                        log::info!("Delayed stop: stop requested for connection: {conn}");
+                        log::info!("Recording stop requested for connection: {connection_name}");
 
                         // Persist recording session stop
-                        if !match_id_for_stop.is_empty() {
-                            if let Err(e) = Self::stop_recording_session_by_match_id_static(
-                                db.clone(),
-                                &match_id_for_stop,
-                            )
-                            .await
+                        if let Some(session) = self.get_current_session() {
+                            if let Err(e) = self
+                                .stop_recording_session_by_match_id(&session.match_id)
+                                .await
                             {
-                                log::error!(
-                                    "Failed to persist delayed recording session stop: {e}"
-                                );
+                                log::error!("Failed to persist recording session stop: {e}");
                             }
+
+                            // Emit notification for recording stopped
+                            log::info!(
+                                "Emitting recording_stopped notification for match {}",
+                                session.match_id
+                            );
+                            println!(
+                                "NOTIFICATION:recording_stopped:{}",
+                                serde_json::json!({
+                                    "match_id": session.match_id,
+                                    "connection_name": connection_name,
+                                    "timestamp": chrono::Utc::now().to_rfc3339()
+                                })
+                            );
                         }
 
-                        // Wait until OBS fully stops, then try to index using session handles
-                        let _ =
-                            Self::wait_until_recording_stopped(mgr.clone(), conn.clone(), 30).await;
-                        let _ = Self::index_after_stop_with_snapshot(
-                            db.clone(),
-                            session_snapshot.clone(),
+                        // Wait until OBS reports Stopped (up to 30s), then index
+                        let _ = Self::wait_until_recording_stopped(
+                            self.obs_manager.clone(),
+                            connection_name.clone(),
+                            30,
                         )
                         .await;
+                        let _ = self.index_recording_after_stop().await;
                     }
-                });
-                *self.pending_stop_task.lock().unwrap() = Some(handle);
+                } else {
+                    log::info!(
+                        "Winner: OBS connection '{connection_name}' offline; skipping immediate stop"
+                    );
+                    println!(
+                        " Winner: OBS connection '{connection_name}' offline; skipping immediate stop"
+                    );
+                }
+            } else {
+                if obs_ready {
+                    log::info!("Scheduling stop in {delay_secs}s (will cancel if new match loads)");
+                    let mgr = self.obs_manager.clone();
+                    let conn = connection_name.clone();
+                    let db = self.database.clone();
+                    // Take a snapshot of the session before spawning to avoid holding a MutexGuard across await
+                    let session_snapshot = { self.current_session.lock().unwrap().clone() };
+                    let match_id_for_stop = session_snapshot
+                        .as_ref()
+                        .map(|s| s.match_id.clone())
+                        .unwrap_or_default();
+                    // Abort any previous pending stop
+                    if let Some(handle) = self.pending_stop_task.lock().unwrap().take() {
+                        handle.abort();
+                    }
+                    let handle = tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+                        let can_stop = match mgr.get_connection_status(&conn).await {
+                            Ok(ObsConnectionStatus::Authenticated) => true,
+                            Ok(status) => {
+                                log::info!(
+                                    "Delayed stop: OBS connection '{conn}' not ready ({status:?}); skipping stop"
+                                );
+                                false
+                            }
+                            Err(err) => {
+                                log::warn!(
+                                    "Delayed stop: OBS connection '{conn}' unavailable: {err}"
+                                );
+                                false
+                            }
+                        };
+                        if !can_stop {
+                            return;
+                        }
+                        if let Err(e) = mgr.stop_recording(Some(&conn)).await {
+                            log::error!("Delayed stop: failed to stop recording via obws: {e}");
+                        } else {
+                            log::info!("Delayed stop: stop requested for connection: {conn}");
+
+                            // Persist recording session stop
+                            if !match_id_for_stop.is_empty() {
+                                if let Err(e) = Self::stop_recording_session_by_match_id_static(
+                                    db.clone(),
+                                    &match_id_for_stop,
+                                )
+                                .await
+                                {
+                                    log::error!(
+                                        "Failed to persist delayed recording session stop: {e}"
+                                    );
+                                }
+                            }
+
+                            // Wait until OBS fully stops, then try to index using session handles
+                            let _ =
+                                Self::wait_until_recording_stopped(mgr.clone(), conn.clone(), 30)
+                                    .await;
+                            let _ = Self::index_after_stop_with_snapshot(
+                                db.clone(),
+                                session_snapshot.clone(),
+                            )
+                            .await;
+                        }
+                    });
+                    *self.pending_stop_task.lock().unwrap() = Some(handle);
+                } else {
+                    log::info!(
+                        "Winner: OBS connection '{connection_name}' offline; skipping delayed stop scheduling"
+                    );
+                    println!(
+                        " Winner: OBS connection '{connection_name}' offline; skipping delayed stop scheduling"
+                    );
+                }
             }
         }
 
@@ -1772,17 +1885,37 @@ impl ObsRecordingEventHandler {
                 session.recording_path.clone(),
                 session.obs_connection_name.clone(),
             ) {
+                let obs_ready = self
+                    .obs_connection_ready(&conn_name, "override apply")
+                    .await;
                 // Normalize path separators to forward slashes for OBS compatibility
-                let dir_norm = dir.replace('\\', "/");
-                println!(" Sending to OBS '{conn_name}' record directory (override): {dir_norm}");
-                log::info!("Sending to OBS '{conn_name}' record directory (override): {dir_norm}");
-                match self
-                    .obs_manager
-                    .set_record_directory(&dir_norm, Some(&conn_name))
-                    .await
-                {
-                    Ok(()) => log::info!("Applied overridden recording directory to OBS: {dir}"),
-                    Err(e) => log::warn!("Failed to set overridden record directory in OBS: {e}"),
+                if obs_ready {
+                    let dir_norm = dir.replace('\\', "/");
+                    println!(
+                        " Sending to OBS '{conn_name}' record directory (override): {dir_norm}"
+                    );
+                    log::info!(
+                        "Sending to OBS '{conn_name}' record directory (override): {dir_norm}"
+                    );
+                    match self
+                        .obs_manager
+                        .set_record_directory(&dir_norm, Some(&conn_name))
+                        .await
+                    {
+                        Ok(()) => {
+                            log::info!("Applied overridden recording directory to OBS: {dir}")
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to set overridden record directory in OBS: {e}")
+                        }
+                    }
+                } else {
+                    log::info!(
+                        "Override: OBS connection '{conn_name}' offline; skipping record directory sync"
+                    );
+                    println!(
+                        " Override: OBS connection '{conn_name}' offline; skipping record directory sync"
+                    );
                 }
                 // Re-apply filename formatting
                 println!(" Override: resolving filename template...");
@@ -1801,18 +1934,27 @@ impl ObsRecordingEventHandler {
                 };
                 println!(" Override: active filename template: {eff_tmpl}");
                 let formatting = self.build_filename_formatting(&eff_tmpl, &session);
-                println!(
-                    " Sending to OBS '{conn_name}' filename formatting (override): {formatting}"
-                );
-                log::info!(
-                    "Sending to OBS '{conn_name}' filename formatting (override): {formatting}"
-                );
-                if let Err(e) = self
-                    .obs_manager
-                    .set_filename_formatting(&formatting, Some(&conn_name))
-                    .await
-                {
-                    log::warn!("Failed to set filename formatting after override: {e}");
+                if obs_ready {
+                    println!(
+                        " Sending to OBS '{conn_name}' filename formatting (override): {formatting}"
+                    );
+                    log::info!(
+                        "Sending to OBS '{conn_name}' filename formatting (override): {formatting}"
+                    );
+                    if let Err(e) = self
+                        .obs_manager
+                        .set_filename_formatting(&formatting, Some(&conn_name))
+                        .await
+                    {
+                        log::warn!("Failed to set filename formatting after override: {e}");
+                    }
+                } else {
+                    log::info!(
+                        "Override: OBS connection '{conn_name}' offline; skipping filename formatting sync"
+                    );
+                    println!(
+                        " Override: OBS connection '{conn_name}' offline; skipping filename formatting sync"
+                    );
                 }
                 // Clear awaiting flag so FightReady will proceed next time
                 if let Ok(mut wait_flag) = self.awaiting_path_decision.lock() {

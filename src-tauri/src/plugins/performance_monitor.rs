@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
-use std::collections::VecDeque;
-use serde::{Serialize, Deserialize};
 
 /// Performance monitoring system for high-volume event processing
 pub struct PerformanceMonitor {
@@ -117,7 +117,7 @@ impl MemoryTracker {
 
     pub fn update_usage(&self) {
         let usage = self.measure_current_usage();
-        
+
         // Update current usage
         if let Ok(mut current) = self.current_usage.lock() {
             *current = usage.clone();
@@ -146,7 +146,7 @@ impl MemoryTracker {
     pub fn get_stats(&self) -> MemoryUsageStats {
         let current = self.get_current_usage();
         let peak = self.peak_usage.lock().unwrap().clone();
-        
+
         // Calculate cache hit rate (simplified - would need actual cache implementation)
         let cache_hit_rate = 0.85; // Placeholder
         let cache_miss_rate = 1.0 - cache_hit_rate;
@@ -164,8 +164,8 @@ impl MemoryTracker {
         // Simplified memory measurement
         // In a real implementation, you would use platform-specific APIs
         let total_memory_mb = 128.0; // Placeholder
-        let heap_memory_mb = 64.0;   // Placeholder
-        let stack_memory_mb = 8.0;   // Placeholder
+        let heap_memory_mb = 64.0; // Placeholder
+        let stack_memory_mb = 8.0; // Placeholder
 
         MemoryUsage {
             total_memory_mb,
@@ -190,11 +190,11 @@ impl ProcessingStats {
     pub fn record_event(&mut self, processing_time_ms: u64) {
         self.total_events_processed += 1;
         self.total_processing_time_ms += processing_time_ms;
-        
+
         // Update average processing time
-        self.average_processing_time_ms = 
+        self.average_processing_time_ms =
             self.total_processing_time_ms as f64 / self.total_events_processed as f64;
-        
+
         self.last_update = SystemTime::now();
     }
 
@@ -218,12 +218,12 @@ impl EventRateTracker {
     pub fn record_event(&mut self) {
         let now = SystemTime::now();
         self.event_timestamps.push_back(now);
-        
+
         // Remove old timestamps outside the window
         while self.event_timestamps.len() > self.window_size {
             self.event_timestamps.pop_front();
         }
-        
+
         self.update_rate();
     }
 
@@ -234,7 +234,7 @@ impl EventRateTracker {
     fn update_rate(&mut self) {
         let now = SystemTime::now();
         let window_duration = std::time::Duration::from_secs(1); // 1 second window
-        
+
         // Remove timestamps older than the window
         while let Some(timestamp) = self.event_timestamps.front() {
             if now.duration_since(*timestamp).unwrap() > window_duration {
@@ -243,7 +243,7 @@ impl EventRateTracker {
                 break;
             }
         }
-        
+
         // Calculate rate
         let event_count = self.event_timestamps.len() as f64;
         self.current_rate = event_count;
@@ -289,4 +289,4 @@ pub struct ProcessingPerformanceStats {
     pub peak_events_per_second: f64,
     pub total_processing_time_ms: u64,
     pub last_performance_update: SystemTime,
-} 
+}
