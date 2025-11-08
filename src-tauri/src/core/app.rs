@@ -448,18 +448,22 @@ impl App {
             let event_stream = Arc::clone(self.event_stream_processor());
             let event_distributor = Arc::clone(self.event_distributor());
             let advanced_analytics = Arc::clone(self.advanced_analytics());
+            let trigger_plugin = Arc::clone(self.trigger_plugin());
             let handle = tokio::task::spawn(async move {
                 Self::route_pss_envelopes(
                     envelope_rx,
                     event_stream,
                     event_distributor,
                     advanced_analytics,
+                    trigger_plugin,
                 )
                 .await;
             });
             let mut guard = self.pss_subsystem_task.lock().await;
             *guard = Some(handle);
-            log::info!("Listener bridge connected for analytics, stream, and distribution");
+            log::info!(
+                "Listener bridge connected for analytics, stream, distribution, and triggers"
+            );
         }
 
         log::info!("Application started successfully");
@@ -1584,6 +1588,7 @@ impl App {
         event_stream: Arc<EventStreamProcessor>,
         event_distributor: Arc<EventDistributor>,
         advanced_analytics: Arc<AdvancedAnalytics>,
+        trigger_plugin: Arc<TriggerPlugin>,
     ) {
         log::info!("PSS subsystem bridge started");
 
@@ -1604,6 +1609,41 @@ impl App {
                 .await
             {
                 log::debug!("Advanced analytics ingest failed: {err}");
+            }
+
+            if let Some(raw_message) = PssListener::encode_event(&envelope.raw) {
+                let event_code = raw_message
+                    .split(';')
+                    .next()
+                    .unwrap_or_default()
+                    .to_string();
+                match trigger_plugin.process_pss_event(&raw_message).await {
+                    Ok(results) => {
+                        if results.is_empty() {
+                            log::debug!("Trigger plugin had no matching actions for {event_code}");
+                        } else {
+                            let success_count = results.iter().filter(|res| res.success).count();
+                            log::info!(
+                                "Trigger plugin executed {} actions ({} succeeded) for {}",
+                                results.len(),
+                                success_count,
+                                event_code
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        log::warn!(
+                            "Trigger plugin failed to process PSS event {}: {}",
+                            event_code,
+                            err
+                        );
+                    }
+                }
+            } else {
+                log::debug!(
+                    "Skipping trigger dispatch for unencoded PSS event: {:?}",
+                    envelope.raw
+                );
             }
         }
 

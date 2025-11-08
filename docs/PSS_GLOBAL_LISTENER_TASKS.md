@@ -1,16 +1,17 @@
 # PSS Global Listener & Overlay Tasks
 
-_Last updated: 2025-11-07_
+_Last updated: 2025-11-09_
 
 ## Active Tasks
 - [ ] Validate WT UDP v2.3 mapping and document canonical event keys (points, triggers, break, winner rounds) for the listener taxonomy.
 - [ ] Implement spinning-hit round tracker in the modern scoreboard overlay (count occurrences of point types 4 & 5, reset on round transitions).
 - [ ] Repurpose `modern_player_stat_overlay.svg` for round-end strike summaries (rename labels, wire to scoreboard trigger, remove biometric assumptions).
 - [ ] Add sandbox smoke coverage that simulates spinning hits and asserts stat overlay population/timing.
-- [ ] Design and prototype the global PSS listener service (central dispatcher, filter pipeline, action routing API for OBS/overlays/statistics).
+- [x] Design and prototype the global PSS listener service (central dispatcher, filter pipeline, action routing API for OBS/overlays/statistics).
 - [ ] Guarantee sub-50 ms dispatch for OBS IVR actions (record start/stop, replay save) through the listener to satisfy competition requirements.
 - [ ] Extend the Triggering tab to configure listener filters → actions (persistence, validation, preview), including OBS, overlay, and analytics targets.
 - [ ] Audit and replace legacy per-module PSS listeners/queues with calls into the global listener (scoreboard, OBS automation, analytics, sandbox harness).
+- [x] Wire Trigger plugin consumers into the listener once filter API lands.
 - [ ] Provide performance guardrails: scoreboard updates must remain direct/no-buffer, with listener bypass modes documented for official overlay accuracy.
 
 ## Migration Roadmap
@@ -51,9 +52,11 @@ _Last updated: 2025-11-07_
 
 ### Implementation Notes — 2025-11-08
 - Introduced `core::pss_listener::PssListener` as the central dispatcher with dual broadcast channels (JSON for existing overlays/UI, envelopes for future raw-event subscribers).
-- `App::handle_udp_events` now feeds the listener alongside the low-latency Tauri event emission, while `App::emit_pss_event` pushes manual events through the same pipeline.
+- `App::handle_udp_events` now feeds the listener alongside the low-latency Tauri event emission, while `App::emit_pss_event_with_raw` pushes manual events through the same pipeline.
 - WebSocket bridging uses the listener subscription transparently, maintaining zero-buffer scoreboard updates.
 - Added unit coverage for the listener broadcast paths to guard regressions as additional consumers are wired in.
+- Listener envelopes now power `EventStreamProcessor`, `EventDistributor`, and `AdvancedAnalytics` fan-out via a dedicated bridge task, replacing ad-hoc hooks for these subsystems.
+- Trigger plugin dispatch now flows through the envelope bridge using `PssListener::encode_event` to preserve legacy parsing paths while feeding the automation runtime.
 
 ## Parking Lot
 - Clarify whether additional PSS streams (e.g., `hl*`, `brk`, `wrd`) need default handlers in the listener before UI integration.
