@@ -119,7 +119,7 @@ impl PssListener {
                     _ => "ij0",
                 };
                 let mut segments = vec![code.to_string(), time.clone()];
-                if let Some(action) = action {
+                if let Some(action) = action.as_ref() {
                     segments.push(action.clone());
                 }
                 Some(format!("{};", segments.join(";")))
@@ -147,7 +147,7 @@ impl PssListener {
             }
             PssEvent::Break { time, action } => {
                 let mut segments = vec!["brk".to_string(), time.clone()];
-                if let Some(action) = action {
+                if let Some(action) = action.as_ref() {
                     segments.push(action.clone());
                 }
                 Some(format!("{};", segments.join(";")))

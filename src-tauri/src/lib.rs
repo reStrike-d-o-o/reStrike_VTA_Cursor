@@ -14,6 +14,7 @@ pub mod importers;
 pub mod logging;
 pub mod openapi;
 pub mod plugins;
+pub mod pss;
 pub mod security;
 pub mod tauri_commands;
 pub mod tauri_commands_manual_mode;
