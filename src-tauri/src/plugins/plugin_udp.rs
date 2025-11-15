@@ -577,6 +577,44 @@ impl UdpServer {
         self.performance_monitor.get_performance_metrics()
     }
 
+    pub fn websocket_client_count(&self) -> usize {
+        self.websocket_server.get_client_count()
+    }
+
+    pub fn match_in_progress(&self) -> bool {
+        self.websocket_server.get_match_started()
+    }
+
+    pub fn current_match_db_id(&self) -> Option<i64> {
+        self.websocket_server.get_current_match_db_id()
+    }
+
+    pub fn status_snapshot(&self) -> UdpStats {
+        self.stats
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_default()
+    }
+
+    pub async fn set_tournament_context(&self, tournament_id: Option<i64>) -> AppResult<()> {
+        if let Ok(mut guard) = self.current_tournament_id.lock() {
+            *guard = tournament_id;
+        }
+        Ok(())
+    }
+
+    pub fn get_tournament_context(&self) -> Option<i64> {
+        self
+            .current_tournament_id
+            .lock()
+            .ok()
+            .and_then(|guard| *guard)
+    }
+
+    pub async fn clear_tournament_context(&self) -> AppResult<()> {
+        self.set_tournament_context(None).await
+    }
+
     /// Phase 1 Optimization: Get memory usage
     pub fn get_memory_usage(&self) -> crate::plugins::performance_monitor::MemoryUsageStats {
         self.performance_monitor.get_memory_stats()
