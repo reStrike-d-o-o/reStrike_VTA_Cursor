@@ -18,6 +18,7 @@ class ScoreboardOverlay {
     this.currentTheme = 'default';
     this.transparency = 1.0;
     this.initialize();
+    this.roundFormat = 'ordinal';
   }
 
   initialize() {
@@ -432,12 +433,19 @@ class ScoreboardOverlay {
     }
   }
 
+  setRoundFormat(format) {
+    if (format === 'label' || format === 'ordinal') {
+      this.roundFormat = format;
+    }
+  }
+
   // Update current round
   updateRound(round) {
     const roundElement = this.getSvgElementAny(['roundNumber', 'currentRound']);
     if (roundElement) {
-      const isModern = roundElement.id === 'roundNumber';
-      const value = isModern ? `ROUND ${round}` : this.getOrdinalSuffix(round);
+      const value = this.roundFormat === 'label'
+        ? `ROUND ${round}`
+        : this.getOrdinalSuffix(round);
       this.setTextForElementOrGroup(roundElement, value);
       console.log(`✅ Updated current round: ${value}`);
     } else {
