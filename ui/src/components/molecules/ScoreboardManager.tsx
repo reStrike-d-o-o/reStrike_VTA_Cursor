@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../atoms/Button';
 import Toggle from '../atoms/Toggle';
 import Input from '../atoms/Input';
@@ -6,7 +6,6 @@ import Label from '../atoms/Label';
 import StatusDot from '../atoms/StatusDot';
 import TabGroup from '../molecules/TabGroup';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
-import { useAppStore } from '../../stores';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n/index';
 
@@ -64,21 +63,16 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
   const [overlayTab, setOverlayTab] = useState('olympic');
 
   // PSS data from store - use direct property selectors to avoid infinite loops
-  const matchData = usePssMatchStore((state) => state.matchData);
-  const athlete1 = matchData.athletes?.athlete1;
-  const athlete2 = matchData.athletes?.athlete2;
-  const matchNumber = matchData.matchConfig?.number;
-  const matchCategory = matchData.matchConfig?.category;
-  const matchWeight = matchData.matchConfig?.weight;
-  const matchDivision = matchData.matchConfig?.division;
-  const totalScore = matchData.currentScores ? {
-    athlete1: matchData.currentScores.athlete1_score,
-    athlete2: matchData.currentScores.athlete2_score,
+  const athlete1 = usePssMatchStore((state) => state.matchData.athletes?.athlete1);
+  const athlete2 = usePssMatchStore((state) => state.matchData.athletes?.athlete2);
+  const matchNumber = usePssMatchStore((state) => state.matchData.matchConfig?.number);
+  const matchCategory = usePssMatchStore((state) => state.matchData.matchConfig?.category);
+  const currentScores = usePssMatchStore((state) => state.matchData.currentScores);
+  const isLoaded = usePssMatchStore((state) => state.matchData.isLoaded);
+  const totalScore = currentScores ? {
+    athlete1: currentScores.athlete1_score,
+    athlete2: currentScores.athlete2_score,
   } : undefined;
-  const isLoaded = matchData.isLoaded;
-
-  // Store reference
-  const { overlaySettings: appOverlaySettings } = useAppStore();
 
   // Load overlay templates on component mount
   useEffect(() => {

@@ -969,11 +969,6 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
 
   const flagPanel = useMemo(() => <FlagManagementPanel />, []);
 
-  // Scoreboard Content
-  const ScoreboardContent = () => (
-    <ScoreboardManager />
-  );
-
   // Triggers Content
   const TriggersContent = () => (
     <div className="space-y-6">
@@ -1069,7 +1064,7 @@ const PssDrawer: React.FC<PssDrawerProps> = ({ className = '' }) => {
             id: 'scoreboard',
             label: t('pss.tabs.scoreboard', 'Scoreboard'),
             icon: <LottieIcon animationData={scoreboardAnimation} size={32} />,
-            content: <ScoreboardContent />
+            content: <ScoreboardManager />
           },
           {
             id: 'simulation',
