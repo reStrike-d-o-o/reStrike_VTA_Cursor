@@ -85,7 +85,7 @@
             if (nameBlue) {
                 try {
                     scoreboardInstance.updateAthleteName('blue', nameBlue);
-                    const blueNameEl = scoreboardInstance.svg.getElementById('player1Name');
+                    const blueNameEl = scoreboardInstance.svg.getElementById('athlete1Name');
                     if (blueNameEl) blueNameEl.textContent = nameBlue.toUpperCase();
                 } catch (_) {}
             }
@@ -98,7 +98,7 @@
             if (nameRed) {
                 try {
                     scoreboardInstance.updateAthleteName('red', nameRed);
-                    const redNameEl = scoreboardInstance.svg.getElementById('player2Name');
+                    const redNameEl = scoreboardInstance.svg.getElementById('athlete2Name');
                     if (redNameEl) redNameEl.textContent = nameRed.toUpperCase();
                 } catch (_) {}
             }

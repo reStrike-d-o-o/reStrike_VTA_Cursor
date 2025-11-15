@@ -91,7 +91,16 @@ class ScoreboardOverlay {
     if (!imageEl) {
       imageEl = document.createElementNS(ns, 'image');
       imageEl.setAttribute('data-flag', 'true');
-      flagElement.appendChild(imageEl);
+    }
+    if (imageEl.parentNode !== flagElement) {
+      const firstChild = flagElement.firstChild;
+      if (firstChild) {
+        flagElement.insertBefore(imageEl, firstChild);
+      } else {
+        flagElement.appendChild(imageEl);
+      }
+    } else if (flagElement.firstChild !== imageEl) {
+      flagElement.insertBefore(imageEl, flagElement.firstChild);
     }
 
     let x = 0;
@@ -227,8 +236,8 @@ class ScoreboardOverlay {
   updatePlayerName(player, name) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const candidateIds = player === 'blue'
-      ? ['modern_player1Name', 'modern_player1_name', 'athlete1Name', 'player1Name']
-      : ['modern_player2Name', 'modern_player2_name', 'athlete2Name', 'player2Name'];
+      ? ['modern_player1_name', 'athlete1Name']
+      : ['modern_player2_name', 'athlete2Name'];
     const nameElement = this.getSvgElementAny(candidateIds);
     if (nameElement) {
       const raw = (name == null ? '' : String(name));
@@ -248,13 +257,9 @@ class ScoreboardOverlay {
   updateScore(player, score) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const candidateIds = player === 'blue'
-      ? ['modern_player1Score', 'player1Score', 'athlete1Score']
-      : ['modern_player2Score', 'player2Score', 'athlete2Score'];
-    const elementId = candidateIds[1];
-    console.log(`🎯 Updating score for ${player} player, id: ${elementId}, score: ${score}`);
-    console.log(`🎯 SVG element:`, this.svg);
+      ? ['athlete1Score']
+      : ['athlete2Score'];
     const scoreElement = this.getSvgElementAny(candidateIds);
-    console.log(`🎯 Found score element:`, scoreElement);
 
     if (scoreElement) {
       this.setTextForElementOrGroup(scoreElement, score);
@@ -274,8 +279,8 @@ class ScoreboardOverlay {
     const code = this.normalizeFlagCode(country);
     const imageEl = this.setFlagForElementCandidates(
       player === 'blue'
-      ? ['modern_player1Flag', 'modern_player1_flag', 'athlete1Flag', 'player1Flag', 'flag1', 'flag1_x5F_placeholder', 'leftPlayerFlag']
-      : ['modern_player2Flag', 'modern_player2_flag', 'athlete2Flag', 'player2Flag', 'flag2', 'flag2_x5F_placeholder', 'rightPlayerFlag'],
+      ? ['athlete1Flag', 'player1Flag', 'flag1', 'flag1_x5F_placeholder', 'leftPlayerFlag', 'athlete1FlagPlaceholder', 'flag']
+      : ['athlete2Flag', 'player2Flag', 'flag2', 'flag2_x5F_placeholder', 'rightPlayerFlag', 'athlete2FlagPlaceholder', 'flag'],
       code
     );
 
@@ -286,8 +291,8 @@ class ScoreboardOverlay {
     }
 
     const labelCandidates = player === 'blue'
-      ? ['modern_player1IOC', 'modern_player1_ioc', 'modern_player1Country', 'player1Country', 'athlete1Country']
-      : ['modern_player2IOC', 'modern_player2_ioc', 'modern_player2Country', 'player2Country', 'athlete2Country'];
+      ? ['modern_player1_ioc', 'modern_player_ioc', 'athlete1Country']
+      : ['modern_player2_ioc', 'modern_player_ioc', 'athlete2Country'];
     const labelElement = this.getSvgElementAny(labelCandidates);
     if (labelElement) {
       this.setTextForElementOrGroup(labelElement, code);
@@ -310,13 +315,15 @@ class ScoreboardOverlay {
 
   // Update penalties and warnings
   updatePenalties(player, penalties, warnings) {
-    // Map player colors to SVG element IDs (support legacy and new schemas)
+    const rawValue = (warnings != null ? warnings : penalties);
+    if (this.updateArcadeWarningsVisual(player, rawValue)) {
+      return;
+    }
     const penaltyIdCandidates = player === 'blue'
-      ? ['modern_player1Fouls', 'modern_gam_jeom_player1', 'athlete1Warnings', 'player1Fouls']
-      : ['modern_player2Fouls', 'modern_gam_jeom_player2', 'athlete2Warnings', 'player2Fouls'];
+      ? ['modern_gam_jeom_player1', 'athlete1Warnings']
+      : ['modern_gam_jeom_player2', 'athlete2Warnings'];
     const penaltiesElement = this.getSvgElementAny(penaltyIdCandidates);
     if (penaltiesElement) {
-      const rawValue = (warnings != null ? warnings : penalties);
       let numerator = 0;
       if (rawValue != null) {
         if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
@@ -338,8 +345,8 @@ class ScoreboardOverlay {
       // Also update by strict IDs to avoid selector drift
       try {
         const strictIds = player === 'blue'
-          ? ['modern_player1Fouls', 'player1Fouls', 'athlete1Warnings']
-          : ['modern_player2Fouls', 'player2Fouls', 'athlete2Warnings'];
+          ? ['athlete1Warnings']
+          : ['athlete2Warnings'];
         for (const strictId of strictIds) {
           const strictEl = this.svg.getElementById(strictId);
           if (!strictEl) continue;
@@ -363,14 +370,43 @@ class ScoreboardOverlay {
     }
   }
 
+  updateArcadeWarningsVisual(player, value) {
+    const prefix = player === 'blue' ? 'athlete1' : 'athlete2';
+    const total = Math.max(0, Math.min(5, Number(value) || 0));
+    let handled = false;
+
+    for (let i = 1; i <= 5; i += 1) {
+      const on = this.svg.getElementById(`${prefix}_warning${i}-1`);
+      const off = this.svg.getElementById(`${prefix}_warning${i}-0`);
+      if (on || off) handled = true;
+      const active = i <= total;
+      if (on) {
+        on.style.display = active ? 'block' : 'none';
+        on.style.opacity = active ? '1' : '0';
+      }
+      if (off) {
+        off.style.display = active ? 'none' : 'block';
+        off.style.opacity = active ? '1' : '0.4';
+      }
+    }
+
+    const groupOn = this.svg.getElementById(`${prefix}_warnings_on`);
+    const groupOff = this.svg.getElementById(`${prefix}_warnings_off`);
+    if (groupOn || groupOff) handled = true;
+    if (groupOn) groupOn.style.display = 'block';
+    if (groupOff) groupOff.style.display = 'block';
+
+    return handled;
+  }
+
   updateAthleteWarnings(side, value) { this.updatePenalties(side, null, value); }
 
   // Update round wins
   updateRoundWins(player, wins) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const roundIdCandidates = player === 'blue'
-      ? ['modern_player1Rounds', 'athlete1Rounds', 'player1Rounds']
-      : ['modern_player2Rounds', 'athlete2Rounds', 'player2Rounds'];
+      ? ['athlete1Rounds', 'player1Rounds']
+      : ['athlete2Rounds', 'player2Rounds'];
     const winsElement = this.getSvgElementAny(roundIdCandidates);
     if (winsElement) {
       this.setTextForElementOrGroup(winsElement, wins || 0);
@@ -387,7 +423,7 @@ class ScoreboardOverlay {
 
   // Update match timer
   updateTimer(minutes, seconds) {
-    const timerElement = this.getSvgElementAny(['modern_match_time', 'matchTimer', 'matchTime', 'time']);
+    const timerElement = this.getSvgElementAny(['matchTime', 'matchTimer', 'matchTimer2', 'time']);
     if (timerElement) {
       this.setTextForElementOrGroup(timerElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
       console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
@@ -398,20 +434,20 @@ class ScoreboardOverlay {
 
   // Update current round
   updateRound(round) {
-    const roundElement = this.getSvgElementAny(['modern_round_number', 'currentRound', 'roundNumber']);
+    const roundElement = this.getSvgElementAny(['roundNumber', 'currentRound']);
     if (roundElement) {
-      const isModern = roundElement.id === 'modern_round_number' || roundElement.id === 'roundNumber';
+      const isModern = roundElement.id === 'roundNumber';
       const value = isModern ? `ROUND ${round}` : this.getOrdinalSuffix(round);
       this.setTextForElementOrGroup(roundElement, value);
       console.log(`✅ Updated current round: ${value}`);
     } else {
-      console.warn(`⚠️ Could not find round element (tried: modern_round_number, currentRound, roundNumber)`);
+      console.warn(`⚠️ Could not find round element (tried: roundNumber, currentRound)`);
     }
   }
 
   // Update injury time
   updateInjuryTime(time) {
-    const injuryElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
+    const injuryElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       // Handle both string format ("1:00") and separate parameters (minutes, seconds)
       if (typeof time === 'string') {
@@ -425,15 +461,15 @@ class ScoreboardOverlay {
         console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
       }
     } else {
-      console.warn(`⚠️ Could not find injury time element (tried: modern_injury_time, injuryTime, injury_x5F_time)`);
+      console.warn(`⚠️ Could not find injury time element (tried: injuryTime, injury_x5F_time)`);
     }
   }
 
   // Show injury section
   showInjurySection() {
     const injurySection = this.svg.getElementById('injurySection');
-    const timeElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
-    const bgElement = this.getSvgElementAny(['modern_injury_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
+    const timeElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
+    const bgElement = this.getSvgElementAny(['injury_x5F_time_x5F_bg', 'injuryBg']);
     if (injurySection) {
       injurySection.style.display = 'block';
       injurySection.style.opacity = '1';
@@ -450,8 +486,8 @@ class ScoreboardOverlay {
   // Hide injury section
   hideInjurySection() {
     const injurySection = this.svg.getElementById('injurySection');
-    const timeElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
-    const bgElement = this.getSvgElementAny(['modern_injury_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
+    const timeElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
+    const bgElement = this.getSvgElementAny(['injury_x5F_time_x5F_bg', 'injuryBg']);
     if (injurySection) {
       injurySection.style.display = 'none';
       injurySection.style.opacity = '0';
@@ -467,7 +503,7 @@ class ScoreboardOverlay {
 
   // Reset injury time to 0:00
   resetInjuryTime() {
-    const injuryElement = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
+    const injuryElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       this.setTextForElementOrGroup(injuryElement, '0:00');
       console.log('✅ Injury time reset to 0:00');
@@ -482,12 +518,12 @@ class ScoreboardOverlay {
 
     // Add a subtle animation to indicate new match data
     const elements = [
-      this.getSvgElementAny(['modern_player1Name', 'player1Name', 'athlete1Name']),
-      this.getSvgElementAny(['modern_player2Name', 'player2Name', 'athlete2Name']),
-      this.getSvgElementAny(['modern_player1Score', 'player1Score', 'athlete1Score']),
-      this.getSvgElementAny(['modern_player2Score', 'player2Score', 'athlete2Score']),
-      this.getSvgElementAny(['modern_round_number', 'currentRound']),
-      this.getSvgElementAny(['modern_match_time', 'matchTimer', 'time'])
+      this.getSvgElementAny(['athlete1Name', 'player1Name']),
+      this.getSvgElementAny(['athlete2Name', 'player2Name']),
+      this.getSvgElementAny(['athlete1Score', 'player1Score']),
+      this.getSvgElementAny(['athlete2Score', 'player2Score']),
+      this.getSvgElementAny(['roundNumber', 'currentRound']),
+      this.getSvgElementAny(['matchTime', 'matchTimer', 'time'])
     ];
 
     elements.forEach((element, index) => {
@@ -713,21 +749,20 @@ class ScoreboardOverlay {
   updateMatchNumber(num) {
     const raw = (num == null) ? '' : String(num).trim();
     const normalized = raw.replace(/^0+/, '') || '0';
-    const target = this.getSvgElementAny(['modern_match_number', 'matchNumber', 'match']);
+    const target = this.getSvgElementAny(['matchNumber']);
     if (target) {
-      const displayValue = target.id === 'modern_match_number' ? raw : normalized;
-      this.setTextForElementOrGroup(target, displayValue);
+      this.setTextForElementOrGroup(target, normalized);
     }
   }
 
   // Injury helpers
   setInjuryTime(minutes, seconds) {
-    const t = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
+    const t = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
     if (t) this.setTextForElementOrGroup(t, `${minutes}:${String(seconds).padStart(2, '0')}`);
   }
   setInjuryVisible(visible) {
-    const t = this.getSvgElementAny(['modern_injury_time', 'injuryTime', 'injury_x5F_time']);
-    const bg = this.getSvgElementAny(['modern_injury_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
+    const t = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
+    const bg = this.getSvgElementAny(['injury_x5F_time_x5F_bg', 'injuryBg']);
     if (t) t.style.display = visible ? 'block' : 'none';
     if (bg) bg.style.display = visible ? 'block' : 'none';
     // Toggle logo positions only by visibility (no geometry changes)
@@ -967,7 +1002,7 @@ class PlayerStatOverlay extends ScoreboardOverlay {
   }
 
   updateDivisionLabel(label) {
-    const container = this.getSvgElementAny(['modern_division_label', 'modern_title_info']);
+    const container = this.getSvgElementAny(['modern_title_info']);
     if (!container) {
       console.warn('⚠️ Could not find division label container');
       return;
@@ -1102,7 +1137,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
         setTimeout(adjustLeftFlag, 100);
         return;
       }
-      const glassRect = this.getSvgElementAny(['modern_player1FlagGlass', 'leftPlayerFlagGlass']);
+      const glassRect = this.getSvgElementAny(['leftPlayerFlagGlass']);
       if (glassRect) {
         glassRect.setAttribute('width', flagWidth.toString());
       }
@@ -1112,7 +1147,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
     this.onSvgImageLoad(imageEl, adjustLeftFlag);
     setTimeout(adjustLeftFlag, 75);
 
-    const countryLabel = this.getSvgElementAny(['modern_player1Country', 'athlete1Country']);
+    const countryLabel = this.getSvgElementAny(['athlete1Country']);
     if (countryLabel) {
       this.setTextForElementOrGroup(countryLabel, this.normalizeFlagCode(countryCode));
     }
@@ -1123,7 +1158,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
   // Update Player 2 flag
   updatePlayer2Flag(countryCode) {
     const imageEl = this.setFlagForElementCandidates(
-      ['modern_player2Flag', 'rightPlayerFlag', 'flag2', 'flag2_x5F_placeholder', 'athlete2Flag', 'athlete2FlagPlaceholder'],
+      ['athlete2Flag', 'rightPlayerFlag', 'flag2', 'flag2_x5F_placeholder', 'athlete2FlagPlaceholder'],
       countryCode
     );
     if (!imageEl) return;
@@ -1174,7 +1209,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
         : computedLeft;
       imageEl.setAttribute('x', targetX.toString());
 
-      const glassRect = this.getSvgElementAny(['modern_player2FlagGlass', 'rightPlayerFlagGlass']);
+      const glassRect = this.getSvgElementAny(['rightPlayerFlagGlass']);
       if (glassRect) {
         glassRect.setAttribute('x', targetX.toString());
         glassRect.setAttribute('width', flagWidth.toString());
@@ -1186,7 +1221,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
     this.onSvgImageLoad(imageEl, adjustFlagPosition);
     setTimeout(adjustFlagPosition, 75);
 
-    const countryLabel = this.getSvgElementAny(['modern_player2Country', 'athlete2Country']);
+    const countryLabel = this.getSvgElementAny(['athlete2Country']);
     if (countryLabel) {
       this.setTextForElementOrGroup(countryLabel, this.normalizeFlagCode(countryCode));
     }
