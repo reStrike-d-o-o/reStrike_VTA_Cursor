@@ -339,7 +339,12 @@
                         scoreboardInstance.updateAthleteRounds('blue', blueWins);
                         scoreboardInstance.updateAthleteRounds('red', redWins);
                         break;
-                    case 'clock': {
+                    case 'clock':
+                    case 'timer':
+                    case 'match_timer':
+                    case 'break':
+                    case 'rest':
+                    case 'timeout': {
                         const timeValue = event.time ?? event.timer ?? event.remaining ?? event.clock ?? event?.structured_data?.time;
                         if (timeValue) {
                             let minutes = 0;

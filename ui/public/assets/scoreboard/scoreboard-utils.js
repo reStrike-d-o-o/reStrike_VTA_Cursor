@@ -278,14 +278,19 @@ class ScoreboardOverlay {
   // Update player countries (flags)
   updateCountry(player, country) {
     const code = this.normalizeFlagCode(country);
+    const primaryCandidates = player === 'blue'
+      ? ['athlete1FlagPlaceholder', 'player1FlagPlaceholder', 'flag1_x5F_placeholder', 'leftPlayerFlagPlaceholder']
+      : ['athlete2FlagPlaceholder', 'player2FlagPlaceholder', 'flag2_x5F_placeholder', 'rightPlayerFlagPlaceholder'];
+    const secondaryCandidates = player === 'blue'
+      ? ['athlete1Flag', 'player1Flag', 'flag1', 'leftPlayerFlag', 'flag']
+      : ['athlete2Flag', 'player2Flag', 'flag2', 'rightPlayerFlag', 'flag'];
     const imageEl = this.setFlagForElementCandidates(
-      player === 'blue'
-      ? ['athlete1Flag', 'player1Flag', 'flag1', 'flag1_x5F_placeholder', 'leftPlayerFlag', 'athlete1FlagPlaceholder', 'flag']
-      : ['athlete2Flag', 'player2Flag', 'flag2', 'flag2_x5F_placeholder', 'rightPlayerFlag', 'athlete2FlagPlaceholder', 'flag'],
+      [...primaryCandidates, ...secondaryCandidates],
       code
     );
 
     if (imageEl) {
+      this.hideStaticFlagArtwork(player, imageEl);
       console.log(`✅ Updated ${player} player country flag: ${code}`);
     } else {
       console.warn(`⚠️ Could not find flag element for ${player}`);
@@ -297,6 +302,22 @@ class ScoreboardOverlay {
     const labelElement = this.getSvgElementAny(labelCandidates);
     if (labelElement) {
       this.setTextForElementOrGroup(labelElement, code);
+    }
+  }
+
+  hideStaticFlagArtwork(player, imageEl) {
+    if (!this.svg || !imageEl) return;
+    const container = imageEl.parentElement;
+    const sampleIds = player === 'blue'
+      ? ['athlete1Flag', 'player1Flag', 'flag1']
+      : ['athlete2Flag', 'player2Flag', 'flag2'];
+    for (const id of sampleIds) {
+      const sampleEl = this.svg.getElementById(id);
+      if (!sampleEl || sampleEl === container || sampleEl.contains(imageEl)) {
+        continue;
+      }
+      sampleEl.style.display = 'none';
+      sampleEl.style.opacity = '0';
     }
   }
 

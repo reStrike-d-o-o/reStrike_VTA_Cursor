@@ -353,7 +353,10 @@
                 }
                 case 'clock':
                 case 'timer':
-                case 'match_timer': {
+                case 'match_timer':
+                case 'break':
+                case 'rest':
+                case 'timeout': {
                     const target = payload.time ?? payload.timer ?? payload.remaining ?? payload.clock ?? payload?.structured_data?.time;
                     if (target != null) {
                         const { minutes, seconds } = parseTime(String(target));
