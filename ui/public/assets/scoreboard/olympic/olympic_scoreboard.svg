@@ -206,8 +206,9 @@
         <rect id="matchInfo_x5F_bg" class="cls-25" x="125.367663" y="229.493164" width="225.109952"
           height="35.330959" />
         <text id="matchInfo" class="cls-20" transform="translate(134.92523 254.078434)">
-          <tspan text-anchor="start" class="cls-9" x="0" y="0">Men’s under</tspan>
-          <tspan text-anchor="start" class="cls-22" x="127.598633" y="0" xml:space="preserve"> 68kg</tspan>
+          <tspan id="categoryGender" text-anchor="start" class="cls-9" x="0" y="0">Men’s under</tspan>
+          <tspan id="categoryWeight" text-anchor="start" class="cls-22" x="127.598633" y="0" xml:space="preserve"> 68kg
+          </tspan>
         </text>
         <rect id="match_x5F_bg" class="cls-21" x="350.477615" y="229.493164" width="97.344844" height="35.330959" />
         <text text-anchor="middle" id="matchNumber" class="cls-8" transform="translate(360.913984 256.003239)">
@@ -276,8 +277,7 @@
           <text text-anchor="middle" id="athlete2Warnings" class="cls-18" transform="translate(418.756529 201.853092)">
             <tspan x="5" y="0">1</tspan>
           </text>
-          <text text-anchor="middle" id="athlete2Rounds" class="cls-13"
-            transform="translate(367.117369 201.853092)">
+          <text text-anchor="middle" id="athlete2Rounds" class="cls-13" transform="translate(367.117369 201.853092)">
             <tspan x="8" y="0">0</tspan>
           </text>
           <g id="athlete2Score">
@@ -775,8 +775,7 @@
           <text text-anchor="middle" id="athlete1Warnings" class="cls-18" transform="translate(414.510923 153.072208)">
             <tspan x="9" y="0">3</tspan>
           </text>
-          <text text-anchor="middle" id="athlete1Rounds" class="cls-13"
-            transform="translate(366.101744 153.180607)">
+          <text text-anchor="middle" id="athlete1Rounds" class="cls-13" transform="translate(366.101744 153.180607)">
             <tspan x="9" y="0">0</tspan>
           </text>
           <text text-anchor="middle" id="athlete1Score" class="cls-7" transform="translate(314.464048 156.180607)">

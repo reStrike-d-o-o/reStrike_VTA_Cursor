@@ -240,8 +240,8 @@
           <tspan id="roundNumber" x="0" y="0">ROUND 1</tspan>
         </text>
         <text text-anchor="start" class="cls-4" transform="translate(93.800383 125.030643)">
-          <tspan id="category_gender" class="cls-17" x="0" y="0">Men’s under</tspan>
-          <tspan id="category_weight" text-anchor="start" class="cls-9" x="150.598145" y="0" xml:space="preserve"> 68kg
+          <tspan id="categoryGender" class="cls-17" x="0" y="0">Men’s under</tspan>
+          <tspan id="categoryWeight" text-anchor="start" class="cls-9" x="150.598145" y="0" xml:space="preserve"> 68kg
           </tspan>
         </text>
         <g id="tournament_x5F_logo">
@@ -278,8 +278,7 @@
             <line class="cls-3" x1="408.327906" y1="199.621339" x2="408.327906" y2="225.737906" />
             <line class="cls-3" x1="456.36816" y1="199.621339" x2="456.36816" y2="225.737906" />
           </g>
-          <text text-anchor="middle" id="athlete2Rounds" class="cls-10"
-            transform="translate(423.635588 222.665653)">
+          <text text-anchor="middle" id="athlete2Rounds" class="cls-10" transform="translate(423.635588 222.665653)">
             <tspan x="9" y="0">22</tspan>
           </text>
           <text text-anchor="middle" id="athlete2Warnings" class="cls-8" transform="translate(471.675375 222.665653)">
@@ -791,8 +790,7 @@
             <line class="cls-2" x1="408.327906" y1="150.990011" x2="408.327906" y2="177.106577" />
             <line class="cls-2" x1="456.36816" y1="150.990011" x2="456.36816" y2="177.106577" />
           </g>
-          <text text-anchor="middle" id="athlete1Rounds" class="cls-10"
-            transform="translate(423.635588 174.034305)">
+          <text text-anchor="middle" id="athlete1Rounds" class="cls-10" transform="translate(423.635588 174.034305)">
             <tspan x="9" y="0">0</tspan>
           </text>
           <text text-anchor="middle" id="athlete1Warnings" class="cls-8" transform="translate(471.675375 174.034305)">

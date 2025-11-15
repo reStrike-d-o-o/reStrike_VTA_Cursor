@@ -158,6 +158,76 @@
             return { name, country: countryRaw.toUpperCase() };
         }
 
+        function deriveCategoryLabels(weight) {
+            if (!weight) return { genderLabel: '', weightLabel: '' };
+            const trimmed = String(weight).trim();
+            const match = trimmed.match(/^([MW])\s*([+-])\s*(.+)$/i);
+            if (match) {
+                const base = match[1].toUpperCase() === 'M' ? "Men's" : "Women's";
+                const qualifier = match[2] === '+' ? ' over' : ' under';
+                return {
+                    genderLabel: `${base}${qualifier}`,
+                    weightLabel: match[3].trim()
+                };
+            }
+            return { genderLabel: '', weightLabel: trimmed };
+        }
+
+        function applyCategoryLabels(weight) {
+            if (!scoreboardInstance) return;
+            const { genderLabel, weightLabel } = deriveCategoryLabels(weight);
+            scoreboardInstance.updateCategoryLabels(genderLabel, weightLabel);
+        }
+
+        function computeRoundWins(payload) {
+            const rounds = [payload.round1_winner, payload.round2_winner, payload.round3_winner]
+                .map(val => Number(val));
+            return {
+                blue: rounds.filter(val => val === 1).length,
+                red: rounds.filter(val => val === 2).length
+            };
+        }
+
+        function extractRawWarnings(raw) {
+            if (typeof raw !== 'string') return null;
+            const match = raw.match(/wg1;(\d+);wg2;(\d+)/i);
+            if (!match) return null;
+            return { blue: parseInt(match[1], 10), red: parseInt(match[2], 10) };
+        }
+
+        function extractRawInjury(raw) {
+            if (typeof raw !== 'string') return null;
+            const match = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
+            if (!match) return null;
+            return {
+                time: match[1],
+                action: (match[2] || '').toLowerCase()
+            };
+        }
+
+        function handleInjuryPayload(payload) {
+            if (!scoreboardInstance) return;
+            let timeValue = payload.time || payload.value || null;
+            let actionValue = payload.action || payload.visibility || payload.state || '';
+            if (!timeValue && typeof payload.raw_data === 'string') {
+                const extracted = extractRawInjury(payload.raw_data.trim());
+                if (extracted) {
+                    timeValue = extracted.time;
+                    if (!actionValue) actionValue = extracted.action;
+                }
+            }
+            if (timeValue) {
+                scoreboardInstance.updateInjuryTime(timeValue);
+            }
+            const normalizedAction = (actionValue || '').toLowerCase();
+            if (['show', 'start', 'resume', 'play', 'visible'].includes(normalizedAction)) {
+                scoreboardInstance.showInjurySection();
+            } else if (['hide', 'stop', 'reset', 'clear', 'pause'].includes(normalizedAction)) {
+                scoreboardInstance.hideInjurySection();
+                scoreboardInstance.resetInjuryTime();
+            }
+        }
+
         function updateNameAndCountry(side, info) {
             if (!info) return;
             if (info.name) {
@@ -234,58 +304,69 @@
 
             switch (eventType) {
                 case 'athletes': {
-                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
-                    const blueStructured = (payload.athlete1_short || payload.athlete1_long || payload.athlete1_country)
-                        ? {
-                            short: payload.athlete1_short,
-                            long: payload.athlete1_long || payload.athlete1_short,
-                            country: payload.athlete1_country
-                        }
-                        : null;
-                    const redStructured = (payload.athlete2_short || payload.athlete2_long || payload.athlete2_country)
-                        ? {
-                            short: payload.athlete2_short,
-                            long: payload.athlete2_long || payload.athlete2_short,
-                            country: payload.athlete2_country
-                        }
-                        : null;
-                    const blueSource = payload.athlete1 || payload.blue || payload.player1 || blueStructured || raw?.athlete1 || raw?.blue || {};
-                    const redSource = payload.athlete2 || payload.red || payload.player2 || redStructured || raw?.athlete2 || raw?.red || {};
-                    updateNameAndCountry('blue', normalizeAthlete(blueSource));
-                    updateNameAndCountry('red', normalizeAthlete(redSource));
+                    const blue = normalizeAthlete({
+                        short: payload.athlete1_short,
+                        long: payload.athlete1_long,
+                        country: payload.athlete1_country
+                    });
+                    const red = normalizeAthlete({
+                        short: payload.athlete2_short,
+                        long: payload.athlete2_long,
+                        country: payload.athlete2_country
+                    });
+                    updateNameAndCountry('blue', blue);
+                    updateNameAndCountry('red', red);
+                    const snapshot = snapshotAthletes(payload);
+                    if (snapshot) cacheAthletes = snapshot;
                     break;
                 }
                 case 'match_config': {
-                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
-                    const data = raw && typeof raw === 'object' ? raw : (payload.structured_data || payload);
-                    if (data) {
-                        if (data.round_duration != null) {
-                            const parsed = parseInt(data.round_duration, 10);
-                            if (!Number.isNaN(parsed)) {
-                                roundDuration = parsed;
-                            }
+                    const data = (payload.structured_data && typeof payload.structured_data === 'object') ? payload.structured_data : payload;
+                    cacheMatchConfig = {
+                        weight: data.weight,
+                        division: data.division,
+                        category: data.category,
+                        number: data.number,
+                        round_duration: data.round_duration,
+                        current_round: data.current_round
+                    };
+                    if (data.round_duration != null) {
+                        const parsed = parseInt(data.round_duration, 10);
+                        if (!Number.isNaN(parsed)) {
+                            roundDuration = parsed;
                         }
-                        if (typeof scoreboardInstance.updateMatchInfo === 'function') {
-                            scoreboardInstance.updateMatchInfo(data.weight, data.division ?? data.gender, data.category ?? data.phase);
-                        }
-                        if (typeof scoreboardInstance.updateMatchNumber === 'function' && data.number != null) {
-                            scoreboardInstance.updateMatchNumber(data.number);
-                        }
+                    }
+                    if (data.number != null) {
+                        scoreboardInstance.updateMatchNumber(data.number);
+                    }
+                    applyCategoryLabels(data.weight);
+                    const currentRound = data.current_round ?? 1;
+                    scoreboardInstance.updateRound(currentRound);
+                    const mins = Math.floor(roundDuration / 60);
+                    const secs = roundDuration % 60;
+                    scoreboardInstance.updateTimer(mins, secs);
+                    scoreboardInstance.updateScore('blue', 0);
+                    scoreboardInstance.updateScore('red', 0);
+                    scoreboardInstance.updatePenalties('blue', null, 0);
+                    scoreboardInstance.updatePenalties('red', null, 0);
+                    scoreboardInstance.updateRoundWins('blue', 0);
+                        scoreboardInstance.updateRoundWins('red', 0);
                         scoreboardInstance.hideInjurySection();
                         scoreboardInstance.resetInjuryTime();
-                        scoreboardInstance.applyNewMatchEffect(roundDuration, data.current_round || 1);
-                    }
-                    break;
+                        if (typeof scoreboardInstance.applyNewMatchEffect === 'function') {
+                            scoreboardInstance.applyNewMatchEffect(roundDuration, currentRound);
+                        }
+                        break;
                 }
                 case 'current_scores':
                 case 'score_update':
                 case 'score': {
-                    const parsedRaw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
-                    const source = parsedRaw && typeof parsedRaw === 'object' ? parsedRaw : payload;
-                    const blueScore = source.athlete1_score ?? source?.athlete1?.score ?? source.blue ?? 0;
-                    const redScore = source.athlete2_score ?? source?.athlete2?.score ?? source.red ?? 0;
-                    scoreboardInstance.updateScore('blue', Number(blueScore) || 0);
-                    scoreboardInstance.updateScore('red', Number(redScore) || 0);
+                    const source = (payload.structured_data && typeof payload.structured_data === 'object') ? payload.structured_data : payload;
+                    const blueScore = Number(source.athlete1_score ?? source?.athlete1?.score ?? 0);
+                    const redScore = Number(source.athlete2_score ?? source?.athlete2?.score ?? 0);
+                    scoreboardInstance.updateScore('blue', blueScore);
+                    scoreboardInstance.updateScore('red', redScore);
+                    cacheScores = { b: blueScore, r: redScore };
                     break;
                 }
                 case 'warnings':
@@ -296,59 +377,31 @@
                 case 'penalties':
                 case 'foul':
                 case 'fouls': {
-                    const warnings = extractWarnings(payload);
-                    if (warnings) {
-                        if (warnings.blue != null) {
-                            scoreboardInstance.updatePenalties('blue', null, warnings.blue);
-                        }
-                        if (warnings.red != null) {
-                            scoreboardInstance.updatePenalties('red', null, warnings.red);
-                        }
+                    if (payload.athlete1_warnings !== undefined) {
+                        scoreboardInstance.updatePenalties('blue', null, Number(payload.athlete1_warnings));
+                    }
+                    if (payload.athlete2_warnings !== undefined) {
+                        scoreboardInstance.updatePenalties('red', null, Number(payload.athlete2_warnings));
+                    }
+                    if (payload.athlete1_warnings !== undefined || payload.athlete2_warnings !== undefined) {
+                        cacheWarnings = {
+                            b: Number(payload.athlete1_warnings ?? cacheWarnings?.b ?? 0),
+                            r: Number(payload.athlete2_warnings ?? cacheWarnings?.r ?? 0)
+                        };
                     }
                     break;
                 }
                 case 'injury':
                 case 'injury_time':
                 case 'ij': {
-                    let timeValue = payload.time || payload.injury_time || payload.value || null;
-                    if (!timeValue && typeof payload.raw_data === 'string') {
-                        const raw = payload.raw_data.trim();
-                        const maybeJson = parseMaybeJson(raw);
-                        if (maybeJson && typeof maybeJson === 'object') {
-                            timeValue = maybeJson.time || maybeJson.injury_time;
-                        } else {
-                            const match = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
-                            if (match) {
-                                timeValue = match[1];
-                                if (match[2]) payload.action = match[2];
-                            }
-                        }
-                    }
-
-                    if (timeValue) {
-                        scoreboardInstance.updateInjuryTime(timeValue);
-                    }
-
-                    const visibility = (payload.action || payload.visibility || payload.state || '').toLowerCase();
-                    if (visibility === 'show' || visibility === 'visible' || visibility === 'start' || visibility === 'resume') {
-                        scoreboardInstance.showInjurySection();
-                    } else if (visibility === 'hide' || visibility === 'hidden' || visibility === 'clear' || visibility === 'reset' || visibility === 'stop') {
-                        scoreboardInstance.hideInjurySection();
-                        scoreboardInstance.resetInjuryTime();
-                    } else if (!visibility) {
-                        scoreboardInstance.hideInjurySection();
-                    }
+                    handleInjuryPayload(payload);
                     break;
                 }
                 case 'winner_rounds':
                 case 'winnerrounds': {
-                    const raw = typeof payload.raw_data === 'string' ? parseMaybeJson(payload.raw_data) : null;
-                    const source = raw && typeof raw === 'object' ? raw : payload;
-                    const rounds = [source.round1_winner, source.round2_winner, source.round3_winner].map(val => Number(val));
-                    const blueWins = rounds.filter(val => val === 1).length;
-                    const redWins = rounds.filter(val => val === 2).length;
-                    scoreboardInstance.updateRoundWins('blue', blueWins);
-                    scoreboardInstance.updateRoundWins('red', redWins);
+                    const wins = computeRoundWins(payload);
+                    scoreboardInstance.updateRoundWins('blue', wins.blue);
+                    scoreboardInstance.updateRoundWins('red', wins.red);
                     break;
                 }
                 case 'clock':
@@ -371,30 +424,23 @@
                         const mins = Math.floor(roundDuration / 60);
                         const secs = roundDuration % 60;
                         scoreboardInstance.updateTimer(mins, secs);
-                        scoreboardInstance.updateScore('blue', 0);
-                        scoreboardInstance.updateScore('red', 0);
-                        scoreboardInstance.updatePenalties('blue', null, 0);
-                        scoreboardInstance.updatePenalties('red', null, 0);
-                        scoreboardInstance.hideInjurySection();
-                        scoreboardInstance.resetInjuryTime();
                     }
                     break;
                 }
                 default: {
                     if (payload.raw_data && typeof payload.raw_data === 'string') {
-                        const raw = payload.raw_data.trim();
-                        const matchWarnings = raw.match(/wg1;(\d+);wg2;(\d+)/i);
-                        if (matchWarnings) {
-                            scoreboardInstance.updatePenalties('blue', null, parseInt(matchWarnings[1], 10));
-                            scoreboardInstance.updatePenalties('red', null, parseInt(matchWarnings[2], 10));
+                        const warnings = extractRawWarnings(payload.raw_data);
+                        if (warnings) {
+                            scoreboardInstance.updatePenalties('blue', null, warnings.blue);
+                            scoreboardInstance.updatePenalties('red', null, warnings.red);
                             break;
                         }
-                        const matchInjury = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
-                        if (matchInjury) {
-                            scoreboardInstance.updateInjuryTime(matchInjury[1]);
-                            const action = (matchInjury[2] || '').toLowerCase();
-                            if (action === 'show') scoreboardInstance.showInjurySection();
-                            else if (action === 'hide' || action === 'reset') {
+                        const injury = extractRawInjury(payload.raw_data);
+                        if (injury) {
+                            scoreboardInstance.updateInjuryTime(injury.time);
+                            if (injury.action === 'show') {
+                                scoreboardInstance.showInjurySection();
+                            } else if (injury.action === 'hide' || injury.action === 'reset') {
                                 scoreboardInstance.hideInjurySection();
                                 scoreboardInstance.resetInjuryTime();
                             }
@@ -465,11 +511,15 @@
             ws.onmessage = (event) => {
                 try {
                     const parsed = JSON.parse(event.data);
-                    if (parsed?.type === 'pss_event') {
-                        handle(parsed.data);
-                    } else if (parsed?.type === 'connection') {
+                    if (!parsed) return;
+                    if (parsed?.type === 'connection') {
                         updateConnectionStatus(Boolean(parsed.connected));
+                        return;
                     }
+                    const payload = (parsed?.type === 'pss_event' && parsed?.data)
+                        ? parsed.data
+                        : parsed;
+                    handle(payload);
                 } catch (_error) { }
             };
         }
@@ -487,8 +537,11 @@
                 }
                 try {
                     const payload = JSON.parse(event.newValue);
-                    if (payload?.type === 'pss_event') {
-                        handle(payload.data ?? payload);
+                    if (!payload) return;
+                    if (payload?.type === 'pss_event' && payload?.data) {
+                        handle(payload.data);
+                    } else if (payload?.type !== 'connection') {
+                        handle(payload);
                     }
                 } catch (_error) { }
             });

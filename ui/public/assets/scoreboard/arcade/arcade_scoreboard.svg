@@ -522,17 +522,17 @@
             d="M821.456913,263.282143v4.241666h-8.911311v1.673243c0,.077897.058287.136184.136184.136184h8.775127v2.548812h-8.775127c-1.478772,0-2.684996-1.206224-2.684996-2.684996v-5.914908c0-1.478772,1.206224-2.685178,2.684996-2.685178h6.090131c1.478772,0,2.684996,1.206405,2.684996,2.685178ZM818.908101,264.955386v-1.673243c0-.077897-.058287-.136184-.136184-.136184h-6.090131c-.077897,0-.136184.058287-.136184.136184v1.673243h6.362498Z" />
         </g>
         <text id="roundNumber" class="cls-32" transform="translate(701.614927 112.206119)">
-          <tspan x="0" y="0">1ST</tspan>
+          <tspan text-anchor="middle" x="20" y="0">1ST</tspan>
         </text>
         <text id="matchNumber" class="cls-32" transform="translate(809.962614 111.500797)">
-          <tspan x="0" y="0">123</tspan>
+          <tspan text-anchor="middle" x="20" y="0">123</tspan>
         </text>
         <line id="top_x5F_divider" class="cls-2" x1="773.060606" y1="96.10198" x2="773.060606" y2="111.500686" />
         <g id="time_x5F_block">
           <polygon id="time_x5F_bg" class="cls-17"
             points="773.058104 215.280949 683.338133 215.280949 713.558104 247.850773 773.058104 247.850773 832.558104 247.850773 862.778379 215.280949 773.058104 215.280949" />
           <text id="matchTimer" class="cls-30" transform="translate(751.230009 239.556217)">
-            <tspan x="0" y="0">1:59</tspan>
+            <tspan text-anchor="middle" x="20" y="0">1:59</tspan>
           </text>
         </g>
         <g id="time_x5F_and_x5F_injury" class="cls-76">
@@ -541,16 +541,16 @@
           <polygon id="time_x5F_bg-2" data-name="time_x5F_bg" class="cls-16"
             points="773.058107 215.280988 773.058107 247.850812 713.558107 247.850812 683.338137 215.280988 773.058107 215.280988" />
           <text id="matchTimer2" data-name="time" class="cls-30" transform="translate(718.641783 239.556217)">
-            <tspan x="0" y="0">1:59</tspan>
+            <tspan text-anchor="middle" x="0" y="0">1:59</tspan>
           </text>
           <text id="injuryTime" class="cls-33" transform="translate(781.792662 239.556217)">
-            <tspan x="0" y="0">0:33</tspan>
+            <tspan text-anchor="middle" x="0" y="0">0:33</tspan>
           </text>
           <line id="time_x5F_divider" class="cls-2" x1="773.060606" y1="215.281609" x2="773.060606" y2="247.850812" />
         </g>
-        <text id="category_weight" class="cls-3" transform="translate(688.486998 80.692509)">
-          <tspan class="cls-25" x="0" y="0">Men’s under</tspan>
-          <tspan class="cls-34" x="117.598145" y="0" xml:space="preserve"> 68kg</tspan>
+        <text text-anchor="start" id="category_weight" class="cls-3" transform="translate(688.486998 80.692509)">
+          <tspan class="cls-25" x="-20" y="0">Men’s under</tspan>
+          <tspan text-anchor="start" class="cls-34" x="117.598145" y="0" xml:space="preserve"> 68kg</tspan>
         </text>
         <text class="cls-4" transform="translate(767.66168 180.252811)">
           <tspan x="0" y="0">:</tspan>
@@ -609,11 +609,11 @@
               points="1079.58074 215.281636 1089.488918 187.437661 1119.542566 187.437661 1109.634723 215.281636 1079.58074 215.281636" />
           </g>
           <g id="athlete2Score">
-            <text class="cls-8" transform="translate(802.476622 191.337772)">
+            <text text-anchor="start" class="cls-8" transform="translate(802.476622 191.337772)">
               <tspan x="0" y="0">7</tspan>
             </text>
           </g>
-          <text id="athlete2_round_won" class="cls-7" transform="translate(886.406309 167.787968)">
+          <text text-anchor="start" id="athlete2_round_won" class="cls-7" transform="translate(886.406309 167.787968)">
             <tspan x="0" y="0">0</tspan>
           </text>
           <g id="athlete2FlagPlaceholder">
@@ -1118,8 +1118,8 @@
             </g>
           </g>
           <g id="athlete2Name">
-            <text class="cls-5" transform="translate(1126.108336 166.510136)">
-              <tspan x="0" y="0">m. nilsen</tspan>
+            <text text-anchor="end" class="cls-5" transform="translate(1126.108336 166.510136)">
+              <tspan x="140" y="0">m. nilsen</tspan>
             </text>
           </g>
         </g>
@@ -1176,10 +1176,11 @@
             <polygon id="athlete1_warning5-1" class="cls-23"
               points="466.540472 215.281636 456.632294 187.437661 426.578646 187.437661 436.486489 215.281636 466.540472 215.281636" />
           </g>
-          <text id="athlete1Score" class="cls-8" transform="translate(714.9317 190.980839)">
+          <text text-anchor="start" id="athlete1Score" class="cls-8" transform="translate(714.9317 190.980839)">
             <tspan x="0" y="0">5</tspan>
           </text>
-          <text id="athlete1_round_won" class="cls-7" transform="translate(633.257872 167.787968)">
+          <text text-anchor="s
+          " id="athlete1_round_won" class="cls-7" transform="translate(633.257872 167.787968)">
             <tspan x="0" y="0">0</tspan>
           </text>
           <g id="athlete1FlagPlaceholder">
@@ -1192,7 +1193,7 @@
             <rect class="cls-9" x="141.960962" y="141.97442" width="104.88834" height="23.30852" />
           </g>
           <g id="athlete1Name">
-            <text class="cls-6" transform="translate(279.754942 166.510136)">
+            <text text-anchor="start" class="cls-6" transform="translate(279.754942 166.510136)">
               <tspan x="0" y="0">L. andrich</tspan>
             </text>
           </g>

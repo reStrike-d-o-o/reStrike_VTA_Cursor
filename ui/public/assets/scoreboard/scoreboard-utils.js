@@ -235,10 +235,9 @@ class ScoreboardOverlay {
 
   // Update player names
   updatePlayerName(player, name) {
-    // Map player colors to SVG element IDs (support legacy and new schemas)
     const candidateIds = player === 'blue'
-      ? ['modern_player1_name', 'athlete1Name']
-      : ['modern_player2_name', 'athlete2Name'];
+      ? ['athlete1Name']
+      : ['athlete2Name'];
     const nameElement = this.getSvgElementAny(candidateIds);
     if (nameElement) {
       const raw = (name == null ? '' : String(name));
@@ -278,16 +277,10 @@ class ScoreboardOverlay {
   // Update player countries (flags)
   updateCountry(player, country) {
     const code = this.normalizeFlagCode(country);
-    const primaryCandidates = player === 'blue'
-      ? ['athlete1FlagPlaceholder', 'player1FlagPlaceholder', 'flag1_x5F_placeholder', 'leftPlayerFlagPlaceholder']
-      : ['athlete2FlagPlaceholder', 'player2FlagPlaceholder', 'flag2_x5F_placeholder', 'rightPlayerFlagPlaceholder'];
-    const secondaryCandidates = player === 'blue'
-      ? ['athlete1Flag', 'player1Flag', 'flag1', 'leftPlayerFlag', 'flag']
-      : ['athlete2Flag', 'player2Flag', 'flag2', 'rightPlayerFlag', 'flag'];
-    const imageEl = this.setFlagForElementCandidates(
-      [...primaryCandidates, ...secondaryCandidates],
-      code
-    );
+    const flagCandidates = player === 'blue'
+      ? ['athlete1FlagPlaceholder', 'athlete1Flag']
+      : ['athlete2FlagPlaceholder', 'athlete2Flag'];
+    const imageEl = this.setFlagForElementCandidates(flagCandidates, code);
 
     if (imageEl) {
       this.hideStaticFlagArtwork(player, imageEl);
@@ -297,8 +290,8 @@ class ScoreboardOverlay {
     }
 
     const labelCandidates = player === 'blue'
-      ? ['modern_player1_ioc', 'modern_player_ioc', 'athlete1Country']
-      : ['modern_player2_ioc', 'modern_player_ioc', 'athlete2Country'];
+      ? ['athlete1Country']
+      : ['athlete2Country'];
     const labelElement = this.getSvgElementAny(labelCandidates);
     if (labelElement) {
       this.setTextForElementOrGroup(labelElement, code);
@@ -342,8 +335,8 @@ class ScoreboardOverlay {
       return;
     }
     const penaltyIdCandidates = player === 'blue'
-      ? ['modern_gam_jeom_player1', 'athlete1Warnings']
-      : ['modern_gam_jeom_player2', 'athlete2Warnings'];
+      ? ['athlete1Warnings']
+      : ['athlete2Warnings'];
     const penaltiesElement = this.getSvgElementAny(penaltyIdCandidates);
     if (penaltiesElement) {
       let numerator = 0;
@@ -427,8 +420,8 @@ class ScoreboardOverlay {
   updateRoundWins(player, wins) {
     // Map player colors to SVG element IDs (support legacy and new schemas)
     const roundIdCandidates = player === 'blue'
-      ? ['athlete1Rounds', 'player1Rounds']
-      : ['athlete2Rounds', 'player2Rounds'];
+      ? ['athlete1Rounds', 'athlete1_round_won']
+      : ['athlete2Rounds', 'athlete2_round_won'];
     const winsElement = this.getSvgElementAny(roundIdCandidates);
     if (winsElement) {
       this.setTextForElementOrGroup(winsElement, wins || 0);
@@ -445,12 +438,18 @@ class ScoreboardOverlay {
 
   // Update match timer
   updateTimer(minutes, seconds) {
-    const timerElement = this.getSvgElementAny(['matchTime', 'matchTimer', 'matchTimer2', 'time']);
-    if (timerElement) {
-      this.setTextForElementOrGroup(timerElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
+    const candidates = ['matchTimer', 'matchTime', 'matchTimer2', 'time'];
+    let updated = false;
+    for (const id of candidates) {
+      const el = this.svg.getElementById(id);
+      if (!el) continue;
+      this.setTextForElementOrGroup(el, `${minutes}:${seconds.toString().padStart(2, '0')}`);
+      updated = true;
+    }
+    if (updated) {
       console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
     } else {
-      console.warn(`⚠️ Could not find match timer element (tried: modern_match_time, matchTimer, time)`);
+      console.warn(`⚠️ Could not find match timer element (tried: ${candidates.join(', ')})`);
     }
   }
 
@@ -462,7 +461,7 @@ class ScoreboardOverlay {
 
   // Update current round
   updateRound(round) {
-    const roundElement = this.getSvgElementAny(['roundNumber', 'currentRound']);
+    const roundElement = this.getSvgElementAny(['roundNumber']);
     if (roundElement) {
       const value = this.roundFormat === 'label'
         ? `ROUND ${round}`
@@ -476,7 +475,7 @@ class ScoreboardOverlay {
 
   // Update injury time
   updateInjuryTime(time) {
-    const injuryElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
+    const injuryElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       // Handle both string format ("1:00") and separate parameters (minutes, seconds)
       if (typeof time === 'string') {
@@ -497,14 +496,15 @@ class ScoreboardOverlay {
   // Show injury section
   showInjurySection() {
     const injurySection = this.svg.getElementById('injurySection');
-    const timeElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
-    const bgElement = this.getSvgElementAny(['injury_x5F_time_x5F_bg', 'injuryBg']);
+    const timeElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
+    const bgElement = this.getSvgElementAny(['injury_x5F_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
     if (injurySection) {
       injurySection.style.display = 'block';
       injurySection.style.opacity = '1';
     }
     if (timeElement) timeElement.style.display = 'block';
     if (bgElement) bgElement.style.display = 'block';
+    this.toggleArcadeTimerGroups(true);
     if (!injurySection && !timeElement) {
       console.warn('⚠️ Could not find injurySection element');
     } else {
@@ -515,14 +515,15 @@ class ScoreboardOverlay {
   // Hide injury section
   hideInjurySection() {
     const injurySection = this.svg.getElementById('injurySection');
-    const timeElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
-    const bgElement = this.getSvgElementAny(['injury_x5F_time_x5F_bg', 'injuryBg']);
+    const timeElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
+    const bgElement = this.getSvgElementAny(['injury_x5F_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
     if (injurySection) {
       injurySection.style.display = 'none';
       injurySection.style.opacity = '0';
     }
     if (timeElement) timeElement.style.display = 'none';
     if (bgElement) bgElement.style.display = 'none';
+    this.toggleArcadeTimerGroups(false);
     if (!injurySection && !timeElement) {
       console.warn('⚠️ Could not find injurySection element');
     } else {
@@ -530,9 +531,24 @@ class ScoreboardOverlay {
     }
   }
 
+  toggleArcadeTimerGroups(injuryVisible) {
+    const normalGroup = this.getSvgElementAny(['time_x5F_block']);
+    const combinedGroup = this.getSvgElementAny(['time_x5F_and_x5F_injury']);
+    const divider = this.getSvgElementAny(['time_x5F_divider']);
+    if (normalGroup) {
+      normalGroup.style.display = injuryVisible ? 'none' : 'block';
+    }
+    if (combinedGroup) {
+      combinedGroup.style.display = injuryVisible ? 'block' : 'none';
+    }
+    if (divider) {
+      divider.style.display = injuryVisible ? 'block' : 'none';
+    }
+  }
+
   // Reset injury time to 0:00
   resetInjuryTime() {
-    const injuryElement = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
+    const injuryElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       this.setTextForElementOrGroup(injuryElement, '0:00');
       console.log('✅ Injury time reset to 0:00');
@@ -732,46 +748,49 @@ class ScoreboardOverlay {
     };
   }
 
+  computeCategoryLabels(weightRaw) {
+    const raw = weightRaw == null ? '' : String(weightRaw).trim();
+    if (!raw) {
+      return { genderLabel: '', weightLabel: '' };
+    }
+    const normalized = raw.replace(/\s+/g, ' ');
+    const match = normalized.match(/^([MW])\s*([+-])\s*(.+)$/i);
+    if (match) {
+      const gender = match[1].toUpperCase() === 'M' ? "Men's" : "Women's";
+      const qualifier = match[2] === '+' ? ' over' : ' under';
+      return {
+        genderLabel: `${gender}${qualifier}`,
+        weightLabel: match[3].trim()
+      };
+    }
+    return {
+      genderLabel: '',
+      weightLabel: normalized
+    };
+  }
+
   // Update combined match info (weight, division, category)
   updateMatchInfo(weight, division, category) {
-    // Normalize/abbreviate
-    const shortCategory = this.abbreviateCategory(category);
-    const segWeight = this.normalizeWeightLabel((weight || '').trim());
-    const segDivision = this.abbreviateDivision((division || '').trim());
-    const segCategory = (shortCategory || '').trim();
-
-    // Build display with separators
-    const leftSegment = [segWeight, segDivision].filter(Boolean).join(' | ');
-    const rightSegment = segCategory ? ` | ${segCategory}` : '';
-
-    const rawWeight = (weight || '').trim();
-    const { genderLabel, weightLabel } = this.deriveGenderWeightLabels(rawWeight, {
-      normalizedWeight: segWeight,
-      division,
-      category
-    });
-
-    const modernGender = this.getSvgElementAny(['modern_gender']);
-    const modernWeight = this.getSvgElementAny(['modern_weight']);
-    if (modernGender) this.setTextForElementOrGroup(modernGender, genderLabel || '');
-    if (modernWeight) this.setTextForElementOrGroup(modernWeight, weightLabel || '');
+    const { genderLabel, weightLabel } = this.computeCategoryLabels(weight);
+    this.updateCategoryLabels(genderLabel, weightLabel);
 
     const matchInfoElement = this.getSvgElementAny(['matchInfo', 'tournament_x5F_name']);
-    if (!matchInfoElement) { console.warn('⚠️ Could not find matchInfo element'); return; }
-
+    if (!matchInfoElement) {
+      return;
+    }
+    const toText = (value) => (value == null ? '' : String(value).trim());
+    const segments = [toText(weight), toText(division), toText(category)].filter(Boolean);
+    if (!segments.length) {
+      this.setTextForElementOrGroup(matchInfoElement, '');
+      return;
+    }
     const tspans = matchInfoElement.querySelectorAll('tspan');
     if (tspans.length >= 2) {
-      const normalizedRight = leftSegment ? rightSegment : (segCategory || '');
-      tspans[0].textContent = leftSegment || '';
-      tspans[1].textContent = normalizedRight;
-      const cls0 = tspans[0].getAttribute('class');
-      if (cls0) { tspans[1].setAttribute('class', cls0); }
-    } else if (tspans.length === 1) {
-      tspans[0].textContent = `${leftSegment}${rightSegment}`.trim();
+      tspans[0].textContent = segments[0];
+      tspans[1].textContent = segments.slice(1).join(' • ');
     } else {
-      this.setTextForElementOrGroup(matchInfoElement, `${leftSegment}${rightSegment}`.trim());
+      this.setTextForElementOrGroup(matchInfoElement, segments.join(' • '));
     }
-    console.log('✅ Updated match info');
   }
 
   // Update match number (strip leading zeros)
@@ -784,86 +803,34 @@ class ScoreboardOverlay {
     }
   }
 
+  updateCategoryLabels(genderLabel, weightLabel) {
+    const genderEl = this.getSvgElementAny(['categoryGender', 'category_gender']);
+    if (genderEl) {
+      this.setTextForElementOrGroup(genderEl, genderLabel || '');
+    }
+    const weightEl = this.getSvgElementAny(['categoryWeight', 'category_weight']);
+    if (weightEl) {
+      this.setTextForElementOrGroup(weightEl, weightLabel || '');
+    }
+  }
+
   // Injury helpers
   setInjuryTime(minutes, seconds) {
-    const t = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
+    const t = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
     if (t) this.setTextForElementOrGroup(t, `${minutes}:${String(seconds).padStart(2, '0')}`);
   }
   setInjuryVisible(visible) {
-    const t = this.getSvgElementAny(['injuryTime', 'injury_x5F_time']);
-    const bg = this.getSvgElementAny(['injury_x5F_time_x5F_bg', 'injuryBg']);
+    const t = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
+    const bg = this.getSvgElementAny(['injury_x5F_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
     if (t) t.style.display = visible ? 'block' : 'none';
     if (bg) bg.style.display = visible ? 'block' : 'none';
+    this.toggleArcadeTimerGroups(visible);
     // Toggle logo positions only by visibility (no geometry changes)
     const logoPos1 = this.getSvgElementAny(['logo_x5F_position1']);
     const logoPos2 = this.getSvgElementAny(['logo_x5F_position2']);
     if (logoPos1) logoPos1.style.display = visible ? 'block' : 'none';
     if (logoPos2) logoPos2.style.display = visible ? 'none' : 'block';
   }
-
-  // Update match category (for backward compatibility)
-  updateMatchCategory(category) {
-    const matchInfoElement = this.getSvgElementAny(['matchInfo', 'tournament_x5F_name']);
-    if (matchInfoElement) {
-      // Get current weight and division from the element
-      const currentText = matchInfoElement.textContent || '';
-      const parts = currentText.split(' ');
-      const weight = parts[0] || '';
-      const division = parts[1] || '';
-      const combinedText = `${weight} ${division} ${category || ''}`.trim();
-      this.setTextForElementOrGroup(matchInfoElement, combinedText);
-      console.log(`✅ Updated match category: ${category}`);
-    } else {
-      console.warn(`⚠️ Could not find matchInfo element`);
-    }
-  }
-
-  // Update match type (weight class) - for backward compatibility
-  updateMatchType(type) {
-    const typeElement = this.getSvgElement('matchType');
-    if (typeElement) {
-      this.setTextForElementOrGroup(typeElement, type);
-      console.log(`✅ Updated match type: ${type}`);
-    } else {
-      console.warn(`⚠️ Could not find matchType element`);
-    }
-  }
-
-  // Update match weight (for backward compatibility)
-  updateMatchWeight(weight) {
-    const matchInfoElement = this.getSvgElementAny(['matchInfo', 'tournament_x5F_name']);
-    if (matchInfoElement) {
-      // Get current division and category from the element
-      const currentText = matchInfoElement.textContent || '';
-      const parts = currentText.split(' ');
-      const division = parts[1] || '';
-      const category = parts.slice(2).join(' ') || '';
-      const combinedText = `${weight || ''} ${division} ${category}`.trim();
-      this.setTextForElementOrGroup(matchInfoElement, combinedText);
-      console.log(`✅ Updated match weight: ${weight}`);
-    } else {
-      console.warn(`⚠️ Could not find matchInfo element`);
-    }
-  }
-
-  // Update match division (for backward compatibility)
-  updateMatchDivision(division) {
-    const matchInfoElement = this.getSvgElementAny(['matchInfo', 'tournament_x5F_name']);
-    if (matchInfoElement) {
-      // Get current weight and category from the element
-      const currentText = matchInfoElement.textContent || '';
-      const parts = currentText.split(' ');
-      const weight = parts[0] || '';
-      const category = parts.slice(2).join(' ') || '';
-      const combinedText = `${weight} ${division || ''} ${category}`.trim();
-      this.setTextForElementOrGroup(matchInfoElement, combinedText);
-      console.log(`✅ Updated match division: ${division}`);
-    } else {
-      console.warn(`⚠️ Could not find matchInfo element`);
-    }
-  }
-
-
 
   // Get ordinal suffix for round numbers
   getOrdinalSuffix(num) {
