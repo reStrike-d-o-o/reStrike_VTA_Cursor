@@ -18,13 +18,13 @@ This document tracks every task required to rebuild the scoreboard stack strictl
 ## Phase 2 – Frontend Data Contract
 
 - [x] **P2.1** Specify the normalized scoreboard event schema (TypeScript interfaces + precedence notes). _(See `docs/scoreboard_event_schema.md`.)_
-- [ ] **P2.2** Implement `scoreboard-core` controller that handles connections, caching, and event fan-out. _Not started_
+- [x] **P2.2** Implement `scoreboard-core` controller that handles connections, caching, and event fan-out. _(See `ui/public/assets/scoreboard/scoreboard-core.js`.)_
 
 ## Phase 3 – Overlay Rewrites
 
-- [ ] **P3.1** Modern overlay: replace script with thin adapter wired to `scoreboard-core`.
-- [ ] **P3.2** Olympic overlay: same rewrite with its SVG IDs.
-- [ ] **P3.3** Arcade overlay: same rewrite, including dual-timer & warning visuals.
+- [x] **P3.1** Modern overlay: replace script with thin adapter wired to `scoreboard-core`.
+- [x] **P3.2** Olympic overlay: same rewrite with its SVG IDs.
+- [x] **P3.3** Arcade overlay: same rewrite, including dual-timer & warning visuals.
 
 ## Phase 4 – Utilities & Validation
 

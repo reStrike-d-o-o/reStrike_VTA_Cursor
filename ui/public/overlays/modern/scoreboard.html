@@ -20,146 +20,101 @@
     <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
     <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
     <script src="/assets/scoreboard/scoreboard-utils.js"></script>
-    <script>
-        const RETRY_DELAY_MS = 2000;
-        const MAX_RETRIES = 5;
-        const eventQueue = [];
+    <script src="/assets/scoreboard/scoreboard-core.js"></script>
+    <script src="/assets/scoreboard/scoreboard-core.js"></script>
+        <script>
+        const scoreboardCore = new window.ScoreboardCore();
         let scoreboardInstance = null;
-        let roundDuration = 120;
-        let ws = null;
-        let retryCount = 0;
 
-        function updateConnectionStatus(connected) {
-            const el = document.getElementById('connection-status');
-            if (!el) return;
-            if (connected) {
-                el.classList.add('connected');
-            } else {
-                el.classList.remove('connected');
-            }
+        function setConnectionStatus(connected) {
+            const indicator = document.getElementById('connection-status');
+            if (!indicator) return;
+            indicator.classList.toggle('connected', Boolean(connected));
         }
 
-        function resolveWebSocketUrl() {
-            try {
-                const params = new URLSearchParams(window.location.search);
-                const explicitUrl = params.get('wsUrl');
-                if (explicitUrl) {
-                    return explicitUrl;
-                }
-
-                const protocol = window.location.protocol;
-                let host = params.get('wsHost') || window.location.hostname || '127.0.0.1';
-                if (host === 'localhost' || protocol !== 'http:' && protocol !== 'https:') {
-                    host = '127.0.0.1';
-                }
-                const port = params.get('wsPort') || '3001';
-                const wsProtocol = protocol === 'https:' ? 'wss' : 'ws';
-                return `${wsProtocol}://${host}:${port}`;
-            } catch (_error) {
-                return 'ws://127.0.0.1:3001';
-            }
-        }
-
-        function initialize() {
-            if (scoreboardInstance) {
-                flushQueuedEvents();
-                return;
-            }
+        function initOverlay() {
+            if (scoreboardInstance) return;
             const obj = document.getElementById('scoreboard-svg');
             const doc = obj?.contentDocument || obj?.contentWindow?.document;
             const svg = doc?.querySelector('svg');
-            if (!svg) {
-                setTimeout(initialize, 500);
-                return;
-            }
-
-            if (typeof ScoreboardOverlay === 'undefined') {
-                setTimeout(initialize, 500);
+            if (!svg || typeof ScoreboardOverlay === 'undefined') {
+                setTimeout(initOverlay, 250);
                 return;
             }
 
             scoreboardInstance = new ScoreboardOverlay(svg);
             scoreboardInstance.setRoundFormat('label');
-            updateConnectionStatus(false);
             scoreboardInstance.hideInjurySection();
             scoreboardInstance.resetInjuryTime();
-            flushQueuedEvents();
+            applyState(scoreboardCore.getState());
         }
 
-        function parseTime(value) {
-            if (!value) {
-                return { minutes: 0, seconds: 0 };
+        function applyState(state) {
+            if (!scoreboardInstance || !state) return;
+            const { match, scores, rounds, warnings, clock, injury } = state;
+
+            if (match?.number != null) {
+                scoreboardInstance.updateMatchNumber(match.number);
             }
+
+            if (match?.weight) {
+                const { genderLabel, weightLabel } = deriveCategoryLabels(match.weight);
+                scoreboardInstance.updateCategoryLabels(genderLabel, weightLabel);
+            }
+
+            if (match?.athletes?.blue) updateAthlete('blue', match.athletes.blue);
+            if (match?.athletes?.red) updateAthlete('red', match.athletes.red);
+
+            if (scores?.current) {
+                scoreboardInstance.updateScore('blue', scores.current.blue ?? 0);
+                scoreboardInstance.updateScore('red', scores.current.red ?? 0);
+            }
+
+            if (warnings) {
+                scoreboardInstance.updatePenalties('blue', null, warnings.blue ?? 0);
+                scoreboardInstance.updatePenalties('red', null, warnings.red ?? 0);
+            }
+
+            if (rounds) {
+                scoreboardInstance.updateRound(rounds.current ?? 1);
+                const blueWins = (rounds.winners || []).filter((w) => w === 1).length;
+                const redWins = (rounds.winners || []).filter((w) => w === 2).length;
+                scoreboardInstance.updateRoundWins('blue', blueWins);
+                scoreboardInstance.updateRoundWins('red', redWins);
+            }
+
+            if (clock?.time) {
+                const { minutes, seconds } = splitTime(clock.time);
+                scoreboardInstance.updateTimer(minutes, seconds);
+            }
+
+            if (injury) {
+                if (injury.time) scoreboardInstance.updateInjuryTime(injury.time);
+                if (injury.visible) scoreboardInstance.showInjurySection();
+                else scoreboardInstance.hideInjurySection();
+            }
+        }
+
+        function updateAthlete(side, info) {
+            const name = info.short || info.long || '';
+            if (name) scoreboardInstance.updatePlayerName(side, name);
+            if (info.country) scoreboardInstance.updateCountry(side, info.country);
+        }
+
+        function splitTime(value) {
+            if (!value) return { minutes: 0, seconds: 0 };
             if (value.includes(':')) {
-                const parts = value.split(':');
-                const minutes = parseInt(parts[0] ?? '0', 10) || 0;
-                const seconds = parseInt(parts[1] ?? '0', 10) || 0;
-                return { minutes, seconds };
+                const [m = '0', s = '0'] = value.split(':');
+                return {
+                    minutes: parseInt(m, 10) || 0,
+                    seconds: parseInt(s, 10) || 0,
+                };
             }
-            const totalSeconds = parseInt(value, 10) || 0;
-            return {
-                minutes: Math.floor(totalSeconds / 60),
-                seconds: totalSeconds % 60,
-            };
-        }
-
-        function parseMaybeJson(value) {
-            if (typeof value !== 'string') {
-                return null;
-            }
-            try {
-                return JSON.parse(value);
-            } catch (_error) {
-                return null;
-            }
-        }
-
-        function determineEventType(payload) {
-            if (!payload) return '';
-            const candidate = payload.type || payload.event_type || payload.eventType || payload.kind;
-            return typeof candidate === 'string' ? candidate.toLowerCase() : '';
-        }
-
-        function normalizeAthlete(input) {
-            if (!input) return { name: '', country: '' };
-            if (typeof input === 'string') {
-                return { name: input, country: '' };
-            }
-
-            const first = input.first_name || input.firstName || '';
-            const last = input.last_name || input.lastName || '';
-            const joined = [first, last].filter(Boolean).join(' ').trim();
-            const nameCandidates = [
-                input.long,
-                input.display_name,
-                input.displayName,
-                input.full_name,
-                input.fullName,
-                input.name,
-                input.nickname,
-                input.short,
-                joined,
-                input.short_name,
-                input.shortName
-            ];
-            const countryCandidates = [
-                input.country_code,
-                input.countryCode,
-                input.country,
-                input.ioc,
-                input.iocCode,
-                input.ioc_code,
-                input.flag,
-                input.nation,
-                input.nationality
-            ];
-            const name = nameCandidates.find(val => typeof val === 'string' && val.trim().length) || '';
-            const countryRaw = countryCandidates.find(val => typeof val === 'string' && val.trim().length) || '';
-            return { name, country: countryRaw.toUpperCase() };
+            const total = parseInt(value, 10) || 0;
+            return { minutes: Math.floor(total / 60), seconds: total % 60 };
         }
 
         function deriveCategoryLabels(weight) {
-            if (!weight) return { genderLabel: '', weightLabel: '' };
             const trimmed = String(weight).trim();
             const match = trimmed.match(/^([MW])\s*([+-])\s*(.+)$/i);
             if (match) {
@@ -167,420 +122,32 @@
                 const qualifier = match[2] === '+' ? ' over' : ' under';
                 return {
                     genderLabel: `${base}${qualifier}`,
-                    weightLabel: match[3].trim()
+                    weightLabel: match[3].trim(),
                 };
             }
             return { genderLabel: '', weightLabel: trimmed };
         }
 
-        function applyCategoryLabels(weight) {
-            if (!scoreboardInstance) return;
-            const { genderLabel, weightLabel } = deriveCategoryLabels(weight);
-            scoreboardInstance.updateCategoryLabels(genderLabel, weightLabel);
-        }
-
-        function computeRoundWins(payload) {
-            const rounds = [payload.round1_winner, payload.round2_winner, payload.round3_winner]
-                .map(val => Number(val));
-            return {
-                blue: rounds.filter(val => val === 1).length,
-                red: rounds.filter(val => val === 2).length
-            };
-        }
-
-        function extractRawWarnings(raw) {
-            if (typeof raw !== 'string') return null;
-            const match = raw.match(/wg1;(\d+);wg2;(\d+)/i);
-            if (!match) return null;
-            return { blue: parseInt(match[1], 10), red: parseInt(match[2], 10) };
-        }
-
-        function extractRawInjury(raw) {
-            if (typeof raw !== 'string') return null;
-            const match = raw.match(/ij[012];(\d+:\d+)(?:;(show|hide|reset))?/i);
-            if (!match) return null;
-            return {
-                time: match[1],
-                action: (match[2] || '').toLowerCase()
-            };
-        }
-
-        function handleInjuryPayload(payload) {
-            if (!scoreboardInstance) return;
-            let timeValue = payload.time || payload.value || null;
-            let actionValue = payload.action || payload.visibility || payload.state || '';
-            if (!timeValue && typeof payload.raw_data === 'string') {
-                const extracted = extractRawInjury(payload.raw_data.trim());
-                if (extracted) {
-                    timeValue = extracted.time;
-                    if (!actionValue) actionValue = extracted.action;
-                }
-            }
-            if (timeValue) {
-                scoreboardInstance.updateInjuryTime(timeValue);
-            }
-            const normalizedAction = (actionValue || '').toLowerCase();
-            if (['show', 'start', 'resume', 'play', 'visible'].includes(normalizedAction)) {
-                scoreboardInstance.showInjurySection();
-            } else if (['hide', 'stop', 'reset', 'clear', 'pause'].includes(normalizedAction)) {
-                scoreboardInstance.hideInjurySection();
-                scoreboardInstance.resetInjuryTime();
-            }
-        }
-
-        function updateNameAndCountry(side, info) {
-            if (!info) return;
-            if (info.name) {
-                scoreboardInstance.updatePlayerName(side, info.name);
-            }
-            if (info.country) {
-                scoreboardInstance.updateCountry(side, info.country);
-            }
-        }
-
-        function extractWarnings(payload) {
-            if (!payload) return null;
-            const fromFields = {
-                blue: payload.athlete1_warnings ?? payload.blue_warnings ?? payload.blueWarnings ?? payload.blue ?? payload.warnings1 ?? payload.wg1 ?? null,
-                red: payload.athlete2_warnings ?? payload.red_warnings ?? payload.redWarnings ?? payload.red ?? payload.warnings2 ?? payload.wg2 ?? null
-            };
-
-            let blueValue = fromFields.blue;
-            let redValue = fromFields.red;
-
-            if ((blueValue == null || redValue == null) && typeof payload.raw_data === 'string') {
-                const raw = payload.raw_data.trim();
-                const maybeJson = parseMaybeJson(raw);
-                if (maybeJson && typeof maybeJson === 'object') {
-                    blueValue = blueValue ?? maybeJson.athlete1_warnings ?? maybeJson.wg1 ?? maybeJson.blue ?? maybeJson.athlete1;
-                    redValue = redValue ?? maybeJson.athlete2_warnings ?? maybeJson.wg2 ?? maybeJson.red ?? maybeJson.athlete2;
-                } else {
-                    const match = raw.match(/wg1;(\d+);wg2;(\d+)/i);
-                    if (match) {
-                        blueValue = parseInt(match[1], 10);
-                        redValue = parseInt(match[2], 10);
-                    }
-                }
-            }
-
-            if ((blueValue == null || redValue == null) && payload.description) {
-                const match = String(payload.description).match(/Athlete1:\s*(\d+).*Athlete2:\s*(\d+)/i);
-                if (match) {
-                    blueValue = parseInt(match[1], 10);
-                    redValue = parseInt(match[2], 10);
-                }
-            }
-
-            if (blueValue == null && redValue == null) {
-                return null;
-            }
-
-            const toNumber = (value) => {
-                if (value == null) return null;
-                if (typeof value === 'number') return value;
-                if (typeof value === 'string') {
-                    const match = value.trim().match(/\d+/);
-                    if (match) return parseInt(match[0], 10);
-                }
-                return null;
-            };
-
-            const parsedBlue = toNumber(blueValue);
-            const parsedRed = toNumber(redValue);
-            return { blue: parsedBlue, red: parsedRed };
-        }
-
-        function flushQueuedEvents() {
-            if (!scoreboardInstance || !eventQueue.length) return;
-            while (eventQueue.length) {
-                const next = eventQueue.shift();
-                processEvent(next);
-            }
-        }
-
-        function resolveAthleteSource(payload, primaryKey) {
-            if (!payload) return null;
-            if (payload[primaryKey] && typeof payload[primaryKey] === 'object') {
-                return payload[primaryKey];
-            }
-            return {
-                short: payload[`${primaryKey}_short`],
-                long: payload[`${primaryKey}_long`],
-                country: payload[`${primaryKey}_country`]
-            };
-        }
-
-        function snapshotAthletes(payload) {
-            const blue = normalizeAthlete(resolveAthleteSource(payload, 'athlete1'));
-            const red = normalizeAthlete(resolveAthleteSource(payload, 'athlete2'));
-            if (!blue.name && !blue.country && !red.name && !red.country) {
-                return null;
-            }
-            return { blue, red };
-        }
-
-        function processEvent(payload) {
-            if (!scoreboardInstance || !payload) return;
-            const eventType = determineEventType(payload);
-
-            switch (eventType) {
-                case 'athletes': {
-                    const blueSource = resolveAthleteSource(payload, 'athlete1');
-                    const redSource = resolveAthleteSource(payload, 'athlete2');
-                    const blue = normalizeAthlete(blueSource);
-                    const red = normalizeAthlete(redSource);
-                    updateNameAndCountry('blue', blue);
-                    updateNameAndCountry('red', red);
-                    const snapshot = snapshotAthletes(payload);
-                    if (snapshot) cacheAthletes = snapshot;
-                    break;
-                }
-                case 'match_config': {
-                    const data = (payload.structured_data && typeof payload.structured_data === 'object') ? payload.structured_data : payload;
-                    cacheMatchConfig = {
-                        weight: data.weight,
-                        division: data.division,
-                        category: data.category,
-                        number: data.number,
-                        round_duration: data.round_duration,
-                        current_round: data.current_round
-                    };
-                    if (data.round_duration != null) {
-                        const parsed = parseInt(data.round_duration, 10);
-                        if (!Number.isNaN(parsed)) {
-                            roundDuration = parsed;
-                        }
-                    }
-                    if (data.number != null) {
-                        scoreboardInstance.updateMatchNumber(data.number);
-                    }
-                    applyCategoryLabels(data.weight);
-                    const currentRound = data.current_round ?? 1;
-                    scoreboardInstance.updateRound(currentRound);
-                    const mins = Math.floor(roundDuration / 60);
-                    const secs = roundDuration % 60;
-                    scoreboardInstance.updateTimer(mins, secs);
-                    scoreboardInstance.updateScore('blue', 0);
-                    scoreboardInstance.updateScore('red', 0);
-                    scoreboardInstance.updatePenalties('blue', null, 0);
-                    scoreboardInstance.updatePenalties('red', null, 0);
-                    scoreboardInstance.updateRoundWins('blue', 0);
-                        scoreboardInstance.updateRoundWins('red', 0);
-                        scoreboardInstance.hideInjurySection();
-                        scoreboardInstance.resetInjuryTime();
-                        if (typeof scoreboardInstance.applyNewMatchEffect === 'function') {
-                            scoreboardInstance.applyNewMatchEffect(roundDuration, currentRound);
-                        }
-                        break;
-                }
-                case 'current_scores':
-                case 'score_update':
-                case 'score': {
-                    const source = (payload.structured_data && typeof payload.structured_data === 'object') ? payload.structured_data : payload;
-                    const blueScore = Number(source.athlete1_score ?? source?.athlete1?.score ?? 0);
-                    const redScore = Number(source.athlete2_score ?? source?.athlete2?.score ?? 0);
-                    scoreboardInstance.updateScore('blue', blueScore);
-                    scoreboardInstance.updateScore('red', redScore);
-                    cacheScores = { b: blueScore, r: redScore };
-                    break;
-                }
-                case 'warnings':
-                case 'gamjeom':
-                case 'gam_jeom':
-                case 'wg':
-                case 'penalty':
-                case 'penalties':
-                case 'foul':
-                case 'fouls': {
-                    if (payload.athlete1_warnings !== undefined) {
-                        scoreboardInstance.updatePenalties('blue', null, Number(payload.athlete1_warnings));
-                    }
-                    if (payload.athlete2_warnings !== undefined) {
-                        scoreboardInstance.updatePenalties('red', null, Number(payload.athlete2_warnings));
-                    }
-                    if (payload.athlete1_warnings !== undefined || payload.athlete2_warnings !== undefined) {
-                        cacheWarnings = {
-                            b: Number(payload.athlete1_warnings ?? cacheWarnings?.b ?? 0),
-                            r: Number(payload.athlete2_warnings ?? cacheWarnings?.r ?? 0)
-                        };
-                    }
-                    break;
-                }
-                case 'injury':
-                case 'injury_time':
-                case 'ij': {
-                    handleInjuryPayload(payload);
-                    break;
-                }
-                case 'winner_rounds':
-                case 'winnerrounds': {
-                    const wins = computeRoundWins(payload);
-                    scoreboardInstance.updateRoundWins('blue', wins.blue);
-                    scoreboardInstance.updateRoundWins('red', wins.red);
-                    break;
-                }
-                case 'clock':
-                case 'timer':
-                case 'match_timer':
-                case 'break':
-                case 'rest':
-                case 'timeout': {
-                    const target = payload.time ?? payload.timer ?? payload.remaining ?? payload.clock ?? payload?.structured_data?.time;
-                    if (target != null) {
-                        const { minutes, seconds } = parseTime(String(target));
-                        scoreboardInstance.updateTimer(minutes, seconds);
-                    }
-                    break;
-                }
-                case 'round': {
-                    const roundNumber = payload.current_round ?? payload.round ?? payload.roundNumber;
-                    if (roundNumber != null) {
-                        scoreboardInstance.updateRound(roundNumber);
-                        const mins = Math.floor(roundDuration / 60);
-                        const secs = roundDuration % 60;
-                        scoreboardInstance.updateTimer(mins, secs);
-                    }
-                    break;
-                }
-                default: {
-                    if (payload.raw_data && typeof payload.raw_data === 'string') {
-                        const warnings = extractRawWarnings(payload.raw_data);
-                        if (warnings) {
-                            scoreboardInstance.updatePenalties('blue', null, warnings.blue);
-                            scoreboardInstance.updatePenalties('red', null, warnings.red);
-                            break;
-                        }
-                        const injury = extractRawInjury(payload.raw_data);
-                        if (injury) {
-                            scoreboardInstance.updateInjuryTime(injury.time);
-                            if (injury.action === 'show') {
-                                scoreboardInstance.showInjurySection();
-                            } else if (injury.action === 'hide' || injury.action === 'reset') {
-                                scoreboardInstance.hideInjurySection();
-                                scoreboardInstance.resetInjuryTime();
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-
-        function handle(event) {
-            if (!event) return;
-            const payload = event.data && typeof event.data === 'object' ? event.data : event;
-            if (!payload || typeof payload !== 'object') return;
-            if (!scoreboardInstance) {
-                eventQueue.push(payload);
-                return;
-            }
-            processEvent(payload);
-        }
-
-        function teardownWebSocket() {
-            if (!ws) return;
-            ws.onopen = null;
-            ws.onclose = null;
-            ws.onerror = null;
-            ws.onmessage = null;
-            try {
-                ws.close();
-            } catch (_error) { }
-            ws = null;
-        }
-
-        function scheduleReconnect() {
-            if (retryCount >= MAX_RETRIES) {
-                return;
-            }
-            retryCount += 1;
-            window.setTimeout(connect, RETRY_DELAY_MS);
-        }
-
-        function connect() {
-            teardownWebSocket();
-            const url = resolveWebSocketUrl();
-
-            try {
-                ws = new WebSocket(url);
-            } catch (_error) {
-                updateConnectionStatus(false);
-                scheduleReconnect();
-                return;
-            }
-
-            ws.onopen = () => {
-                retryCount = 0;
-                updateConnectionStatus(true);
-            };
-
-            ws.onerror = () => {
-                updateConnectionStatus(false);
-            };
-
-            ws.onclose = () => {
-                updateConnectionStatus(false);
-                scheduleReconnect();
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const parsed = JSON.parse(event.data);
-                    if (!parsed) return;
-                    if (parsed?.type === 'connection') {
-                        updateConnectionStatus(Boolean(parsed.connected));
-                        return;
-                    }
-                    const payload = (parsed?.type === 'pss_event' && parsed?.data)
-                        ? parsed.data
-                        : parsed;
-                    handle(payload);
-                } catch (_error) { }
-            };
-        }
-
-        function attachFallbackListeners() {
-            window.addEventListener('pss-event', (event) => {
-                if (event?.detail) {
-                    handle(event.detail);
-                }
-            });
-
-            window.addEventListener('storage', (event) => {
-                if (event.key !== 'pss_event' || !event.newValue) {
-                    return;
-                }
-                try {
-                    const payload = JSON.parse(event.newValue);
-                    if (!payload) return;
-                    if (payload?.type === 'pss_event' && payload?.data) {
-                        handle(payload.data);
-                    } else if (payload?.type !== 'connection') {
-                        handle(payload);
-                    }
-                } catch (_error) { }
-            });
-        }
+        scoreboardCore.on('state', applyState);
+        scoreboardCore.on('connection', ({ connected }) => setConnectionStatus(connected));
 
         document.addEventListener('DOMContentLoaded', () => {
             const obj = document.getElementById('scoreboard-svg');
             if (window.ScoreboardFontInjector) {
                 window.ScoreboardFontInjector.initForObject('#scoreboard-svg');
             }
-            obj?.addEventListener('load', initialize);
+            obj?.addEventListener('load', initOverlay);
             if (obj?.contentDocument) {
-                initialize();
+                initOverlay();
             }
-            attachFallbackListeners();
-            connect();
         });
 
         window.ModernScoreboard = {
-            handle,
-            reconnect: connect,
-            resolveWebSocketUrl,
+            core: scoreboardCore,
+            overlay: () => scoreboardInstance,
         };
     </script>
+
 </body>
 
 </html>
