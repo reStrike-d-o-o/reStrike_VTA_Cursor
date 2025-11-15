@@ -150,6 +150,8 @@ export interface PssWinnerRounds {
   round3_winner: number;
 }
 
+export * from './scoreboard';
+
 export interface PssMatchData {
   athletes?: {
     athlete1: PssAthleteInfo;

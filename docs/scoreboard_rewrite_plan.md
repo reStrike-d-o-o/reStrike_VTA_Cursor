@@ -17,8 +17,8 @@ This document tracks every task required to rebuild the scoreboard stack strictl
 
 ## Phase 2 – Frontend Data Contract
 
-- [ ] **P2.1** Specify the normalized scoreboard event schema (TypeScript interfaces + precedence notes). _In progress_
-- [ ] **P2.2** Implement `scoreboard-core` controller that handles connections, caching, and event fan-out.
+- [x] **P2.1** Specify the normalized scoreboard event schema (TypeScript interfaces + precedence notes). _(See `docs/scoreboard_event_schema.md`.)_
+- [ ] **P2.2** Implement `scoreboard-core` controller that handles connections, caching, and event fan-out. _Not started_
 
 ## Phase 3 – Overlay Rewrites
 
