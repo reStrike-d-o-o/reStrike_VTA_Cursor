@@ -41,6 +41,75 @@
         let roundDuration = 120;
         const DEBUG_MODE = false;
 
+        const getField = (event, ...keys) => {
+            if (!event || !keys.length) return undefined;
+            for (const key of keys) {
+                if (event[key] !== undefined && event[key] !== null && event[key] !== '') {
+                    return event[key];
+                }
+            }
+            if (event.structured_data && typeof event.structured_data === 'object') {
+                for (const key of keys) {
+                    if (event.structured_data[key] !== undefined && event.structured_data[key] !== null && event.structured_data[key] !== '') {
+                        return event.structured_data[key];
+                    }
+                }
+            }
+            return undefined;
+        };
+
+        const normalizeCode = (value) => {
+            if (value === undefined || value === null) return '';
+            return String(value).trim().toUpperCase();
+        };
+
+        const snapshotAthletes = (event) => {
+            const blueName = getField(event, 'athlete1_long', 'athlete1_short', 'athlete1_name');
+            const redName = getField(event, 'athlete2_long', 'athlete2_short', 'athlete2_name');
+            const blueCountry = normalizeCode(getField(event, 'athlete1_country', 'country1', 'athlete1_ioc', 'athlete1_flag'));
+            const redCountry = normalizeCode(getField(event, 'athlete2_country', 'country2', 'athlete2_ioc', 'athlete2_flag'));
+            if (!blueName && !blueCountry && !redName && !redCountry) return null;
+            return {
+                blue: { name: blueName || '', country: blueCountry || '' },
+                red: { name: redName || '', country: redCountry || '' },
+            };
+        };
+
+        const applyAthleteSnapshot = (snapshot) => {
+            if (!scoreboardInstance || !snapshot) return;
+            const nameBlue = snapshot.blue?.name;
+            const flagBlue = snapshot.blue?.country;
+            const nameRed = snapshot.red?.name;
+            const flagRed = snapshot.red?.country;
+
+            if (nameBlue) {
+                try {
+                    scoreboardInstance.updateAthleteName('blue', nameBlue);
+                    const blueNameEl = scoreboardInstance.svg.getElementById('player1Name');
+                    if (blueNameEl) blueNameEl.textContent = nameBlue.toUpperCase();
+                } catch (_) {}
+            }
+            if (flagBlue) {
+                try { scoreboardInstance.updateAthleteFlag('blue', flagBlue); } catch (_) {}
+            }
+            if (nameBlue || flagBlue) {
+                document.getElementById('debug-blue').textContent = nameBlue || flagBlue;
+            }
+            if (nameRed) {
+                try {
+                    scoreboardInstance.updateAthleteName('red', nameRed);
+                    const redNameEl = scoreboardInstance.svg.getElementById('player2Name');
+                    if (redNameEl) redNameEl.textContent = nameRed.toUpperCase();
+                } catch (_) {}
+            }
+            if (flagRed) {
+                try { scoreboardInstance.updateAthleteFlag('red', flagRed); } catch (_) {}
+            }
+            if (nameRed || flagRed) {
+                document.getElementById('debug-red').textContent = nameRed || flagRed;
+            }
+        };
+
         function updateConnectionStatus(connected) {
             isConnected = connected;
             const statusElement = document.getElementById('connection-status');
@@ -74,8 +143,7 @@
                         scoreboardInstance.updateAthleteWarnings('blue', 0); scoreboardInstance.updateAthleteWarnings('red', 0);
                     }
                     if (cacheAthletes) {
-                        if (cacheAthletes.a1) { scoreboardInstance.updateAthleteName('blue', cacheAthletes.a1); scoreboardInstance.updateAthleteFlag('blue', cacheAthletes.a1); }
-                        if (cacheAthletes.a2) { scoreboardInstance.updateAthleteName('red', cacheAthletes.a2); scoreboardInstance.updateAthleteFlag('red', cacheAthletes.a2); }
+                        applyAthleteSnapshot(cacheAthletes);
                     }
                     if (cacheScores) {
                         scoreboardInstance.updateAthleteScore('blue', cacheScores.b);
@@ -101,9 +169,8 @@
                 if (event && event.type) {
                     const t = String(event.type).toLowerCase();
                     if (t==='athletes') {
-                        const a1 = event.athlete1_country || event.country1 || event.athlete1?.country || event.athlete1?.code || null;
-                        const a2 = event.athlete2_country || event.country2 || event.athlete2?.country || event.athlete2?.code || null;
-                        cacheAthletes = { a1, a2 };
+                        const snapshot = snapshotAthletes(event);
+                        if (snapshot) cacheAthletes = snapshot;
                     } else if (t==='warnings' || t==='gamjeom' || t==='gam_jeom' || t==='wg') {
                         if (event.athlete1_warnings!=null || event.athlete2_warnings!=null) {
                             cacheWarnings = { b: parseInt(event.athlete1_warnings||0), r: parseInt(event.athlete2_warnings||0) };
@@ -111,10 +178,17 @@
                             const m = event.raw_data.match(/wg1;(\d+);wg2;(\d+)/i); cacheWarnings = { b: parseInt(m[1]), r: parseInt(m[2]) };
                         }
                     } else if (t==='match_config') {
-                        const d = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
-                        cacheMatchConfig = d;
+                        const data = (event.structured_data && typeof event.structured_data === 'object') ? event.structured_data : event;
+                        cacheMatchConfig = {
+                            weight: data.weight,
+                            division: data.division,
+                            category: data.category,
+                            number: data.number,
+                            round_duration: data.round_duration
+                        };
                     } else if (t==='current_scores') {
-                        const sc = event.raw_data ? JSON.parse(event.raw_data) : event; cacheScores = { b: sc.athlete1_score ?? sc?.athlete1?.score ?? 0, r: sc.athlete2_score ?? sc?.athlete2?.score ?? 0 };
+                        const sc = (event.structured_data && typeof event.structured_data === 'object') ? event.structured_data : event;
+                        cacheScores = { b: sc.athlete1_score ?? sc?.athlete1?.score ?? 0, r: sc.athlete2_score ?? sc?.athlete2?.score ?? 0 };
                     }
                 }
                 return;
@@ -124,32 +198,21 @@
                 const typeLower = (event && event.type ? String(event.type).toLowerCase() : '');
                 switch (typeLower) {
                     case 'athletes':
-                        // Parse IOC codes strictly from raw JSON string
-                        let a1c = null, a2c = null;
-                        if (typeof event.raw_data === 'string' && event.raw_data.trim().startsWith('{')) {
-                            try { const rd = JSON.parse(event.raw_data); a1c = rd?.athlete1?.country || null; a2c = rd?.athlete2?.country || null; } catch(_) {}
-                        }
-                        if (a1c) {
-                            scoreboardInstance.updateAthleteName('blue', a1c);
-                            scoreboardInstance.updateAthleteFlag('blue', a1c);
-                            try {
-                                const n1 = scoreboardInstance.svg.getElementById('player1Name'); if (n1) n1.textContent = a1c.toUpperCase();
-                                const f1 = scoreboardInstance.svg.getElementById('player1Flag'); if (f1){ let img=f1.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const r=f1.querySelector('rect'); let x=0,y=0,w=60,h=40; if(r){ x=parseFloat(r.getAttribute('x'))||0; y=parseFloat(r.getAttribute('y'))||0; w=parseFloat(r.getAttribute('width'))||60; h=parseFloat(r.getAttribute('height'))||40; } img.setAttribute('x',x); img.setAttribute('y',y); img.setAttribute('width',w); img.setAttribute('height',h); img.setAttribute('preserveAspectRatio','xMidYMid meet'); f1.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a1c.toUpperCase()}.svg`);} 
-                            } catch(_) {}
-                            document.getElementById('debug-blue').textContent = a1c;
-                        }
-                        if (a2c) {
-                            scoreboardInstance.updateAthleteName('red', a2c);
-                            scoreboardInstance.updateAthleteFlag('red', a2c);
-                            try {
-                                const n2 = scoreboardInstance.svg.getElementById('player2Name'); if (n2) n2.textContent = a2c.toUpperCase();
-                                const f2 = scoreboardInstance.svg.getElementById('player2Flag'); if (f2){ let img=f2.querySelector('image'); if(!img){ img=document.createElementNS('http://www.w3.org/2000/svg','image'); const bb=f2.getBBox(); img.setAttribute('x',bb.x); img.setAttribute('y',bb.y); img.setAttribute('width',bb.width); img.setAttribute('height',bb.height); img.setAttribute('preserveAspectRatio','xMidYMid meet'); f2.appendChild(img);} img.setAttribute('href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`); img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href', `/assets/flags/svg/${a2c.toUpperCase()}.svg`);} 
-                            } catch(_) {}
-                            document.getElementById('debug-red').textContent = a2c;
+                        const snapshot = snapshotAthletes(event);
+                        if (snapshot) {
+                            cacheAthletes = snapshot;
+                            applyAthleteSnapshot(snapshot);
                         }
                         break;
                     case 'match_config':
-                        const data = event.raw_data ? JSON.parse(event.raw_data) : (event.structured_data || event);
+                        const data = (event.structured_data && typeof event.structured_data === 'object') ? event.structured_data : event;
+                        cacheMatchConfig = {
+                            weight: data.weight,
+                            division: data.division,
+                            category: data.category,
+                            number: data.number,
+                            round_duration: data.round_duration
+                        };
                         if (data.round_duration !== undefined && data.round_duration !== null) { roundDuration = parseInt(data.round_duration); }
                         if (data.weight || data.division || data.category) { scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category); }
                         if (data.number) { scoreboardInstance.updateMatchNumber(data.number); }
@@ -169,7 +232,7 @@
                         } catch(_) {}
                         break;
                     case 'current_scores':
-                        const sc = event.raw_data ? JSON.parse(event.raw_data) : event;
+                        const sc = (event.structured_data && typeof event.structured_data === 'object') ? event.structured_data : event;
                         const blue = sc.athlete1_score ?? sc?.athlete1?.score ?? 0;
                         const red = sc.athlete2_score ?? sc?.athlete2?.score ?? 0;
                         scoreboardInstance.updateAthleteScore('blue', blue);
@@ -312,16 +375,38 @@
             } catch (error) { console.error('❌ Error handling PSS event:', error); }
         }
 
+        function forwardEventPayload(payload) {
+            if (!payload) return;
+            const directEvent = payload.data && payload.type === 'pss_event' ? payload.data : (payload.detail ?? payload);
+            if (!directEvent || typeof directEvent !== 'object') return;
+            handlePssEvent(directEvent);
+        }
+
         let websocket = null; let reconnectAttempts = 0; const maxReconnectAttempts = 5; const reconnectDelay = 2000;
         function setupWebSocketConnection() {
             try {
                 const currentHost = window.location.hostname; const wsHost = (currentHost === 'localhost' || currentHost === '127.0.0.1') ? '127.0.0.1' : currentHost; const wsUrl = `ws://${wsHost}:3001`;
                 websocket = new WebSocket(wsUrl);
                 websocket.onopen = function() { updateConnectionStatus(true); reconnectAttempts = 0; setInterval(()=>{ if(websocket.readyState===WebSocket.OPEN){ websocket.send('ping'); } }, 30000); };
-                websocket.onmessage = function(event) { try { const data = JSON.parse(event.data); if (data.type === 'pss_event') { handlePssEvent(data.data); } } catch(e) { console.error('❌ WS parse error:', e); } };
+                websocket.onmessage = function(event) { try { const data = JSON.parse(event.data); forwardEventPayload(data); } catch(e) { console.error('❌ WS parse error:', e); } };
                 websocket.onclose = function() { updateConnectionStatus(false); if (reconnectAttempts < maxReconnectAttempts) { reconnectAttempts++; setTimeout(setupWebSocketConnection, reconnectDelay); } };
                 websocket.onerror = function() { updateConnectionStatus(false); };
             } catch (error) { updateConnectionStatus(false); }
+        }
+
+        function attachFallbackListeners() {
+            window.addEventListener('pss-event', (evt) => {
+                if (evt && evt.detail) {
+                    forwardEventPayload(evt);
+                }
+            });
+            window.addEventListener('storage', (evt) => {
+                if (evt.key !== 'pss_event' || !evt.newValue) return;
+                try {
+                    const parsed = JSON.parse(evt.newValue);
+                    forwardEventPayload(parsed);
+                } catch (_) { /* ignore */ }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -329,6 +414,7 @@
             if (window.ScoreboardFontInjector) { window.ScoreboardFontInjector.initForObject('#scoreboard-svg'); }
             svgObject.addEventListener('load', initializeScoreboard);
             setupWebSocketConnection();
+            attachFallbackListeners();
             if (svgObject.contentDocument) { initializeScoreboard(); }
         });
 
@@ -336,5 +422,3 @@
     </script>
 </body>
 </html>
-
-

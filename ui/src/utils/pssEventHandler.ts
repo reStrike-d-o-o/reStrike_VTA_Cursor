@@ -2,6 +2,7 @@ import { usePssMatchStore } from '../stores';
 import { logger } from './logger';
 import { PssAthleteInfo, PssMatchConfig, PssScores, PssCurrentScores, PssWinnerRounds } from '../types';
 import { getBestFlagCode } from './countryCodeMapping';
+import eventBroadcaster from './eventBroadcaster';
 
 /**
  * Handle PSS events and update the match store
@@ -17,6 +18,13 @@ export const handlePssEvent = (event: any) => {
   
   // Emit browser event for scoreboard overlays
   emitBrowserEvent(event);
+
+  // Broadcast via localStorage so standalone overlays (served from /overlays) get updates instantly
+  try {
+    eventBroadcaster.broadcastPssEvent(event);
+  } catch (error) {
+    logger.warn('Failed to broadcast PSS event via localStorage bridge', error as Error);
+  }
   
   // Avoid re-broadcasting to the WebSocket server here to prevent duplicate events in UI.
   // The backend UDP plugin already broadcasts events to the WebSocket server.

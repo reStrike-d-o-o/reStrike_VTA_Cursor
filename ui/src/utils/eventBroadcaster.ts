@@ -21,6 +21,10 @@ class EventBroadcaster {
    */
   broadcastPssEvent(event: any): void {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        return;
+      }
+
       const eventData = {
         id: ++this.eventId,
         type: 'pss_event',
