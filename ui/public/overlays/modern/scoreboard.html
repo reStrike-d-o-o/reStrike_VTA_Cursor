@@ -298,22 +298,37 @@
             }
         }
 
+        function resolveAthleteSource(payload, primaryKey) {
+            if (!payload) return null;
+            if (payload[primaryKey] && typeof payload[primaryKey] === 'object') {
+                return payload[primaryKey];
+            }
+            return {
+                short: payload[`${primaryKey}_short`],
+                long: payload[`${primaryKey}_long`],
+                country: payload[`${primaryKey}_country`]
+            };
+        }
+
+        function snapshotAthletes(payload) {
+            const blue = normalizeAthlete(resolveAthleteSource(payload, 'athlete1'));
+            const red = normalizeAthlete(resolveAthleteSource(payload, 'athlete2'));
+            if (!blue.name && !blue.country && !red.name && !red.country) {
+                return null;
+            }
+            return { blue, red };
+        }
+
         function processEvent(payload) {
             if (!scoreboardInstance || !payload) return;
             const eventType = determineEventType(payload);
 
             switch (eventType) {
                 case 'athletes': {
-                    const blue = normalizeAthlete({
-                        short: payload.athlete1_short,
-                        long: payload.athlete1_long,
-                        country: payload.athlete1_country
-                    });
-                    const red = normalizeAthlete({
-                        short: payload.athlete2_short,
-                        long: payload.athlete2_long,
-                        country: payload.athlete2_country
-                    });
+                    const blueSource = resolveAthleteSource(payload, 'athlete1');
+                    const redSource = resolveAthleteSource(payload, 'athlete2');
+                    const blue = normalizeAthlete(blueSource);
+                    const red = normalizeAthlete(redSource);
                     updateNameAndCountry('blue', blue);
                     updateNameAndCountry('red', red);
                     const snapshot = snapshotAthletes(payload);

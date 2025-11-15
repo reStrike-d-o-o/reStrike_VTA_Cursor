@@ -82,7 +82,7 @@ pub struct App {
     log_manager: Arc<Mutex<LogManager>>,
     app_handle: Option<tauri::AppHandle>, // Store app handle for real-time emission
     udp_event_rx: Arc<
-        Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>>>,
+        Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<crate::pss::protocol::PssEvent>>>,
     >, // Store UDP event receiver
 
     // Phase 3: Advanced Scaling Components
@@ -317,7 +317,7 @@ impl App {
 
         // Initialize WebSocket plugin for HTML overlays
         let (event_tx, _event_rx) =
-            tokio::sync::mpsc::unbounded_channel::<crate::plugins::plugin_udp::PssEvent>();
+            tokio::sync::mpsc::unbounded_channel::<crate::pss::protocol::PssEvent>();
         let websocket_plugin = Arc::new(Mutex::new(WebSocketPlugin::new(event_tx))); // Port 3001 for WebSocket server
         log::info!("WebSocket plugin initialized");
 
@@ -1431,14 +1431,14 @@ impl App {
 
     /// Emit a PSS event that originated from the UDP listener with its raw representation.
     pub fn emit_pss_event_with_raw(
-        raw_event: crate::plugins::plugin_udp::PssEvent,
+        raw_event: crate::pss::protocol::PssEvent,
         event_json: serde_json::Value,
     ) {
         Self::emit_pss_event_internal(Some(raw_event), event_json);
     }
 
     fn emit_pss_event_internal(
-        raw_event: Option<crate::plugins::plugin_udp::PssEvent>,
+        raw_event: Option<crate::pss::protocol::PssEvent>,
         event_json: serde_json::Value,
     ) {
         if let Some(app_handle) = TAURI_APP_HANDLE.get() {
@@ -1499,7 +1499,7 @@ impl App {
 
     /// Handle UDP events
     async fn handle_udp_events(
-        mut event_rx: tokio::sync::mpsc::UnboundedReceiver<crate::plugins::plugin_udp::PssEvent>,
+        mut event_rx: tokio::sync::mpsc::UnboundedReceiver<crate::pss::protocol::PssEvent>,
         log_manager: Arc<Mutex<LogManager>>,
     ) {
         log::info!("Starting UDP event handler for real-time processing");
@@ -1529,7 +1529,7 @@ impl App {
 
                         // Close mpv if match resumes or challenge resolved
                         match &event {
-                            crate::plugins::plugin_udp::PssEvent::Clock {
+                            crate::pss::protocol::PssEvent::Clock {
                                 action: Some(a), ..
                             } if a == "start" => {
                                 log::debug!("Closing mpv on clock start (resume)");
@@ -1537,7 +1537,7 @@ impl App {
                                     log::debug!("close_mpv_if_running error: {e}");
                                 }
                             }
-                            crate::plugins::plugin_udp::PssEvent::Challenge {
+                            crate::pss::protocol::PssEvent::Challenge {
                                 accepted, ..
                             } => {
                                 if matches!(*accepted, Some(true) | Some(false)) {
@@ -1553,7 +1553,7 @@ impl App {
                         }
 
                         // IVR: Auto round replay on challenge if enabled
-                        if let crate::plugins::plugin_udp::PssEvent::Challenge { .. } = &event {
+                        if let crate::pss::protocol::PssEvent::Challenge { .. } = &event {
                             match app
                                 .database_plugin()
                                 .get_ui_setting("ivr.replay.auto_on_challenge")

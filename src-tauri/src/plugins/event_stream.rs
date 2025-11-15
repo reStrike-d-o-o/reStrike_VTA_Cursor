@@ -3,7 +3,7 @@ use crate::plugins::event_cache::{
     AthleteStatistics, EventCache, MatchStatistics, TournamentStatistics,
 };
 use crate::plugins::plugin_database::DatabasePlugin;
-use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
+use crate::pss::protocol::PssEvent as UdpPssEvent;
 use crate::AppResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

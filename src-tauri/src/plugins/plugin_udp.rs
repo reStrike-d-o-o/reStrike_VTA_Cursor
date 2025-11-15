@@ -5,9 +5,9 @@ use crate::plugins::performance_monitor::PerformanceMonitor;
 use crate::plugins::plugin_database::DatabasePlugin;
 use crate::plugins::plugin_websocket::WebSocketServer;
 use crate::plugins::ProtocolManager;
+use crate::pss::protocol::{PssEvent, PssProtocol};
 use crate::types::{AppError, AppResult};
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::io;
 use std::net::UdpSocket;
@@ -25,127 +25,6 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 pub type UdpPlugin = UdpServer;
 
 type RecentHitMap = Arc<Mutex<std::collections::HashMap<u8, Vec<(u8, std::time::SystemTime)>>>>;
-
-// PSS Event Types based on protocol specification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PssEvent {
-    // Points events
-    Points {
-        athlete: u8,    // 1 or 2
-        point_type: u8, // 1=punch, 2=body, 3=head, 4=tech_body, 5=tech_head
-    },
-
-    // Hit level events
-    HitLevel {
-        athlete: u8, // 1 or 2
-        level: u8,   // 1-100
-    },
-
-    // Warnings/Gam-jeom events
-    Warnings {
-        athlete1_warnings: u8,
-        athlete2_warnings: u8,
-    },
-
-    // Injury time events
-    Injury {
-        athlete: u8,            // 0=unidentified, 1=athlete1, 2=athlete2
-        time: String,           // format: "m:ss"
-        action: Option<String>, // show, hide, reset
-    },
-
-    // Challenge/IVR events
-    Challenge {
-        source: u8, // 0=referee, 1=athlete1, 2=athlete2
-        accepted: Option<bool>,
-        won: Option<bool>,
-        canceled: bool,
-    },
-
-    // Break events
-    Break {
-        time: String,           // format: "m:ss" or just seconds
-        action: Option<String>, // stop, stopEnd
-    },
-
-    // Winner rounds events
-    WinnerRounds {
-        round1_winner: u8, // 0=none, 1=athlete1, 2=athlete2
-        round2_winner: u8,
-        round3_winner: u8,
-    },
-
-    // Final winner events
-    Winner {
-        name: String,
-        classification: Option<String>,
-    },
-
-    // Match info events
-    Athletes {
-        athlete1_short: String,
-        athlete1_long: String,
-        athlete1_country: String,
-        athlete2_short: String,
-        athlete2_long: String,
-        athlete2_country: String,
-    },
-
-    // Match configuration
-    MatchConfig {
-        number: String, // Changed from u32 to String to support values like "245.A"
-        category: String,
-        weight: String,
-        rounds: u8,
-        colors: (String, String, String, String), // bg1, fg1, bg2, fg2
-        match_id: String,
-        division: String,
-        total_rounds: u8,
-        round_duration: u32, // seconds
-        countdown_type: String,
-        count_up: u32,
-        format: u8,
-    },
-
-    // Scores
-    Scores {
-        athlete1_r1: u8,
-        athlete2_r1: u8,
-        athlete1_r2: u8,
-        athlete2_r2: u8,
-        athlete1_r3: u8,
-        athlete2_r3: u8,
-    },
-
-    // Current scores
-    CurrentScores {
-        athlete1_score: u8,
-        athlete2_score: u8,
-    },
-
-    // Clock events
-    Clock {
-        time: String,           // format: "m:ss"
-        action: Option<String>, // start, stop
-    },
-
-    // Round events
-    Round {
-        current_round: u8,
-    },
-
-    // System events
-    FightLoaded,
-    FightReady,
-
-    // Supremacy events
-    Supremacy {
-        value: u8, // Supremacy value
-    },
-
-    // Raw message for unrecognized patterns
-    Raw(String),
-}
 
 #[derive(Debug, Clone)]
 pub struct UdpServerConfig {
@@ -181,6 +60,7 @@ pub struct UdpServer {
     socket: Arc<Mutex<Option<UdpSocket>>>,
     stats: Arc<Mutex<UdpStats>>,
     protocol_manager: Arc<ProtocolManager>,
+    protocol_parser: Arc<PssProtocol>,
     recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
     database: Arc<DatabasePlugin>,
     current_session_id: Arc<Mutex<Option<i64>>>,
@@ -236,6 +116,7 @@ impl UdpServer {
             socket: Arc::new(Mutex::new(None)),
             stats: Arc::new(Mutex::new(UdpStats::default())),
             protocol_manager,
+            protocol_parser: Arc::new(PssProtocol::new()),
             recent_events: Arc::new(Mutex::new(VecDeque::with_capacity(100))),
             database,
             current_session_id: Arc::new(Mutex::new(None)),
@@ -273,6 +154,7 @@ impl UdpServer {
             socket: self.socket.clone(),
             stats: self.stats.clone(),
             protocol_manager: self.protocol_manager.clone(),
+            protocol_parser: self.protocol_parser.clone(),
             recent_events: self.recent_events.clone(),
             database: self.database.clone(),
             current_session_id: self.current_session_id.clone(),
@@ -579,6 +461,7 @@ impl UdpServer {
         let status_clone = self.status.clone();
         let stats_clone = self.stats.clone();
         let protocol_manager = self.protocol_manager.clone();
+        let protocol_parser = self.protocol_parser.clone();
         let recent_events_clone = self.recent_events.clone();
         let database_clone = self.database.clone();
         let current_session_id_clone = self.current_session_id.clone();
@@ -597,6 +480,7 @@ impl UdpServer {
                 status_clone,
                 stats_clone,
                 protocol_manager,
+                protocol_parser,
                 recent_events_clone,
                 database_clone,
                 current_session_id_clone,
@@ -1910,6 +1794,7 @@ impl UdpServer {
         status: Arc<Mutex<UdpServerStatus>>,
         stats: Arc<Mutex<UdpStats>>,
         protocol_manager: Arc<ProtocolManager>,
+        protocol_parser: Arc<PssProtocol>,
         recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
         database: Arc<DatabasePlugin>,
         current_session_id: Arc<Mutex<Option<i64>>>,
@@ -1997,9 +1882,9 @@ impl UdpServer {
                     crate::core::app::App::emit_log_event(raw_log_message);
 
                     // Parse the message with panic protection
-                    let parse_result = std::panic::catch_unwind(|| {
-                        Self::parse_pss_message(&message, &protocol_manager)
-                    });
+                    let parser = protocol_parser.clone();
+                    let parse_result =
+                        std::panic::catch_unwind(move || parser.parse_message(&message));
 
                     match parse_result {
                         Ok(parse_result) => {
@@ -2193,747 +2078,10 @@ impl UdpServer {
         log::info!("UDP PSS Server listening loop ended");
     }
 
-    fn parse_pss_message(message: &str, protocol_manager: &ProtocolManager) -> AppResult<PssEvent> {
-        // Log the incoming message for debugging
-        log::debug!("Parsing PSS message: '{message}'");
-
-        // Clean the message: trim whitespace first, then remove trailing semicolons, and split
-        let clean_message = message.trim();
-        let clean_message = clean_message.trim_end_matches(';');
-        // Split and drop empty segments (e.g., trailing ';' producing an empty token)
-        let parts: Vec<&str> = clean_message.split(';').filter(|p| !p.is_empty()).collect();
-
-        // Handle empty or whitespace-only messages
-        if clean_message.is_empty() {
-            log::warn!("Received empty message, returning Raw event");
-            return Ok(PssEvent::Raw(message.to_string()));
-        }
-
-        // Handle connection status messages (not PSS events)
-        if message.contains("Udp Port")
-            && (message.contains("connected") || message.contains("disconnected"))
-        {
-            log::debug!("Connection status message: {message}");
-            return Ok(PssEvent::Raw(message.to_string()));
-        }
-
-        // Get protocol parsing rules from the protocol manager in a context-safe way
-        let _protocol_rules = if tokio::runtime::Handle::try_current().is_ok() {
-            // We are already inside a Tokio runtime. Use block_in_place to run a blocking
-            // operation without panicking. This avoids the `Handle::block_on` panic that
-            // occurs when called from an async context.
-            tokio::task::block_in_place(|| {
-                // futures::executor::block_on is allowed inside a blocking section.
-                futures::executor::block_on(async { protocol_manager.get_parsing_rules().await })
-            })
-        } else {
-            // We are in a pure synchronous context. Create a lightweight runtime just for
-            // this call so we can await the async function safely.
-            match tokio::runtime::Runtime::new() {
-                Ok(rt) => rt.block_on(async { protocol_manager.get_parsing_rules().await }),
-                Err(e) => {
-                    log::error!("Failed to create temporary Tokio runtime: {e}");
-                    Ok(std::collections::HashMap::new())
-                }
-            }
-        }
-        .unwrap_or_default();
-
-        // Ensure we have at least one part before accessing parts[0]
-        if parts.is_empty() {
-            log::warn!("Message has no parts after splitting: '{message}'");
-            return Ok(PssEvent::Raw(message.to_string()));
-        }
-
-        // Helper function to safely get a part with bounds checking
-        let get_part = |index: usize| -> Option<&str> {
-            if index < parts.len() {
-                Some(parts[index])
-            } else {
-                None
-            }
-        };
-
-        // Helper function to safely parse a part as u8 with validation
-        let parse_u8 = |index: usize, field_name: &str, min: u8, max: u8| -> AppResult<u8> {
-            let value = get_part(index).ok_or_else(|| {
-                AppError::ConfigError(format!("Missing {field_name} at position {index}"))
-            })?;
-
-            let parsed = value.parse::<u8>().map_err(|_| {
-                AppError::ConfigError(format!("Invalid {field_name}: '{value}' (not a valid u8)"))
-            })?;
-
-            if parsed < min || parsed > max {
-                return Err(AppError::ConfigError(format!(
-                    "{field_name} value {parsed} is out of range [{min}, {max}]"
-                )));
-            }
-
-            Ok(parsed)
-        };
-
-        // Helper function to safely parse a part as u32 with validation
-        let parse_u32 = |index: usize, field_name: &str, min: u32, max: u32| -> AppResult<u32> {
-            let value = get_part(index).ok_or_else(|| {
-                AppError::ConfigError(format!("Missing {field_name} at position {index}"))
-            })?;
-
-            let parsed = value.parse::<u32>().map_err(|_| {
-                AppError::ConfigError(format!("Invalid {field_name}: '{value}' (not a valid u32)"))
-            })?;
-
-            if parsed < min || parsed > max {
-                return Err(AppError::ConfigError(format!(
-                    "{field_name} value {parsed} is out of range [{min}, {max}]"
-                )));
-            }
-
-            Ok(parsed)
-        };
-
-        // Helper function to safely get a string part with validation
-        let get_string = |index: usize, field_name: &str, max_length: usize| -> AppResult<String> {
-            let value = get_part(index).ok_or_else(|| {
-                AppError::ConfigError(format!("Missing {field_name} at position {index}"))
-            })?;
-
-            if value.len() > max_length {
-                return Err(AppError::ConfigError(format!(
-                    "{} too long: {} chars (max {})",
-                    field_name,
-                    value.len(),
-                    max_length
-                )));
-            }
-
-            Ok(value.to_string())
-        };
-
-        // Helper function to validate time format (m:ss or ss)
-        let validate_time_format = |time: &str| -> bool {
-            if time.contains(':') {
-                // Format: m:ss
-                let parts: Vec<&str> = time.split(':').collect();
-                if parts.len() != 2 {
-                    return false;
-                }
-                parts.first().unwrap_or(&"0").parse::<u8>().is_ok()
-                    && parts.get(1).unwrap_or(&"0").parse::<u8>().is_ok()
-            } else {
-                // Format: ss
-                time.parse::<u8>().is_ok()
-            }
-        };
-
-        // Helper function to validate color format (#RRGGBB)
-        let validate_color_format = |color: &str| -> bool {
-            color.starts_with('#')
-                && color.len() == 7
-                && color[1..].chars().all(|c| c.is_ascii_hexdigit())
-        };
-
-        // Helper function to safely parse with fallback to raw
-        let parse_with_fallback = |result: AppResult<PssEvent>| -> AppResult<PssEvent> {
-            match result {
-                Ok(event) => Ok(event),
-                Err(e) => {
-                    log::warn!("Parsing failed for '{message}': {e}. Returning as Raw event.");
-                    Ok(PssEvent::Raw(message.to_string()))
-                }
-            }
-        };
-
-        // Main parsing logic with comprehensive error handling
-        let result = match *parts.first().unwrap_or(&"") {
-            // Points events (pt1, pt2)
-            "pt1" => {
-                let point_type = parse_u8(1, "point type", 1, 5)?;
-                log::debug!("Parsed Points event: athlete=1, type={point_type}");
-                Ok(PssEvent::Points {
-                    athlete: 1,
-                    point_type,
-                })
-            }
-            "pt2" => {
-                let point_type = parse_u8(1, "point type", 1, 5)?;
-                log::debug!("Parsed Points event: athlete=2, type={point_type}");
-                Ok(PssEvent::Points {
-                    athlete: 2,
-                    point_type,
-                })
-            }
-
-            // Hit level events (hl1, hl2)
-            "hl1" => {
-                let level = parse_u8(1, "hit level", 1, 100)?;
-                log::debug!("Parsed HitLevel event: athlete=1, level={level}");
-                Ok(PssEvent::HitLevel { athlete: 1, level })
-            }
-            "hl2" => {
-                let level = parse_u8(1, "hit level", 1, 100)?;
-                log::debug!("Parsed HitLevel event: athlete=2, level={level}");
-                Ok(PssEvent::HitLevel { athlete: 2, level })
-            }
-
-            // Warnings/Gam-jeom events (wg1, wg2)
-            "wg1" => {
-                // Parse warnings: wg1;1;wg2;2;
-                let athlete1_warnings = parse_u8(1, "athlete1 warnings", 0, 10)?;
-                let athlete2_warnings = if parts.len() >= 4 && *parts.get(2).unwrap_or(&"") == "wg2"
-                {
-                    parse_u8(3, "athlete2 warnings", 0, 10)?
-                } else {
-                    0
-                };
-                log::debug!(
-                    "Parsed Warnings event: a1={athlete1_warnings}, a2={athlete2_warnings}"
-                );
-                Ok(PssEvent::Warnings {
-                    athlete1_warnings,
-                    athlete2_warnings,
-                })
-            }
-            "wg2" => {
-                // Handle wg2 as part of wg1 event or standalone
-                if parts.len() >= 2 {
-                    let athlete2_warnings = parse_u8(1, "athlete2 warnings", 0, 10)?;
-                    log::debug!("Parsed Warnings event: a1=0, a2={athlete2_warnings}");
-                    Ok(PssEvent::Warnings {
-                        athlete1_warnings: 0,
-                        athlete2_warnings,
-                    })
-                } else {
-                    log::warn!("Incomplete wg2 event, defaulting to 0 warnings");
-                    Ok(PssEvent::Warnings {
-                        athlete1_warnings: 0,
-                        athlete2_warnings: 0,
-                    })
-                }
-            }
-
-            // Injury events (ij0, ij1, ij2)
-            "ij0" | "ij1" | "ij2" => {
-                let athlete = match *parts.first().unwrap_or(&"") {
-                    "ij0" => 0,
-                    "ij1" => 1,
-                    "ij2" => 2,
-                    _ => 0,
-                };
-
-                if parts.len() < 2 {
-                    log::warn!("Incomplete injury event, missing time");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let time = get_string(1, "injury time", 10)?;
-                if !validate_time_format(&time) {
-                    log::warn!("Invalid injury time format: '{time}'");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let action = if parts.len() > 2 {
-                    let action_str = get_string(2, "injury action", 10)?;
-                    match action_str.as_str() {
-                        "show" | "hide" | "reset" => Some(action_str),
-                        _ => {
-                            log::warn!("Unknown injury action: '{action_str}'");
-                            None
-                        }
-                    }
-                } else {
-                    None
-                };
-
-                log::debug!(
-                    "Parsed Injury event: athlete={athlete}, time={time}, action={action:?}"
-                );
-                Ok(PssEvent::Injury {
-                    athlete,
-                    time,
-                    action,
-                })
-            }
-
-            // Challenge/IVR events (ch0, ch1, ch2)
-            "ch0" | "ch1" | "ch2" => {
-                let source = match *parts.first().unwrap_or(&"") {
-                    "ch0" => 0, // Referee
-                    "ch1" => 1, // Athlete 1
-                    "ch2" => 2, // Athlete 2
-                    _ => 0,
-                };
-
-                let accepted = if parts.len() > 1 {
-                    let val = parse_u8(1, "challenge accepted", 0, 255)?;
-                    if val == 255 {
-                        // -1 in u8 representation
-                        Some(false)
-                    } else {
-                        Some(val == 1)
-                    }
-                } else {
-                    None
-                };
-
-                let won = if parts.len() > 2 {
-                    Some(parse_u8(2, "challenge won", 0, 1)? == 1)
-                } else {
-                    None
-                };
-
-                let canceled = accepted == Some(false);
-                log::debug!(
-                    "Parsed Challenge event: source={source}, accepted={accepted:?}, won={won:?}, canceled={canceled}"
-                );
-                Ok(PssEvent::Challenge {
-                    source,
-                    accepted,
-                    won,
-                    canceled,
-                })
-            }
-
-            // Break events (brk)
-            "brk" => {
-                if parts.len() < 2 {
-                    log::warn!("Incomplete break event, missing time");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let time = get_string(1, "break time", 10)?;
-                if !validate_time_format(&time) {
-                    log::warn!("Invalid break time format: '{time}'");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let action = if parts.len() > 2 {
-                    let action_str = get_string(2, "break action", 10)?;
-                    match action_str.as_str() {
-                        "stop" | "stopEnd" => Some(action_str),
-                        _ => {
-                            log::warn!("Unknown break action: '{action_str}'");
-                            None
-                        }
-                    }
-                } else {
-                    None
-                };
-
-                log::debug!("Parsed Break event: time={time}, action={action:?}");
-                Ok(PssEvent::Break { time, action })
-            }
-
-            // Winner rounds events (wrd)
-            "wrd" => {
-                // Parse: wrd;rd1;0;rd2;0;rd3;0
-                let mut round1_winner = 0;
-                let mut round2_winner = 0;
-                let mut round3_winner = 0;
-
-                for i in 1..parts.len() {
-                    match *parts.get(i).unwrap_or(&"") {
-                        "rd1" if i + 1 < parts.len() => {
-                            round1_winner = parse_u8(i + 1, "round1 winner", 0, 2).unwrap_or(0);
-                        }
-                        "rd2" if i + 1 < parts.len() => {
-                            round2_winner = parse_u8(i + 1, "round2 winner", 0, 2).unwrap_or(0);
-                        }
-                        "rd3" if i + 1 < parts.len() => {
-                            round3_winner = parse_u8(i + 1, "round3 winner", 0, 2).unwrap_or(0);
-                        }
-                        _ => {}
-                    }
-                }
-
-                log::debug!(
-                    "Parsed WinnerRounds event: r1={round1_winner}, r2={round2_winner}, r3={round3_winner}"
-                );
-                Ok(PssEvent::WinnerRounds {
-                    round1_winner,
-                    round2_winner,
-                    round3_winner,
-                })
-            }
-
-            // Winner events (wmh)
-            "wmh" => {
-                if parts.len() < 2 {
-                    log::warn!("Incomplete winner event, missing name");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let name = get_string(1, "winner name", 100)?;
-                let classification = if parts.len() > 2 {
-                    Some(get_string(2, "classification", 50)?)
-                } else {
-                    None
-                };
-
-                log::debug!("Parsed Winner event: name={name}, classification={classification:?}");
-                Ok(PssEvent::Winner {
-                    name,
-                    classification,
-                })
-            }
-
-            // Athletes events (at1)
-            "at1" => {
-                // Parse: at1;N. DESMOND;Nicolas DESMOND;MRN;at2;M. THIBAULT;Marcel THIBAULT;SUI;
-                if parts.len() >= 7 {
-                    let athlete1_short = get_string(1, "athlete1 short", 50)?;
-                    let athlete1_long = get_string(2, "athlete1 long", 100)?;
-                    let athlete1_country = get_string(3, "athlete1 country", 10)?;
-                    let athlete2_short = get_string(5, "athlete2 short", 50)?;
-                    let athlete2_long = get_string(6, "athlete2 long", 100)?;
-                    let athlete2_country = get_string(7, "athlete2 country", 10)?;
-
-                    log::debug!(
-                        "Parsed Athletes event: a1='{athlete1_short}'({athlete1_country}), a2='{athlete2_short}'({athlete2_country})"
-                    );
-
-                    Ok(PssEvent::Athletes {
-                        athlete1_short,
-                        athlete1_long,
-                        athlete1_country,
-                        athlete2_short,
-                        athlete2_long,
-                        athlete2_country,
-                    })
-                } else {
-                    log::warn!(
-                        "Incomplete athletes event, expected 7+ parts, got {}",
-                        parts.len()
-                    );
-                    Ok(PssEvent::Raw(message.to_string()))
-                }
-            }
-
-            // Match configuration events (mch)
-            "mch" => {
-                // Parse: mch;101;Round of 16;M- 80 kg;1;#0000ff;#FFFFFF;#ff0000;#FFFFFF;a14ddd5c;Senior;3;120;cntDown;18;1;
-                if parts.len() >= 15 {
-                    let number = get_string(1, "match number", 20)?; // Changed to get_string to support values like "245.A"
-                    let category = get_string(2, "category", 100)?;
-                    let weight = get_string(3, "weight", 50)?;
-                    let rounds = parse_u8(4, "rounds", 0, 10)?; // Allow 0 for initialization
-                    let bg1 = get_string(5, "bg1", 10)?;
-                    let fg1 = get_string(6, "fg1", 10)?;
-                    let bg2 = get_string(7, "bg2", 10)?;
-                    let fg2 = get_string(8, "fg2", 10)?;
-                    let match_id = get_string(9, "match_id", 50)?;
-                    let division = get_string(10, "division", 50)?;
-                    let total_rounds = parse_u8(11, "total_rounds", 1, 10)?;
-                    let round_duration = parse_u32(12, "round_duration", 30, 600)?;
-                    let countdown_type = get_string(13, "countdown_type", 20)?;
-                    let count_up = parse_u32(14, "count_up", 0, 999)?;
-                    let format = parse_u8(15, "format", 1, 10)?;
-
-                    // Validate color formats
-                    if !validate_color_format(&bg1)
-                        || !validate_color_format(&fg1)
-                        || !validate_color_format(&bg2)
-                        || !validate_color_format(&fg2)
-                    {
-                        log::warn!("Invalid color format in match config");
-                    }
-
-                    log::debug!(
-                        "Parsed MatchConfig event: #{number} {category} {weight} ({total_rounds} rounds)"
-                    );
-
-                    Ok(PssEvent::MatchConfig {
-                        number,
-                        category,
-                        weight,
-                        rounds,
-                        colors: (bg1, fg1, bg2, fg2),
-                        match_id,
-                        division,
-                        total_rounds,
-                        round_duration,
-                        countdown_type,
-                        count_up,
-                        format,
-                    })
-                } else {
-                    log::warn!(
-                        "Incomplete match config event, expected 15+ parts, got {}",
-                        parts.len()
-                    );
-                    Ok(PssEvent::Raw(message.to_string()))
-                }
-            }
-
-            // Scores events (s11, s21, s12, s22, s13, s23)
-            "s11" | "s21" | "s12" | "s22" | "s13" | "s23" => {
-                // Handle combined score messages like "s11;0;s21;1;s12;0;s22;0;s13;0;s23;0"
-                let mut athlete1_r1 = 0;
-                let mut athlete2_r1 = 0;
-                let mut athlete1_r2 = 0;
-                let mut athlete2_r2 = 0;
-                let mut athlete1_r3 = 0;
-                let mut athlete2_r3 = 0;
-
-                // Parse all score parts in the message
-                for i in 0..parts.len() {
-                    match *parts.get(i).unwrap_or(&"") {
-                        "s11" if i + 1 < parts.len() => {
-                            athlete1_r1 =
-                                parse_u8(i + 1, "athlete1 round1 score", 0, 50).unwrap_or(0);
-                        }
-                        "s21" if i + 1 < parts.len() => {
-                            athlete2_r1 =
-                                parse_u8(i + 1, "athlete2 round1 score", 0, 50).unwrap_or(0);
-                        }
-                        "s12" if i + 1 < parts.len() => {
-                            athlete1_r2 =
-                                parse_u8(i + 1, "athlete1 round2 score", 0, 50).unwrap_or(0);
-                        }
-                        "s22" if i + 1 < parts.len() => {
-                            athlete2_r2 =
-                                parse_u8(i + 1, "athlete2 round2 score", 0, 50).unwrap_or(0);
-                        }
-                        "s13" if i + 1 < parts.len() => {
-                            athlete1_r3 =
-                                parse_u8(i + 1, "athlete1 round3 score", 0, 50).unwrap_or(0);
-                        }
-                        "s23" if i + 1 < parts.len() => {
-                            athlete2_r3 =
-                                parse_u8(i + 1, "athlete2 round3 score", 0, 50).unwrap_or(0);
-                        }
-                        _ => {}
-                    }
-                }
-
-                log::debug!(
-                    "Parsed Scores event: r1(a1={athlete1_r1},a2={athlete2_r1}), r2(a1={athlete1_r2},a2={athlete2_r2}), r3(a1={athlete1_r3},a2={athlete2_r3})"
-                );
-                Ok(PssEvent::Scores {
-                    athlete1_r1,
-                    athlete2_r1,
-                    athlete1_r2,
-                    athlete2_r2,
-                    athlete1_r3,
-                    athlete2_r3,
-                })
-            }
-
-            // Current scores events (sc1, sc2)
-            "sc1" | "sc2" => {
-                // Handle combined score messages like "sc1;0;sc2;1"
-                let mut athlete1_score = 0;
-                let mut athlete2_score = 0;
-
-                // Parse all score parts in the message
-                for i in 0..parts.len() {
-                    match *parts.get(i).unwrap_or(&"") {
-                        "sc1" if i + 1 < parts.len() => {
-                            athlete1_score = parse_u8(i + 1, "athlete1 score", 0, 50).unwrap_or(0);
-                        }
-                        "sc2" if i + 1 < parts.len() => {
-                            athlete2_score = parse_u8(i + 1, "athlete2 score", 0, 50).unwrap_or(0);
-                        }
-                        _ => {}
-                    }
-                }
-
-                log::debug!("Parsed CurrentScores event: a1={athlete1_score}, a2={athlete2_score}");
-                Ok(PssEvent::CurrentScores {
-                    athlete1_score,
-                    athlete2_score,
-                })
-            }
-
-            // Clock events (clk)
-            "clk" => {
-                if parts.len() < 2 {
-                    log::warn!("Incomplete clock event, missing time");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let time = get_string(1, "clock time", 10)?;
-                if !validate_time_format(&time) {
-                    log::warn!("Invalid clock time format: '{time}'");
-                    return Ok(PssEvent::Raw(message.to_string()));
-                }
-
-                let action = if parts.len() > 2 {
-                    let action_str = get_string(2, "clock action", 10)?;
-                    match action_str.as_str() {
-                        "start" | "stop" => Some(action_str),
-                        _ => {
-                            log::warn!("Unknown clock action: '{action_str}'");
-                            None
-                        }
-                    }
-                } else {
-                    None
-                };
-
-                log::debug!("Parsed Clock event: time={time}, action={action:?}");
-                Ok(PssEvent::Clock { time, action })
-            }
-
-            // Round events (rnd)
-            "rnd" => {
-                let current_round = parse_u8(1, "current round", 1, 10)?;
-                log::debug!("Parsed Round event: round={current_round}");
-                Ok(PssEvent::Round { current_round })
-            }
-
-            // Fight loaded events (pre)
-            "pre" => {
-                if parts.len() > 1 && *parts.get(1).unwrap_or(&"") == "FightLoaded" {
-                    log::debug!("Parsed FightLoaded event");
-                    Ok(PssEvent::FightLoaded)
-                } else {
-                    log::warn!("Unknown pre event: '{message}'");
-                    Ok(PssEvent::Raw(message.to_string()))
-                }
-            }
-
-            // Fight ready events (rdy)
-            "rdy" => {
-                if parts.len() > 1 && *parts.get(1).unwrap_or(&"") == "FightReady" {
-                    log::debug!("Parsed FightReady event");
-                    Ok(PssEvent::FightReady)
-                } else {
-                    log::warn!("Unknown rdy event: '{message}'");
-                    Ok(PssEvent::Raw(message.to_string()))
-                }
-            }
-
-            // Supremacy events (sup)
-            "sup" => {
-                let value = parse_u8(1, "supremacy value", 0, 255)?;
-                log::debug!("Parsed Supremacy event: value={value}");
-                Ok(PssEvent::Supremacy { value })
-            }
-
-            // Winner events (win)
-            "win" => {
-                if parts.len() > 1 {
-                    let winner = get_string(1, "winner", 20)?;
-                    let winner_upper = winner.to_uppercase();
-                    if winner_upper != "BLUE" && winner_upper != "RED" {
-                        log::warn!("Unknown winner value: '{winner}'");
-                    }
-                    log::debug!("Parsed Winner event: {winner}");
-                    Ok(PssEvent::Winner {
-                        name: winner,
-                        classification: None,
-                    })
-                } else {
-                    log::warn!("Incomplete win event, missing winner");
-                    Ok(PssEvent::Raw(message.to_string()))
-                }
-            }
-
-            // Athlete video time events (avt)
-            "avt" => {
-                let video_time = parse_u8(1, "video time", 0, 255)?;
-                log::debug!("Parsed AthleteVideoTime event: {video_time}");
-                // Handle as raw for now since we don't have a specific event type
-                Ok(PssEvent::Raw(format!("avt;{video_time};")))
-            }
-
-            // Additional events that were missing and causing panics
-            "ref" => {
-                // Referee/judge event - handle as raw for now
-                log::debug!("Referee event: {message}");
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-            "rst" => {
-                // Reset/statistics event - handle as raw for now
-                log::debug!("Reset/Statistics event: {message}");
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-            "rsr" => {
-                // Reset event - handle as raw for now
-                log::debug!("Reset event: {message}");
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-
-            // Handle any other unknown event types gracefully
-            unknown_event => {
-                log::info!("Unknown PSS event type: '{unknown_event}' in message: '{message}'");
-                Ok(PssEvent::Raw(message.to_string()))
-            }
-        };
-
-        // Apply fallback logic to prevent crashes
-        parse_with_fallback(result)
-    }
-
-    /// Set the current tournament context for event tracking
-    pub async fn set_tournament_context(&self, tournament_id: Option<i64>) -> AppResult<()> {
-        {
-            let mut tournament_guard = self.current_tournament_id.lock().unwrap();
-            *tournament_guard = tournament_id;
-        }
-
-        log::info!("Tournament context set: tournament_id={tournament_id:?}");
-        Ok(())
-    }
-
-    /// Get the current tournament context
-    pub fn get_tournament_context(&self) -> Option<i64> {
-        let tournament_id = {
-            let guard = self.current_tournament_id.lock().unwrap();
-            *guard
-        };
-
-        tournament_id
-    }
-
-    /// Clear tournament context
-    pub async fn clear_tournament_context(&self) -> AppResult<()> {
-        self.set_tournament_context(None).await
-    }
-
-    pub fn websocket_client_count(&self) -> usize {
-        self.websocket_server.get_client_count()
-    }
-
-    pub fn match_in_progress(&self) -> bool {
-        if self.websocket_server.get_match_started() {
-            true
-        } else {
-            self.current_match_id
-                .lock()
-                .map(|guard| guard.is_some())
-                .unwrap_or(false)
-        }
-    }
-
-    pub fn current_match_db_id(&self) -> Option<i64> {
-        self.websocket_server
-            .get_current_match_db_id()
-            .or_else(|| self.current_match_id.lock().ok().and_then(|guard| *guard))
-    }
-
-    pub fn status_snapshot(&self) -> UdpServerStatus {
-        self.status
-            .lock()
-            .map(|guard| guard.clone())
-            .unwrap_or_else(|_| UdpServerStatus::Error("Unknown".to_string()))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Mock protocol manager for testing
-    fn create_mock_protocol_manager() -> ProtocolManager {
-        ProtocolManager::new().unwrap()
-    }
-
     #[test]
     fn test_parse_points() {
-        let protocol_manager = create_mock_protocol_manager();
-        let event = UdpServer::parse_pss_message("pt1;3;", &protocol_manager).unwrap();
+        let parser = PssProtocol::new();
+        let event = parser.parse_message("pt1;3;").unwrap();
         match event {
             PssEvent::Points {
                 athlete,
@@ -2948,8 +2096,8 @@ mod tests {
 
     #[test]
     fn test_parse_warnings() {
-        let protocol_manager = create_mock_protocol_manager();
-        let event = UdpServer::parse_pss_message("wg1;1;wg2;2;", &protocol_manager).unwrap();
+        let parser = PssProtocol::new();
+        let event = parser.parse_message("wg1;1;wg2;2;").unwrap();
         match event {
             PssEvent::Warnings {
                 athlete1_warnings,
@@ -2964,8 +2112,8 @@ mod tests {
 
     #[test]
     fn test_parse_clock() {
-        let protocol_manager = create_mock_protocol_manager();
-        let event = UdpServer::parse_pss_message("clk;1:23;start;", &protocol_manager).unwrap();
+        let parser = PssProtocol::new();
+        let event = parser.parse_message("clk;1:23;start;").unwrap();
         match event {
             PssEvent::Clock { time, action } => {
                 assert_eq!(time, "1:23");

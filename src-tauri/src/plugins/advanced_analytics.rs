@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 // use crate::database::models::PssEventV2;
 use crate::plugins::event_cache::{EventCache, MatchStatistics};
-use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
+use crate::pss::protocol::PssEvent as UdpPssEvent;
 use crate::AppResult;
 
 /// Analytics configuration

@@ -1,6 +1,6 @@
 use crate::database::models::PssEventV2;
 use crate::plugins::event_cache::EventCache;
-use crate::plugins::plugin_udp::PssEvent as UdpPssEvent;
+use crate::pss::protocol::PssEvent as UdpPssEvent;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};

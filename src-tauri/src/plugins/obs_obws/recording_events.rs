@@ -4,7 +4,7 @@ use crate::plugins::obs_obws::manager::ObsManager;
 use crate::plugins::obs_obws::types::{ObsConnectionStatus, ObsReplayBufferStatus};
 use crate::plugins::obs_obws::ObsPathGenerator;
 use crate::plugins::obs_obws::PathGeneratorConfig;
-use crate::plugins::plugin_udp::PssEvent;
+use crate::pss::protocol::PssEvent;
 use crate::types::{AppError, AppResult};
 use chrono::Utc;
 use once_cell::sync::OnceCell;

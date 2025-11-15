@@ -40,6 +40,53 @@
     return typeof candidate === 'string' ? candidate.toLowerCase() : '';
   }
 
+  function normalizeAthlete(input) {
+    if (!input) return { name: '', country: '' };
+    if (typeof input === 'string') return { name: input, country: '' };
+    const first = input.first_name || input.firstName || '';
+    const last = input.last_name || input.lastName || '';
+    const joined = [first, last].filter(Boolean).join(' ').trim();
+    const nameCandidates = [
+      input.long,
+      input.display_name,
+      input.displayName,
+      input.full_name,
+      input.fullName,
+      input.name,
+      input.nickname,
+      input.short,
+      joined,
+      input.short_name,
+      input.shortName,
+    ];
+    const countryCandidates = [
+      input.country_code,
+      input.countryCode,
+      input.country,
+      input.ioc,
+      input.iocCode,
+      input.ioc_code,
+      input.flag,
+      input.nation,
+      input.nationality,
+    ];
+    const name = nameCandidates.find((val) => typeof val === 'string' && val.trim().length) || '';
+    const countryRaw = countryCandidates.find((val) => typeof val === 'string' && val.trim().length) || '';
+    return { name, country: countryRaw.toUpperCase() };
+  }
+
+  function resolveAthleteSource(payload, primaryKey) {
+    if (!payload) return null;
+    if (payload[primaryKey] && typeof payload[primaryKey] === 'object') {
+      return payload[primaryKey];
+    }
+    return {
+      short: payload[`${primaryKey}_short`],
+      long: payload[`${primaryKey}_long`],
+      country: payload[`${primaryKey}_country`],
+    };
+  }
+
   function deriveCategoryLabels(weight) {
     if (!weight) return { genderLabel: '', weightLabel: '' };
     const trimmed = String(weight).trim();
@@ -153,18 +200,10 @@
 
     switch (eventType) {
       case 'athletes': {
-        const snapshot = {
-          blue: {
-            name: payload.athlete1_short || payload.athlete1_long || '',
-            country: (payload.athlete1_country || '').toUpperCase(),
-          },
-          red: {
-            name: payload.athlete2_short || payload.athlete2_long || '',
-            country: (payload.athlete2_country || '').toUpperCase(),
-          },
-        };
-        cacheAthletes = snapshot;
-        applyAthleteSnapshot(snapshot);
+        const blue = normalizeAthlete(resolveAthleteSource(payload, 'athlete1'));
+        const red = normalizeAthlete(resolveAthleteSource(payload, 'athlete2'));
+        cacheAthletes = { blue, red };
+        applyAthleteSnapshot(cacheAthletes);
         break;
       }
       case 'match_config': {

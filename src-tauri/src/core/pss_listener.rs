@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use std::sync::OnceLock;
 use tokio::sync::broadcast;
 
-use crate::plugins::plugin_udp::PssEvent;
+use crate::pss::protocol::PssEvent;
 
 /// Global registry for the shared PSS listener instance
 static GLOBAL_PSS_LISTENER: OnceLock<Arc<PssListener>> = OnceLock::new();

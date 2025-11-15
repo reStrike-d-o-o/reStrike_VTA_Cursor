@@ -962,7 +962,7 @@ pub async fn pss_get_events(
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
 
         match event {
-            crate::plugins::plugin_udp::PssEvent::Points { athlete, point_type } => {
+            crate::pss::protocol::PssEvent::Points { athlete, point_type } => {
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
@@ -978,7 +978,7 @@ pub async fn pss_get_events(
                     "description": format!("Athlete {} scored {} points", athlete, point_type)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+            crate::pss::protocol::PssEvent::HitLevel { athlete, level } => {
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
@@ -994,7 +994,7 @@ pub async fn pss_get_events(
                     "description": format!("Athlete {} hit level {}", athlete, level)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
+            crate::pss::protocol::PssEvent::Warnings { athlete1_warnings, athlete2_warnings } => {
                 serde_json::json!({
                     "type": "warnings",
                     "event_code": event_code,
@@ -1006,7 +1006,7 @@ pub async fn pss_get_events(
                     "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
+            crate::pss::protocol::PssEvent::Clock { time, action } => {
                 serde_json::json!({
                     "type": "clock",
                     "event_code": event_code,
@@ -1018,7 +1018,7 @@ pub async fn pss_get_events(
                     "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
+            crate::pss::protocol::PssEvent::Round { current_round } => {
                 serde_json::json!({
                     "type": "round",
                     "event_code": event_code,
@@ -1029,7 +1029,7 @@ pub async fn pss_get_events(
                     "description": format!("Round {}", current_round)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
+            crate::pss::protocol::PssEvent::WinnerRounds { round1_winner, round2_winner, round3_winner } => {
                 serde_json::json!({
                     "type": "winner_rounds",
                     "event_code": event_code,
@@ -1042,7 +1042,7 @@ pub async fn pss_get_events(
                     "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
+            crate::pss::protocol::PssEvent::Scores { athlete1_r1, athlete2_r1, athlete1_r2, athlete2_r2, athlete1_r3, athlete2_r3 } => {
                 serde_json::json!({
                     "type": "scores",
                     "event_code": event_code,
@@ -1059,7 +1059,7 @@ pub async fn pss_get_events(
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
+            crate::pss::protocol::PssEvent::CurrentScores { athlete1_score, athlete2_score } => {
                 serde_json::json!({
                     "type": "current_scores",
                     "event_code": event_code,
@@ -1071,7 +1071,7 @@ pub async fn pss_get_events(
                     "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
+            crate::pss::protocol::PssEvent::Athletes { athlete1_short, athlete1_long, athlete1_country, athlete2_short, athlete2_long, athlete2_country } => {
                 serde_json::json!({
                     "type": "athletes",
                     "event_code": event_code,
@@ -1087,7 +1087,7 @@ pub async fn pss_get_events(
                     "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
+            crate::pss::protocol::PssEvent::MatchConfig { number, category, weight, rounds, colors, match_id, division, total_rounds, round_duration, countdown_type, count_up, format } => {
                 serde_json::json!({
                     "type": "match_config",
                     "event_code": event_code,
@@ -1109,7 +1109,7 @@ pub async fn pss_get_events(
                     "description": format!("Match Config - #{} {} {} ({})", number, category, weight, division)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::FightLoaded => {
+            crate::pss::protocol::PssEvent::FightLoaded => {
                 serde_json::json!({
                     "type": "fight_loaded",
                     "event_code": event_code,
@@ -1120,7 +1120,7 @@ pub async fn pss_get_events(
                     "description": "Fight Loaded"
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::FightReady => {
+            crate::pss::protocol::PssEvent::FightReady => {
                 serde_json::json!({
                     "type": "fight_ready",
                     "event_code": event_code,
@@ -1131,7 +1131,7 @@ pub async fn pss_get_events(
                     "description": "Fight Ready"
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Raw(message) => {
+            crate::pss::protocol::PssEvent::Raw(message) => {
                 serde_json::json!({
                     "type": "raw",
                     "event_code": event_code,
@@ -1202,8 +1202,8 @@ pub async fn pss_get_events_for_match(
         let mut event_code = String::from("O");
 
         if let Some(ref pd) = row.parsed_data {
-            if let Ok(ev) = serde_json::from_str::<crate::plugins::plugin_udp::PssEvent>(pd) {
-                use crate::plugins::plugin_udp::PssEvent;
+            if let Ok(ev) = serde_json::from_str::<crate::pss::protocol::PssEvent>(pd) {
+                use crate::pss::protocol::PssEvent;
                 event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&ev);
                 match ev {
                     PssEvent::Round { current_round } => {
@@ -2558,7 +2558,7 @@ pub async fn pss_emit_pending_events(
         let event_code = crate::plugins::plugin_udp::UdpServer::get_event_code(&event);
 
         let event_json = match event {
-            crate::plugins::plugin_udp::PssEvent::Points {
+            crate::pss::protocol::PssEvent::Points {
                 athlete,
                 point_type,
             } => {
@@ -2577,7 +2577,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Athlete {} scored {} points", athlete, point_type)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::HitLevel { athlete, level } => {
+            crate::pss::protocol::PssEvent::HitLevel { athlete, level } => {
                 let athlete_str = match athlete {
                     1 => "blue",
                     2 => "red",
@@ -2593,7 +2593,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Athlete {} hit level {}", athlete, level)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Warnings {
+            crate::pss::protocol::PssEvent::Warnings {
                 athlete1_warnings,
                 athlete2_warnings,
             } => {
@@ -2608,7 +2608,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Warnings - Athlete1: {}, Athlete2: {}", athlete1_warnings, athlete2_warnings)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Clock { time, action } => {
+            crate::pss::protocol::PssEvent::Clock { time, action } => {
                 serde_json::json!({
                     "type": "clock",
                     "event_code": event_code,
@@ -2620,7 +2620,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Clock: {} {:?}", time, action.as_ref().unwrap_or(&String::new()))
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Round { current_round } => {
+            crate::pss::protocol::PssEvent::Round { current_round } => {
                 serde_json::json!({
                     "type": "round",
                     "event_code": event_code,
@@ -2631,7 +2631,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Round {}", current_round)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::WinnerRounds {
+            crate::pss::protocol::PssEvent::WinnerRounds {
                 round1_winner,
                 round2_winner,
                 round3_winner,
@@ -2648,7 +2648,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Winner Rounds - R1: {}, R2: {}, R3: {}", round1_winner, round2_winner, round3_winner)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Scores {
+            crate::pss::protocol::PssEvent::Scores {
                 athlete1_r1,
                 athlete2_r1,
                 athlete1_r2,
@@ -2672,7 +2672,7 @@ pub async fn pss_emit_pending_events(
                         athlete1_r1, athlete1_r2, athlete1_r3, athlete2_r1, athlete2_r2, athlete2_r3)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::CurrentScores {
+            crate::pss::protocol::PssEvent::CurrentScores {
                 athlete1_score,
                 athlete2_score,
             } => {
@@ -2687,7 +2687,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Current Scores - A1: {}, A2: {}", athlete1_score, athlete2_score)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Athletes {
+            crate::pss::protocol::PssEvent::Athletes {
                 athlete1_short,
                 athlete1_long,
                 athlete1_country,
@@ -2706,7 +2706,7 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Athletes - {} ({}) vs {} ({})", athlete1_short, athlete1_country, athlete2_short, athlete2_country)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::MatchConfig {
+            crate::pss::protocol::PssEvent::MatchConfig {
                 number,
                 category,
                 weight,
@@ -2737,21 +2737,21 @@ pub async fn pss_emit_pending_events(
                     "description": format!("Match Config - #{} {} {} ({})", number, category, weight, division)
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::FightLoaded => {
+            crate::pss::protocol::PssEvent::FightLoaded => {
                 serde_json::json!({
                     "type": "fight_loaded",
                     "event": "FightLoaded",
                     "description": "Fight Loaded"
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::FightReady => {
+            crate::pss::protocol::PssEvent::FightReady => {
                 serde_json::json!({
                     "type": "fight_ready",
                     "event": "FightReady",
                     "description": "Fight Ready"
                 })
             }
-            crate::plugins::plugin_udp::PssEvent::Raw(message) => {
+            crate::pss::protocol::PssEvent::Raw(message) => {
                 serde_json::json!({
                     "type": "raw",
                     "message": message,
