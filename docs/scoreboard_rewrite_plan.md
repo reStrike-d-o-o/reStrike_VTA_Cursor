@@ -29,8 +29,8 @@ This document tracks every task required to rebuild the scoreboard stack strictl
 ## Phase 4 – Utilities & Validation
 
 - [ ] **P4.1** Clean up `scoreboard-utils.js`, leaving only shared helpers used by new overlays.
-- [ ] **P4.2** Create and run deterministic verification sequences for each overlay (doc the procedure).
-- [ ] **P4.3** Publish `docs/scoreboard_contract.md` summarizing the normalized event schema and testing steps.
+- [x] **P4.2** Create and run deterministic verification sequences for each overlay (doc the procedure). _(See `docs/scoreboard_verification.md`.)_
+- [x] **P4.3** Publish `docs/scoreboard_contract.md` summarizing the normalized event schema and testing steps.
 
 ---
 
