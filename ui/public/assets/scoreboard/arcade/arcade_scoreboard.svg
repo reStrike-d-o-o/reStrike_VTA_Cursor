@@ -540,7 +540,7 @@
             points="862.778322 215.280988 832.558107 247.850812 773.058107 247.850812 773.058107 215.280988 862.778322 215.280988" />
           <polygon id="time_x5F_bg-2" data-name="time_x5F_bg" class="cls-16"
             points="773.058107 215.280988 773.058107 247.850812 713.558107 247.850812 683.338137 215.280988 773.058107 215.280988" />
-          <text id="time" data-name="time" class="cls-30" transform="translate(718.641783 239.556217)">
+          <text id="matchTimer2" data-name="time" class="cls-30" transform="translate(718.641783 239.556217)">
             <tspan x="0" y="0">1:59</tspan>
           </text>
           <text id="injuryTime" class="cls-33" transform="translate(781.792662 239.556217)">
