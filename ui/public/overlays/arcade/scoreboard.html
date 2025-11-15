@@ -26,12 +26,69 @@
   <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
   <script src="/assets/scoreboard/scoreboard-utils.js"></script>
   <script>
-    let scoreboardInstance=null; let roundDuration=120; const eventQueue=[];
+    let scoreboardInstance=null; let roundDuration=120; const eventQueue=[]; const clockState={seconds:0,lastReported:null,running:false,intervalId:null};
     function updateConnectionStatus(c){const e=document.getElementById('connection-status'); if(c)e.classList.add('connected'); else e.classList.remove('connected');}
-    function initialize(){ const o=document.getElementById('scoreboard-svg'); const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ if(typeof ScoreboardOverlay==='undefined'){ setTimeout(initialize,1000); return;} scoreboardInstance=new ScoreboardOverlay(d.querySelector('svg')); updateConnectionStatus(false); flushEvents();} else { setTimeout(initialize,1000);} }
+    function initialize(){ const o=document.getElementById('scoreboard-svg'); const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ if(typeof ScoreboardOverlay==='undefined'){ setTimeout(initialize,1000); return;} scoreboardInstance=new ScoreboardOverlay(d.querySelector('svg')); updateConnectionStatus(false); setClockFromSeconds(roundDuration,{running:false}); flushEvents();} else { setTimeout(initialize,1000);} }
     function flushEvents(){ if(!scoreboardInstance) return; while(eventQueue.length){ const next=eventQueue.shift(); try{ handle(next); }catch(err){ console.error('Arcade scoreboard event error', err);} } }
     function coerceNumber(value){ const num=Number(value); return Number.isFinite(num)?num:0; }
-    function handle(ev){ if(!scoreboardInstance||!ev) return; switch(ev.type){ case 'athletes': if(ev.athlete1?.long) scoreboardInstance.updatePlayerName('blue', ev.athlete1.long); if(ev.athlete2?.long) scoreboardInstance.updatePlayerName('red', ev.athlete2.long); if(ev.athlete1?.country) scoreboardInstance.updateCountry('blue', ev.athlete1.country); if(ev.athlete2?.country) scoreboardInstance.updateCountry('red', ev.athlete2.country); break; case 'match_config': const d=ev.structured_data&&typeof ev.structured_data==='object'?ev.structured_data:ev; if(d.round_duration!==undefined&&d.round_duration!==null) roundDuration=parseInt(d.round_duration); if(d.weight||d.division||d.category) scoreboardInstance.updateMatchInfo(d.weight,d.division,d.category); if(d.number){ const el=scoreboardInstance.svg.getElementById('matchNumber'); if(el) el.textContent=`#${d.number}`;} break; case 'current_scores': const src=ev.structured_data&&typeof ev.structured_data==='object'?ev.structured_data:ev; const b=coerceNumber(src.athlete1_score??src?.athlete1?.score??0); const r=coerceNumber(src.athlete2_score??src?.athlete2?.score??0); scoreboardInstance.updateScore('blue', b); scoreboardInstance.updateScore('red', r); break; case 'clock': if(ev.time){ let m=0,s=0; if(ev.time.includes(':')){const p=ev.time.split(':'); m=parseInt(p[0])||0; s=parseInt(p[1])||0;} else { s=parseInt(ev.time)||0;} scoreboardInstance.updateTimer(m,s);} break; case 'round': const rn=ev.current_round??ev.round??null; if(rn!==null){ scoreboardInstance.updateRound(rn); const m=Math.floor(roundDuration/60), s=roundDuration%60; scoreboardInstance.updateTimer(m,s);} break; case 'warnings': if(ev.athlete1_warnings!==undefined) scoreboardInstance.updatePenalties('blue', null, coerceNumber(ev.athlete1_warnings)); if(ev.athlete2_warnings!==undefined) scoreboardInstance.updatePenalties('red', null, coerceNumber(ev.athlete2_warnings)); break; case 'injury': if(ev.time){ scoreboardInstance.updateTimer( (ev.time.split(':')[0]||0), (ev.time.split(':')[1]||0) ); } break; }}
+    function clearClockInterval(){ if(clockState.intervalId){ clearInterval(clockState.intervalId); clockState.intervalId=null; } }
+    function updateClockDisplay(){ if(!scoreboardInstance) return; const safe=Math.max(0,Math.floor(clockState.seconds||0)); const m=Math.floor(safe/60); const s=safe%60; scoreboardInstance.updateTimer(m,s); }
+    function setClockFromSeconds(totalSeconds,options={}){
+      if(!scoreboardInstance) return;
+      const normalized=Number.isFinite(totalSeconds)?Math.max(0,Math.floor(totalSeconds)):0;
+      let runningFlag=options.running;
+      if(runningFlag===undefined){
+        if(clockState.lastReported!=null){
+          if(normalized<clockState.lastReported){ runningFlag=true; }
+          else if(normalized>clockState.lastReported+1){ runningFlag=false; }
+          else { runningFlag=clockState.running; }
+        } else {
+          runningFlag=clockState.running;
+        }
+      }
+      clockState.lastReported=normalized;
+      clockState.seconds=normalized;
+      updateClockDisplay();
+      clearClockInterval();
+      clockState.running=Boolean(runningFlag);
+      if(clockState.running){
+        clockState.intervalId=window.setInterval(()=>{
+          if(clockState.seconds>0){
+            clockState.seconds-=1;
+          } else {
+            clockState.seconds=0;
+            clockState.running=false;
+            clearClockInterval();
+          }
+          updateClockDisplay();
+        },1000);
+      }
+    }
+    function extractClockSeconds(value){
+      if(value==null) return null;
+      const text=String(value);
+      if(text.includes(':')){
+        const parts=text.split(':');
+        const m=parseInt(parts[0],10)||0;
+        const s=parseInt(parts[1],10)||0;
+        return Math.max(0,(m*60)+s);
+      }
+      const parsed=parseInt(text,10);
+      return Number.isFinite(parsed)?Math.max(0,parsed):null;
+    }
+    function handleClockEvent(payload){
+      const structured=(payload&&payload.structured_data&&typeof payload.structured_data==='object')?payload.structured_data:null;
+      const target=payload.time??payload.timer??payload.remaining??payload.clock??structured?.time;
+      if(target==null) return;
+      const totalSeconds=extractClockSeconds(target);
+      if(totalSeconds==null) return;
+      const actionRaw=(payload.action||structured?.action||payload.state||payload.status||'').toLowerCase();
+      let runningFlag;
+      if(actionRaw==='start'||actionRaw==='resume'||actionRaw==='play'){ runningFlag=true; }
+      else if(actionRaw==='stop'||actionRaw==='pause'||actionRaw==='hold'){ runningFlag=false; }
+      setClockFromSeconds(totalSeconds,{running:runningFlag});
+    }
+    function handle(ev){ if(!scoreboardInstance||!ev) return; switch(ev.type){ case 'athletes': if(ev.athlete1?.long) scoreboardInstance.updatePlayerName('blue', ev.athlete1.long); if(ev.athlete2?.long) scoreboardInstance.updatePlayerName('red', ev.athlete2.long); if(ev.athlete1?.country) scoreboardInstance.updateCountry('blue', ev.athlete1.country); if(ev.athlete2?.country) scoreboardInstance.updateCountry('red', ev.athlete2.country); break; case 'match_config': const d=ev.structured_data&&typeof ev.structured_data==='object'?ev.structured_data:ev; if(d.round_duration!==undefined&&d.round_duration!==null) roundDuration=parseInt(d.round_duration); if(d.weight||d.division||d.category) scoreboardInstance.updateMatchInfo(d.weight,d.division,d.category); if(d.number){ const el=scoreboardInstance.svg.getElementById('matchNumber'); if(el) el.textContent=`#${d.number}`;} setClockFromSeconds(roundDuration,{running:false}); break; case 'current_scores': const src=ev.structured_data&&typeof ev.structured_data==='object'?ev.structured_data:ev; const b=coerceNumber(src.athlete1_score??src?.athlete1?.score??0); const r=coerceNumber(src.athlete2_score??src?.athlete2?.score??0); scoreboardInstance.updateScore('blue', b); scoreboardInstance.updateScore('red', r); break; case 'clock': handleClockEvent(ev); break; case 'round': const rn=ev.current_round??ev.round??null; if(rn!==null){ scoreboardInstance.updateRound(rn); setClockFromSeconds(roundDuration,{running:false}); } break; case 'warnings': if(ev.athlete1_warnings!==undefined) scoreboardInstance.updatePenalties('blue', null, coerceNumber(ev.athlete1_warnings)); if(ev.athlete2_warnings!==undefined) scoreboardInstance.updatePenalties('red', null, coerceNumber(ev.athlete2_warnings)); break; }}
     function ingestEvent(payload){ if(!payload) return; const eventData=payload.data&&payload.type==='pss_event'?payload.data:(payload.detail??payload); if(!eventData||typeof eventData!=='object') return; if(!scoreboardInstance){ eventQueue.push(eventData); return; } handle(eventData); }
     let ws=null, tries=0; const max=5, delay=2000; function connect(){ try{ const h=window.location.hostname; const w=(h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${w}:3001`; ws=new WebSocket(url); ws.onopen=()=>{updateConnectionStatus(true); tries=0;}; ws.onmessage=(ev)=>{ try{ const data=JSON.parse(ev.data); ingestEvent(data);}catch(err){ console.error('Arcade scoreboard WS parse error', err);} }; ws.onclose=()=>{updateConnectionStatus(false); if(tries<max){tries++; setTimeout(connect,delay);} }; ws.onerror=()=>updateConnectionStatus(false);}catch(_){updateConnectionStatus(false);} }
     function attachFallbackListeners(){ window.addEventListener('pss-event',(evt)=>{ if(evt?.detail) ingestEvent(evt); }); window.addEventListener('storage',(evt)=>{ if(evt.key!=='pss_event'||!evt.newValue) return; try{ const parsed=JSON.parse(evt.newValue); ingestEvent(parsed);}catch(_){}}); }

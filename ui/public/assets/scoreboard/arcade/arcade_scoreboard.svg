@@ -608,7 +608,7 @@
             <polygon id="athlete2_warning5-1" class="cls-71"
               points="1079.58074 215.281636 1089.488918 187.437661 1119.542566 187.437661 1109.634723 215.281636 1079.58074 215.281636" />
           </g>
-          <g id="athlete2_score">
+          <g id="athlete2Score">
             <text class="cls-8" transform="translate(802.476622 191.337772)">
               <tspan x="0" y="0">7</tspan>
             </text>
@@ -616,12 +616,12 @@
           <text id="athlete2_round_won" class="cls-7" transform="translate(886.406309 167.787968)">
             <tspan x="0" y="0">0</tspan>
           </text>
-          <g id="athlete2_flagPlaceholder">
+          <g id="athlete2FlagPlaceholder">
             <rect class="cls-75" x="1298.271544" y="117.665897" width="106.888672" height="71.925781" />
             <path class="cls-9"
               d="M1404.160215,118.665897v69.925537h-104.888306v-69.925537h104.888306M1406.160215,116.665897h-108.888306v73.925537h108.888306v-73.925537h0Z" />
           </g>
-          <g id="athlete2_flag">
+          <g id="athlete2Flag">
             <g class="cls-77">
               <g>
                 <rect class="cls-21" x="1281.790489" y="118.665884" width="139.851182" height="69.925591" />
@@ -1117,7 +1117,7 @@
               </g>
             </g>
           </g>
-          <g id="athlete2_name">
+          <g id="athlete2Name">
             <text class="cls-5" transform="translate(1126.108336 166.510136)">
               <tspan x="0" y="0">m. nilsen</tspan>
             </text>
@@ -1176,22 +1176,22 @@
             <polygon id="athlete1_warning5-1" class="cls-23"
               points="466.540472 215.281636 456.632294 187.437661 426.578646 187.437661 436.486489 215.281636 466.540472 215.281636" />
           </g>
-          <text id="athlete1_score" class="cls-8" transform="translate(714.9317 190.980839)">
+          <text id="athlete1Score" class="cls-8" transform="translate(714.9317 190.980839)">
             <tspan x="0" y="0">5</tspan>
           </text>
           <text id="athlete1_round_won" class="cls-7" transform="translate(633.257872 167.787968)">
             <tspan x="0" y="0">0</tspan>
           </text>
-          <g id="athlete1_flagPlaceholder">
+          <g id="athlete1FlagPlaceholder">
             <rect class="cls-75" x="140.960997" y="117.665897" width="106.888184" height="71.925781" />
             <path class="cls-9"
               d="M246.849302,118.665897v69.925537h-104.888336v-69.925537h104.888336M248.849302,116.665897h-108.888336v73.925537h108.888336v-73.925537h0Z" />
           </g>
-          <g id="athlete1_flag">
+          <g id="athlete1Flag">
             <rect class="cls-36" x="141.960962" y="118.6659" width="104.88834" height="69.92556" />
             <rect class="cls-9" x="141.960962" y="141.97442" width="104.88834" height="23.30852" />
           </g>
-          <g id="athlete1_name">
+          <g id="athlete1Name">
             <text class="cls-6" transform="translate(279.754942 166.510136)">
               <tspan x="0" y="0">L. andrich</tspan>
             </text>

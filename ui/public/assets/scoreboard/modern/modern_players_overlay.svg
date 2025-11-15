@@ -112,15 +112,15 @@
             d="M957.282822.000157h558.185116c9.493231,0,17.189015,7.694419,17.189015,17.185965v42.767415h-584.095588V8.720067C948.561365,3.904194,952.466094.000157,957.282822.000157Z" />
           <path class="cls-16"
             d="M995.546166,33.976646v-16.790438C995.546166,7.694676,987.850392.000268,978.357175.000268h-82.377912c-9.493231,0-17.189015,7.694419-17.189015,17.185965v47.633296h653.866706v-5.188382h-511.451734c-14.171104,0-25.659053-11.485911-25.659053-25.654499Z" />
-          <text text-anchor="end" id="athlete2_country" class="cls-2" transform="translate(1412.3396 46.64624)">
+          <text text-anchor="end" id="athlete2Country" class="cls-2" transform="translate(1412.3396 46.64624)">
             <tspan x="110" y="0">CRO</tspan>
           </text>
-          <g id="athlete2_flagPlaceholder">
+          <g id="athlete2FlagPlaceholder">
             <rect class="cls-7" x="1330.670898" y="8.317383" width="64.490234" height="43.319336" />
             <path class="cls-4"
               d="M1394.661377,8.817238v42.319221h-63.490112V8.817238h63.490112M1395.661255,7.817326h-65.489868v44.319045h65.489868V7.817326h0Z" />
           </g>
-          <g id="fathlete2_flag">
+          <g id="fathlete2Flag">
             <g class="cls-19">
               <g>
                 <rect class="cls-10" x="1320.589549" y="8.813469" width="84.653512" height="42.326756" />
@@ -599,7 +599,7 @@
             </g>
           </g>
           <g id="player2_x5F_name">
-            <text id="athlete2_name" text-anchor="end" class="cls-6" transform="translate(1136.901855 41.497803)">
+            <text id="athlete2Name" text-anchor="end" class="cls-6" transform="translate(1136.901855 41.497803)">
               <tspan x="170" y="0">M. NILSEN</tspan>
             </text>
           </g>
@@ -609,19 +609,19 @@
             d="M575.37416.000121H17.189044C7.695813.000121.000029,7.695906.000029,17.189137v42.775006h584.095588V8.721579C584.095617,3.904851,580.190888.000121,575.37416.000121Z" />
           <path class="cls-18"
             d="M537.110816,33.982641v-16.793418C537.110816,7.696005,544.80659.000232,554.299808.000232h82.377912c9.493231,0,17.189015,7.695784,17.189015,17.189015v47.64175H.000029v-5.189303h511.451734c14.171104,0,25.659053-11.487949,25.659053-25.659053Z" />
-          <text text-anchor="end" id="athlete1_country" class="cls-3" transform="translate(19.927078 46.641846)">
+          <text text-anchor="end" id="athlete1Country" class="cls-3" transform="translate(19.927078 46.641846)">
             <tspan x="95" y="0">AUT</tspan>
           </text>
-          <g id="athlete1_flagPlaceholder">
+          <g id="athlete1FlagPlaceholder">
             <rect class="cls-7" x="137.495605" y="8.318848" width="64.490234" height="43.32666" />
             <path class="cls-4"
               d="M201.485733,8.818764v42.326735h-63.490112V8.818764h63.490112M202.485733,7.818764h-65.490112v44.326735h65.490112V7.818764h0Z" />
           </g>
-          <g id="athlete1_flag">
+          <g id="athlete1Flag">
             <rect class="cls-15" x="137.995624" y="8.818763" width="63.490106" height="42.326737" />
             <rect class="cls-13" x="137.995624" y="22.927676" width="63.490106" height="14.108912" />
           </g>
-          <text text-anchor="start" id="athlete1_name" class="cls-5" transform="translate(226.750809 41.492432)">
+          <text text-anchor="start" id="athlete1Name" class="cls-5" transform="translate(226.750809 41.492432)">
             <tspan x="0" y="0">L. ANDRICH</tspan>
           </text>
         </g>

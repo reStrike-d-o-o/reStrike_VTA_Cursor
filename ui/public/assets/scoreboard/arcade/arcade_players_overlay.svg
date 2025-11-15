@@ -117,10 +117,10 @@
             <polygon class="cls-4"
               points="878.827496 .000016 1022.467249 .000016 1051.040666 80.298616 907.400914 80.298616 878.827496 .000016" />
           </g>
-          <text id="athlete2_name" class="cls-15" transform="translate(1166.466553 52.655029)">
+          <text id="athlete2Name" class="cls-15" transform="translate(1166.466553 52.655029)">
             <tspan x="0" y="0">M. nilsen</tspan>
           </text>
-          <text id="athlete2_country" class="cls-15" transform="translate(1452.234131 52.655273)">
+          <text id="athlete2Country" class="cls-15" transform="translate(1452.234131 52.655273)">
             <tspan x="0" y="0">CRO</tspan>
           </text>
           <g id="at">
@@ -130,7 +130,7 @@
                 d="M1430.777832,5.003822v69.889966h-104.834961V5.003822h104.834961M1432.777832,3.003822h-108.834961v73.889966h108.834961V3.003822h0Z" />
             </g>
           </g>
-          <g id="athlete2_flag">
+          <g id="athlete2Flag">
             <g class="cls-18">
               <g>
                 <rect class="cls-7" x="1308.470366" y="5.003817" width="139.78003" height="69.889985" />
@@ -622,20 +622,20 @@
             <polygon class="cls-2"
               points="654.522602 -.000001 510.882849 -.000001 482.309431 80.298599 625.949184 80.298599 654.522602 -.000001" />
           </g>
-          <text id="athlete1_name" class="cls-14" transform="translate(230.779297 52.649902)">
+          <text id="athlete1Name" class="cls-14" transform="translate(230.779297 52.649902)">
             <tspan x="0" y="0">l. andrich</tspan>
           </text>
-          <text id="athlete1_country" class="cls-15" transform="translate(31.953613 52.650146)">
+          <text id="athlete1Country" class="cls-15" transform="translate(31.953613 52.650146)">
             <tspan x="0" y="0">AUT</tspan>
           </text>
-          <g id="athlete1_flagPlaceholder">
+          <g id="athlete1FlagPlaceholder">
             <g>
               <rect class="cls-17" x="101.572266" y="4.003906" width="106.834961" height="71.889648" />
               <path class="cls-11"
                 d="M207.407211,5.003807v69.89h-104.834984V5.003807h104.834984M209.407211,3.003807h-108.834984v73.89h108.834984V3.003807h0Z" />
             </g>
           </g>
-          <g id="athlete1_flag">
+          <g id="athlete1Flag">
             <rect class="cls-13" x="102.572228" y="5.003818" width="104.834976" height="69.889984" />
             <rect class="cls-11" x="102.572228" y="28.300479" width="104.834976" height="23.296661" />
           </g>

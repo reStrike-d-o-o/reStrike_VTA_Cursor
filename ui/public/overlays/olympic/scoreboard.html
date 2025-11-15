@@ -110,6 +110,98 @@
             }
         };
 
+        const clockState = {
+            seconds: 0,
+            lastReported: null,
+            running: false,
+            intervalId: null,
+        };
+
+        const clearClockInterval = () => {
+            if (clockState.intervalId) {
+                clearInterval(clockState.intervalId);
+                clockState.intervalId = null;
+            }
+        };
+
+        const updateClockDisplayFromState = () => {
+            if (!scoreboardInstance) return;
+            const safeSeconds = Math.max(0, Math.floor(clockState.seconds || 0));
+            const minutes = Math.floor(safeSeconds / 60);
+            const seconds = safeSeconds % 60;
+            scoreboardInstance.updateTimer(minutes, seconds);
+        };
+
+        const setClockFromSeconds = (totalSeconds, options = {}) => {
+            if (!scoreboardInstance) return;
+            const normalized = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
+            let runningFlag = options.running;
+            if (runningFlag === undefined) {
+                if (clockState.lastReported != null) {
+                    if (normalized < clockState.lastReported) {
+                        runningFlag = true;
+                    } else if (normalized > clockState.lastReported + 1) {
+                        runningFlag = false;
+                    } else {
+                        runningFlag = clockState.running;
+                    }
+                } else {
+                    runningFlag = clockState.running;
+                }
+            }
+            clockState.lastReported = normalized;
+            clockState.seconds = normalized;
+            updateClockDisplayFromState();
+            clearClockInterval();
+            clockState.running = Boolean(runningFlag);
+            if (clockState.running) {
+                clockState.intervalId = window.setInterval(() => {
+                    if (clockState.seconds > 0) {
+                        clockState.seconds -= 1;
+                    } else {
+                        clockState.seconds = 0;
+                        clockState.running = false;
+                        clearClockInterval();
+                    }
+                    updateClockDisplayFromState();
+                }, 1000);
+            }
+        };
+
+        const extractClockSeconds = (value) => {
+            if (value == null) return null;
+            if (typeof value === 'string') {
+                const parts = value.split(':');
+                if (parts.length === 2) {
+                    const minutes = parseInt(parts[0], 10) || 0;
+                    const seconds = parseInt(parts[1], 10) || 0;
+                    return Math.max(0, (minutes * 60) + seconds);
+                }
+            }
+            const asNumber = parseInt(value, 10);
+            if (Number.isFinite(asNumber)) {
+                return Math.max(0, asNumber);
+            }
+            return null;
+        };
+
+        const handleClockEvent = (event) => {
+            const structured = (event && typeof event.structured_data === 'object') ? event.structured_data : null;
+            const target = event?.time ?? event?.timer ?? event?.remaining ?? event?.clock ?? structured?.time ?? structured?.current_time;
+            if (target == null) return;
+            const totalSeconds = extractClockSeconds(String(target));
+            if (totalSeconds == null) return;
+            const actionRaw = event?.action || structured?.action || event?.state || event?.status || '';
+            const normalizedAction = actionRaw.toString().toLowerCase();
+            let runningFlag;
+            if (normalizedAction === 'start' || normalizedAction === 'resume' || normalizedAction === 'play') {
+                runningFlag = true;
+            } else if (normalizedAction === 'stop' || normalizedAction === 'pause' || normalizedAction === 'hold' || normalizedAction === 'timeout') {
+                runningFlag = false;
+            }
+            setClockFromSeconds(totalSeconds, { running: runningFlag });
+        };
+
         function updateConnectionStatus(connected) {
             isConnected = connected;
             const statusElement = document.getElementById('connection-status');
@@ -133,13 +225,16 @@
                     scoreboardInstance = new ScoreboardOverlay(svgDoc.querySelector('svg'));
                     nameManager = new ScoreboardNameManager();
                     updateConnectionStatus(false); updateDebugInfo();
+                    scoreboardInstance.hideInjurySection();
+                    scoreboardInstance.resetInjuryTime();
+                    setClockFromSeconds(roundDuration, { running: false });
                     if (DEBUG_MODE) { document.getElementById('debug-panel').classList.add('show'); }
                     // Apply cached events if any
                     if (cacheMatchConfig) {
                         const d = cacheMatchConfig; roundDuration = d.round_duration ? parseInt(d.round_duration) : roundDuration;
                         if (d.weight || d.division || d.category) scoreboardInstance.updateMatchInfo(d.weight, d.division, d.category);
                         if (d.number) scoreboardInstance.updateMatchNumber(d.number);
-                        scoreboardInstance.setInjuryTime(1,0); scoreboardInstance.setInjuryVisible(false);
+                        setClockFromSeconds(roundDuration, { running: false });
                         scoreboardInstance.updateAthleteWarnings('blue', 0); scoreboardInstance.updateAthleteWarnings('red', 0);
                     }
                     if (cacheAthletes) {
@@ -153,7 +248,7 @@
                         scoreboardInstance.updateAthleteWarnings('blue', cacheWarnings.b);
                         scoreboardInstance.updateAthleteWarnings('red', cacheWarnings.r);
                         try {
-                            const e1 = scoreboardInstance.svg.getElementById('player1Fouls'); const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                            const e1 = scoreboardInstance.svg.getElementById('athlete1Warnings'); const e2 = scoreboardInstance.svg.getElementById('athlete2Warnings');
                             if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent=String(cacheWarnings.b); else e1.textContent=String(cacheWarnings.b); }
                             if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent=String(cacheWarnings.r); else e2.textContent=String(cacheWarnings.r); }
                         } catch(_) {}
@@ -216,15 +311,15 @@
                         if (data.round_duration !== undefined && data.round_duration !== null) { roundDuration = parseInt(data.round_duration); }
                         if (data.weight || data.division || data.category) { scoreboardInstance.updateMatchInfo(data.weight, data.division, data.category); }
                         if (data.number) { scoreboardInstance.updateMatchNumber(data.number); }
-                        // Injury initial state: hidden with 1:00 countdown baseline (visual only until event arrives)
-                        scoreboardInstance.setInjuryTime(1, 0);
-                        scoreboardInstance.setInjuryVisible(false);
+                        scoreboardInstance.hideInjurySection();
+                        scoreboardInstance.resetInjuryTime();
+                        setClockFromSeconds(roundDuration, { running: false });
                         // Initialize fouls to zero on match load
                         scoreboardInstance.updateAthleteWarnings('blue', 0);
                         scoreboardInstance.updateAthleteWarnings('red', 0);
                         try {
-                            const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
-                            const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                            const e1 = scoreboardInstance.svg.getElementById('athlete1Warnings');
+                            const e2 = scoreboardInstance.svg.getElementById('athlete2Warnings');
                             if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent='0'; else e1.textContent='0'; e1.style.display='block'; }
                             if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent='0'; else e2.textContent='0'; e2.style.display='block'; }
                             const g1 = scoreboardInstance.svg.getElementById('player1_x5F_blue'); if (g1){ const bg=g1.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
@@ -250,8 +345,8 @@
                             if (event.athlete2_warnings !== undefined) scoreboardInstance.updateAthleteWarnings('red', parseInt(event.athlete2_warnings));
                             // Fallback: force update by IDs if needed
                             try {
-                                const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
-                                const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                                const e1 = scoreboardInstance.svg.getElementById('athlete1Warnings');
+                                const e2 = scoreboardInstance.svg.getElementById('athlete2Warnings');
                                 if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent=String(parseInt(event.athlete1_warnings)); else e1.textContent=String(parseInt(event.athlete1_warnings)); e1.style.display='block'; }
                                 if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent=String(parseInt(event.athlete2_warnings)); else e2.textContent=String(parseInt(event.athlete2_warnings)); e2.style.display='block'; }
                                 const g1 = scoreboardInstance.svg.getElementById('player1_x5F_blue'); if (g1){ const bg=g1.querySelector('rect.cls-36'); if (bg) bg.style.display='block'; }
@@ -281,8 +376,8 @@
                                 scoreboardInstance.updateAthleteWarnings('blue', parsedB);
                                 scoreboardInstance.updateAthleteWarnings('red', parsedR);
                                 try {
-                                    const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
-                                    const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                                    const e1 = scoreboardInstance.svg.getElementById('athlete1Warnings');
+                                    const e2 = scoreboardInstance.svg.getElementById('athlete2Warnings');
                                     if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent=String(parsedB); else e1.textContent=String(parsedB); e1.style.display='block'; }
                                     if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent=String(parsedR); else e2.textContent=String(parsedR); e2.style.display='block'; }
                                 } catch(_) {}
@@ -295,16 +390,22 @@
                         {
                             const t = event.time || (event.raw_data && String(event.raw_data).split(';')[1]) || null;
                             const raw = event.raw_data ? String(event.raw_data).toLowerCase() : '';
-                            const action = (event.action || (raw.includes('show') ? 'show' : (raw.includes('hide') ? 'hide' : '')) || '').toLowerCase();
+                            const inferred = raw.includes('show') ? 'show' : (raw.includes('hide') ? 'hide' : '');
+                            const action = (event.action || inferred || '').toLowerCase();
                             if (t && t.includes(':')) {
                                 const parts = t.split(':');
                                 const minutes = parseInt(parts[0]) || 0;
                                 const seconds = parseInt(parts[1]) || 0;
                                 scoreboardInstance.setInjuryTime(minutes, seconds);
                             }
-                            if (action === 'show') scoreboardInstance.setInjuryVisible(true);
-                            else if (action === 'hide') scoreboardInstance.setInjuryVisible(false);
-                            else if (t) scoreboardInstance.setInjuryVisible(true);
+                            if (action === 'show' || action === 'start' || action === 'resume') {
+                                scoreboardInstance.showInjurySection();
+                            } else if (action === 'hide' || action === 'reset' || action === 'stop') {
+                                scoreboardInstance.hideInjurySection();
+                                scoreboardInstance.resetInjuryTime();
+                            } else if (!action) {
+                                scoreboardInstance.hideInjurySection();
+                            }
                         }
                         break;
                     case 'winner_rounds':
@@ -320,27 +421,23 @@
                         scoreboardInstance.updateAthleteRounds('red', redWins);
                         break;
                     case 'clock':
-                        if (event.time) {
-                            let minutes = 0, seconds = 0;
-                            if (event.time.includes(':')) { const parts = event.time.split(':'); minutes = parseInt(parts[0])||0; seconds = parseInt(parts[1])||0; }
-                            else { seconds = parseInt(event.time)||0; }
-                            scoreboardInstance.updateTimer(minutes, seconds);
-                        }
+                        handleClockEvent(event);
                         break;
                     case 'round':
                         const roundNumber = event.current_round ?? event.round ?? null;
                         if (roundNumber !== null) {
                             scoreboardInstance.updateRound(roundNumber);
-                            const m = Math.floor(roundDuration / 60), s = roundDuration % 60;
-                            scoreboardInstance.updateTimer(m, s);
+                            setClockFromSeconds(roundDuration, { running: false });
                             // Reset current scores and warnings on new round start
                             scoreboardInstance.updateAthleteScore('blue', 0);
                             scoreboardInstance.updateAthleteScore('red', 0);
                             scoreboardInstance.updateAthleteWarnings('blue', 0);
                             scoreboardInstance.updateAthleteWarnings('red', 0);
+                            scoreboardInstance.hideInjurySection();
+                            scoreboardInstance.resetInjuryTime();
                             try {
-                                const e1 = scoreboardInstance.svg.getElementById('player1Fouls');
-                                const e2 = scoreboardInstance.svg.getElementById('player2Fouls');
+                                const e1 = scoreboardInstance.svg.getElementById('athlete1Warnings');
+                                const e2 = scoreboardInstance.svg.getElementById('athlete2Warnings');
                                 if (e1) { const t=e1.querySelector('tspan'); if (t) t.textContent='0'; else e1.textContent='0'; }
                                 if (e2) { const t=e2.querySelector('tspan'); if (t) t.textContent='0'; else e2.textContent='0'; }
                             } catch(_) {}
@@ -362,10 +459,14 @@
                                 const minutes = parseInt(parts[0])||0;
                                 const seconds = parseInt(parts[1])||0;
                                 scoreboardInstance.setInjuryTime(minutes, seconds);
-                                const act = mi[2]||'';
-                                if (act==='show') scoreboardInstance.setInjuryVisible(true);
-                                else if (act==='hide') scoreboardInstance.setInjuryVisible(false);
-                                else scoreboardInstance.setInjuryVisible(true);
+                                const act = (mi[2] || '').toLowerCase();
+                                if (act === 'show') scoreboardInstance.showInjurySection();
+                                else if (act === 'hide' || act === 'reset') {
+                                    scoreboardInstance.hideInjurySection();
+                                    scoreboardInstance.resetInjuryTime();
+                                } else {
+                                    scoreboardInstance.hideInjurySection();
+                                }
                                 break;
                             }
                         }

@@ -28,6 +28,12 @@
         let roundDuration = 120;
         let ws = null;
         let retryCount = 0;
+        const clockState = {
+            seconds: 0,
+            lastReported: null,
+            running: false,
+            intervalId: null,
+        };
 
         function updateConnectionStatus(connected) {
             const el = document.getElementById('connection-status');
@@ -80,6 +86,9 @@
 
             scoreboardInstance = new ScoreboardOverlay(svg);
             updateConnectionStatus(false);
+            scoreboardInstance.hideInjurySection();
+            scoreboardInstance.resetInjuryTime();
+            setClockFromSeconds(roundDuration, { running: false });
             flushQueuedEvents();
         }
 
@@ -109,6 +118,80 @@
             } catch (_error) {
                 return null;
             }
+        }
+
+        function clearClockInterval() {
+            if (clockState.intervalId) {
+                clearInterval(clockState.intervalId);
+                clockState.intervalId = null;
+            }
+        }
+
+        function updateClockDisplayFromState() {
+            if (!scoreboardInstance) return;
+            const safeSeconds = Math.max(0, Math.floor(clockState.seconds || 0));
+            const minutes = Math.floor(safeSeconds / 60);
+            const seconds = safeSeconds % 60;
+            scoreboardInstance.updateTimer(minutes, seconds);
+        }
+
+        function setClockFromSeconds(totalSeconds, options = {}) {
+            if (!scoreboardInstance) return;
+            const normalized = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
+            let runningFlag = options.running;
+            if (runningFlag === undefined) {
+                if (clockState.lastReported != null) {
+                    if (normalized < clockState.lastReported) {
+                        runningFlag = true;
+                    } else if (normalized > clockState.lastReported + 1) {
+                        runningFlag = false;
+                    } else {
+                        runningFlag = clockState.running;
+                    }
+                } else {
+                    runningFlag = clockState.running;
+                }
+            }
+            clockState.lastReported = normalized;
+            clockState.seconds = normalized;
+            updateClockDisplayFromState();
+            clearClockInterval();
+            clockState.running = Boolean(runningFlag);
+            if (clockState.running) {
+                clockState.intervalId = window.setInterval(() => {
+                    if (clockState.seconds > 0) {
+                        clockState.seconds -= 1;
+                    } else {
+                        clockState.seconds = 0;
+                        clockState.running = false;
+                        clearClockInterval();
+                    }
+                    updateClockDisplayFromState();
+                }, 1000);
+            }
+        }
+
+        function extractClockSeconds(value) {
+            if (value == null) return null;
+            const { minutes, seconds } = parseTime(String(value));
+            return Math.max(0, (minutes * 60) + seconds);
+        }
+
+        function handleClockEvent(payload) {
+            const structured = (payload && typeof payload.structured_data === 'object') ? payload.structured_data : null;
+            const target = payload.time ?? payload.timer ?? payload.remaining ?? payload.clock ?? structured?.time ?? structured?.current_time;
+            if (target == null) return;
+            const totalSeconds = extractClockSeconds(target);
+            if (totalSeconds == null) return;
+            const actionRaw = payload.action || payload.state || payload.status || structured?.action || '';
+            const normalizedAction = actionRaw.toString().toLowerCase();
+            let runningFlag;
+            if (normalizedAction === 'start' || normalizedAction === 'resume' || normalizedAction === 'play') {
+                runningFlag = true;
+            } else if (normalizedAction === 'stop' || normalizedAction === 'pause' || normalizedAction === 'hold' || normalizedAction === 'timeout') {
+                runningFlag = false;
+            }
+            setClockFromSeconds(totalSeconds, { running: runningFlag });
         }
 
         function determineEventType(payload) {
@@ -268,6 +351,9 @@
                         if (typeof scoreboardInstance.updateMatchNumber === 'function' && data.number != null) {
                             scoreboardInstance.updateMatchNumber(data.number);
                         }
+                        scoreboardInstance.hideInjurySection();
+                        scoreboardInstance.resetInjuryTime();
+                        setClockFromSeconds(roundDuration, { running: false });
                         scoreboardInstance.applyNewMatchEffect(roundDuration, data.current_round || 1);
                     }
                     break;
@@ -325,13 +411,13 @@
                     }
 
                     const visibility = (payload.action || payload.visibility || payload.state || '').toLowerCase();
-                    if (visibility === 'show' || visibility === 'visible' || visibility === 'start') {
+                    if (visibility === 'show' || visibility === 'visible' || visibility === 'start' || visibility === 'resume') {
                         scoreboardInstance.showInjurySection();
                     } else if (visibility === 'hide' || visibility === 'hidden' || visibility === 'clear' || visibility === 'reset' || visibility === 'stop') {
                         scoreboardInstance.hideInjurySection();
                         scoreboardInstance.resetInjuryTime();
-                    } else if (timeValue) {
-                        scoreboardInstance.showInjurySection();
+                    } else if (!visibility) {
+                        scoreboardInstance.hideInjurySection();
                     }
                     break;
                 }
@@ -349,20 +435,14 @@
                 case 'clock':
                 case 'timer':
                 case 'match_timer': {
-                    const target = payload.time ?? payload.timer ?? payload.remaining ?? payload.clock;
-                    if (target != null) {
-                        const { minutes, seconds } = parseTime(String(target));
-                        scoreboardInstance.updateTimer(minutes, seconds);
-                    }
+                    handleClockEvent(payload);
                     break;
                 }
                 case 'round': {
                     const roundNumber = payload.current_round ?? payload.round ?? payload.roundNumber;
                     if (roundNumber != null) {
                         scoreboardInstance.updateRound(roundNumber);
-                        const mins = Math.floor(roundDuration / 60);
-                        const secs = roundDuration % 60;
-                        scoreboardInstance.updateTimer(mins, secs);
+                        setClockFromSeconds(roundDuration, { running: false });
                         scoreboardInstance.updateScore('blue', 0);
                         scoreboardInstance.updateScore('red', 0);
                         scoreboardInstance.updatePenalties('blue', null, 0);
@@ -373,10 +453,6 @@
                     break;
                 }
                 default: {
-                    if (payload.time) {
-                        const t = parseTime(payload.time);
-                        scoreboardInstance.updateTimer(t.minutes, t.seconds);
-                    }
                     if (payload.raw_data && typeof payload.raw_data === 'string') {
                         const raw = payload.raw_data.trim();
                         const matchWarnings = raw.match(/wg1;(\d+);wg2;(\d+)/i);
