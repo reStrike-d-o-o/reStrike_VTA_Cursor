@@ -683,7 +683,7 @@ impl App {
         let websocket_clients = self.udp_plugin.websocket_client_count();
         let match_in_progress = self.udp_plugin.match_in_progress();
         let match_db_id = self.udp_plugin.current_match_db_id();
-        let udp_status = match self.udp_plugin.status_snapshot() {
+        let udp_status = match self.udp_plugin.get_status() {
             crate::plugins::plugin_udp::UdpServerStatus::Stopped => "Stopped".to_string(),
             crate::plugins::plugin_udp::UdpServerStatus::Starting => "Starting".to_string(),
             crate::plugins::plugin_udp::UdpServerStatus::Running => "Running".to_string(),

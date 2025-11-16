@@ -62,13 +62,13 @@ Fill in the **Data Field(s)** column for every SVG element below using the exact
 | `athlete1Name` |`athlete1_short` |
 | `athlete1Score` |`athlete1_score` |
 | `athlete1_round_won` | UDP Event: WinnerRounds { round1_winner: 1, round2_winner: 0, round3_winner: 0 }| - rule value of round{N}_winner can be 0, 1, 2. If the value of round{N}_winner is different than 0 and {N} == `roundNumber` then add 1 to athlete determined by the value of round{N}_winner - 1 athlete1_round_won, 2 athlete1_round_won
-| `athlete1Flag` / `athlete1FlagPlaceholder` |`athlete1_country` |
+| `athlete1Flag` / `athlete1FlagPlaceholder` |`athlete1_country` | `athlete1_country`
 | `athlete1_warning1-0/1` … `athlete1_warning5-0/1`, `athlete1_warnings_on/off` |`athlete1_warnings` |
 | `athlete1_power1` … `athlete1_power10`, `athlete1_power_levels` | |
 | `athlete2Name` |`athlete2_short` |
 | `athlete2Score` | `athlete2_score`|
 | `athlete2_round_won` | UDP Event: WinnerRounds { round1_winner: 1, round2_winner: 0, round3_winner: 0 }| - rule value of round{N}_winner can be 0, 1, 2. If the value of round{N}_winner is different than 0 and {N} == `roundNumber` then add 1 to athlete determined by the value of round{N}_winner - 1 athlete1_round_won, 2 athlete1_round_won
-| `athlete2Flag` / `athlete2FlagPlaceholder` |`athlete2_country` |
+| `athlete2Flag` / `athlete2FlagPlaceholder` |`athlete2_country` | `athlete2_country`
 | `athlete2_warning1-0/1` … `athlete2_warning5-0/1`, `athlete2_warnings-on/off` |`athlete2_warnings` |
 | `athlete2_power1` … `athlete2_power10`, `athlete2_power-levels` | |
 | `roundNumber` |`current_round` |

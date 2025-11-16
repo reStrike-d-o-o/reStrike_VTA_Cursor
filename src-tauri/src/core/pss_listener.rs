@@ -119,8 +119,8 @@ impl PssListener {
                     _ => "ij0",
                 };
                 let mut segments = vec![code.to_string(), time.clone()];
-                if let Some(action) = action.as_ref() {
-                    segments.push(action.clone());
+                if let Some(action_value) = action {
+                    segments.push(action_value.clone());
                 }
                 Some(format!("{};", segments.join(";")))
             }
@@ -147,8 +147,8 @@ impl PssListener {
             }
             PssEvent::Break { time, action } => {
                 let mut segments = vec!["brk".to_string(), time.clone()];
-                if let Some(action) = action.as_ref() {
-                    segments.push(action.clone());
+                if let Some(action_value) = action {
+                    segments.push(action_value.clone());
                 }
                 Some(format!("{};", segments.join(";")))
             }
@@ -234,8 +234,8 @@ impl PssListener {
             } => Some(format!("sc1;{};sc2;{};", athlete1_score, athlete2_score)),
             PssEvent::Clock { time, action } => {
                 let mut segments = vec!["clk".to_string(), time.clone()];
-                if let Some(action) = action {
-                    segments.push(action.clone());
+                if let Some(action_value) = action {
+                    segments.push(action_value.clone());
                 }
                 Some(format!("{};", segments.join(";")))
             }
@@ -243,6 +243,7 @@ impl PssListener {
             PssEvent::FightLoaded => Some("pre;FightLoaded;".to_string()),
             PssEvent::FightReady => Some("rdy;FightReady;".to_string()),
             PssEvent::Supremacy { value } => Some(format!("sup;{};", value)),
+            PssEvent::VideoTime { value } => Some(format!("avt;{};", value)),
             PssEvent::Raw(message) => Some(message.clone()),
         }
     }

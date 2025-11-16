@@ -1323,6 +1323,12 @@ pub async fn pss_get_events_for_match(
                         time = last_time.clone();
                         ev_type = "supremacy".to_string();
                     }
+                    PssEvent::VideoTime { .. } => {
+                        athlete = "yellow".to_string();
+                        round = last_round as i64;
+                        time = last_time.clone();
+                        ev_type = "video_time".to_string();
+                    }
                     PssEvent::Raw(_) => {
                         athlete = "yellow".to_string();
                         ev_type = "raw".to_string();
@@ -2749,6 +2755,15 @@ pub async fn pss_emit_pending_events(
                     "type": "fight_ready",
                     "event": "FightReady",
                     "description": "Fight Ready"
+                })
+            }
+            crate::pss::protocol::PssEvent::VideoTime { value } => {
+                serde_json::json!({
+                    "type": "video_time",
+                    "event_code": event_code,
+                    "athlete": "yellow",
+                    "value": value,
+                    "description": format!("Video time marker: {}", value)
                 })
             }
             crate::pss::protocol::PssEvent::Raw(message) => {

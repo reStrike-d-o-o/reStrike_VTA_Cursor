@@ -1287,6 +1287,23 @@ impl WebSocketServer {
                 }
             }
 
+            PssEvent::VideoTime { value } => {
+                WebSocketMessage::PssEvent {
+                    event_type: "video_time".to_string(),
+                    event_code: "O".to_string(), // treat as system/other
+                    athlete: "".to_string(),
+                    round: get_event_round(None),
+                    time: get_event_time(None),
+                    timestamp: pss_timestamp.clone(),
+                    raw_data: format!("avt;{value}"),
+                    description: format!("Video Time: {value}"),
+                    action: None,
+                    structured_data: serde_json::json!({
+                        "value": *value
+                    }),
+                }
+            }
+
             PssEvent::Raw(raw_msg) => {
                 WebSocketMessage::PssEvent {
                     event_type: "raw".to_string(),
@@ -1373,6 +1390,7 @@ impl WebSocketServer {
             PssEvent::FightLoaded => Some("fld;".to_string()),
             PssEvent::FightReady => Some("rdy;".to_string()),
             PssEvent::Supremacy { value } => Some(format!("sup;{value}")),
+            PssEvent::VideoTime { value } => Some(format!("avt;{value}")),
             PssEvent::Winner { .. } => Some("win;".to_string()),
             PssEvent::Raw(raw_data) => Some(raw_data.clone()),
         }
