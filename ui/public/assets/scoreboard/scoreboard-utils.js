@@ -112,7 +112,7 @@ class ScoreboardOverlay {
     if (tag === 'image') {
       flagElement.setAttribute('data-flag', 'true');
       if (!flagElement.getAttribute('preserveAspectRatio')) {
-        flagElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        flagElement.setAttribute('preserveAspectRatio', 'xMidYMid slice');
       }
       flagElement.style.pointerEvents = 'none';
       return flagElement;
@@ -136,6 +136,7 @@ class ScoreboardOverlay {
     let height = 40;
 
     const rect = flagElement.querySelector('rect');
+    const framePath = flagElement.querySelector('path');
     if (rect) {
       x = parseFloat(rect.getAttribute('x')) || x;
       y = parseFloat(rect.getAttribute('y')) || y;
@@ -157,8 +158,18 @@ class ScoreboardOverlay {
     imageEl.setAttribute('y', String(y));
     imageEl.setAttribute('width', String(Math.max(1, width)));
     imageEl.setAttribute('height', String(Math.max(1, height)));
-    imageEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    imageEl.setAttribute('preserveAspectRatio', 'xMidYMid slice');
     imageEl.style.pointerEvents = 'none';
+
+    // If this group has a simple background-rect + frame-path structure,
+    // ensure draw order: rect -> image -> frame path.
+    if (rect && framePath && framePath.parentNode === flagElement) {
+      // Place image directly before the frame path so the frame remains on top.
+      if (imageEl.parentNode !== flagElement || imageEl.nextSibling !== framePath) {
+        flagElement.insertBefore(imageEl, framePath);
+      }
+    }
+
     return imageEl;
   }
 
