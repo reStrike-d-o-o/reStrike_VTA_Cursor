@@ -149,15 +149,36 @@
 
     mergeStructuredData(event) {
       if (!event || typeof event !== 'object') return event;
+
+      let merged = event;
+
+      // First, merge explicit structured payloads if present
       const structured =
         event.structured_data ||
         event.structuredData ||
         event.data ||
         null;
-      if (!structured || typeof structured !== 'object') {
-        return event;
+      if (structured && typeof structured === 'object') {
+        merged = { ...structured, ...merged };
       }
-      return { ...structured, ...event };
+
+      // Some sources embed the useful fields inside raw_data as a JSON string
+      const raw = event.raw_data || event.rawData;
+      if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && typeof parsed === 'object') {
+              merged = { ...parsed, ...merged };
+            }
+          } catch (_) {
+            // Ignore parse failures and keep merged as-is
+          }
+        }
+      }
+
+      return merged;
     }
 
     processEvent(event) {
