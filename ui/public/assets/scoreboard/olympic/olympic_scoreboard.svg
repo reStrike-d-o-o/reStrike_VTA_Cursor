@@ -200,8 +200,8 @@
           <tspan x="25" y="0">1:54</tspan>
         </text>
         <rect id="round_x5F_bg" class="cls-25" x="125.367663" y="71.211027" width="56.378889" height="35.330959" />
-        <text text-anchor="end" id="roundNumber" class="cls-19" transform="translate(138.622496 97.278629)">
-          <tspan x="30" y="0">1st</tspan>
+        <text text-anchor="middle" id="roundNumber" class="cls-19" transform="translate(138.622496 97.278629)">
+          <tspan x="15" y="0">1st</tspan>
         </text>
         <rect id="matchInfo_x5F_bg" class="cls-25" x="125.367663" y="229.493164" width="225.109952"
           height="35.330959" />
