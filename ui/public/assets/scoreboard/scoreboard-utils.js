@@ -123,15 +123,11 @@ class ScoreboardOverlay {
       imageEl = document.createElementNS(ns, 'image');
       imageEl.setAttribute('data-flag', 'true');
     }
+    // Ensure the dynamic flag image is rendered on top of any placeholder artwork
     if (imageEl.parentNode !== flagElement) {
-      const firstChild = flagElement.firstChild;
-      if (firstChild) {
-        flagElement.insertBefore(imageEl, firstChild);
-      } else {
-        flagElement.appendChild(imageEl);
-      }
-    } else if (flagElement.firstChild !== imageEl) {
-      flagElement.insertBefore(imageEl, flagElement.firstChild);
+      flagElement.appendChild(imageEl);
+    } else if (flagElement.lastChild !== imageEl) {
+      flagElement.appendChild(imageEl);
     }
 
     let x = 0;
