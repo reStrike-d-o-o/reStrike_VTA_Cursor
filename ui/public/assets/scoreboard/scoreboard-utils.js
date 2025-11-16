@@ -550,6 +550,9 @@ class ScoreboardOverlay {
 
   // Show injury section
   showInjurySection() {
+    // Ensure shared visibility toggles (timer, bg, logo positions)
+    this.setInjuryVisible(true);
+
     const injurySection = this.svg.getElementById('injurySection');
     const timeElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
     const bgElement = this.getSvgElementAny(['injury_x5F_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);
@@ -570,6 +573,9 @@ class ScoreboardOverlay {
 
   // Hide injury section
   hideInjurySection() {
+    // Ensure shared visibility toggles (timer, bg, logo positions)
+    this.setInjuryVisible(false);
+
     const injurySection = this.svg.getElementById('injurySection');
     const timeElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
     const bgElement = this.getSvgElementAny(['injury_x5F_bg', 'injury_x5F_time_x5F_bg', 'injuryBg']);

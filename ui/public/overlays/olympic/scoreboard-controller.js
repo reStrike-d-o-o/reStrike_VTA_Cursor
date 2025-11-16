@@ -23,7 +23,8 @@
     }
 
     scoreboardInstance = new ScoreboardOverlay(svg);
-    scoreboardInstance.setRoundFormat('label');
+    // Olympic scoreboard uses ordinal round labels (1st, 2nd, 3rd)
+    scoreboardInstance.setRoundFormat('ordinal');
     scoreboardInstance.hideInjurySection();
     scoreboardInstance.resetInjuryTime();
     applyState(scoreboardCore.getState());
