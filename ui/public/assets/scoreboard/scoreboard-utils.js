@@ -17,6 +17,9 @@ class ScoreboardOverlay {
     this.svg = svgElement;
     this.currentTheme = 'default';
     this.transparency = 1.0;
+    this.fieldLoggingEnabled = this.resolveLoggingFlag('ScoreboardFieldLogging', false);
+    this.debugLoggingEnabled = this.resolveLoggingFlag('ScoreboardDebugLogging', false);
+    this.warningLoggingEnabled = this.resolveLoggingFlag('ScoreboardWarningLogging', false);
     this.initialize();
     this.roundFormat = 'ordinal';
   }
@@ -35,7 +38,27 @@ class ScoreboardOverlay {
     this.hideInjurySection();
   }
 
+  resolveLoggingFlag(flagName, defaultValue) {
+    if (typeof window === 'undefined' || window[flagName] === undefined) {
+      return defaultValue;
+    }
+    return Boolean(window[flagName]);
+  }
+
+  debugLog(...args) {
+    if (this.debugLoggingEnabled) {
+      console.log(...args);
+    }
+  }
+
+  warnLog(...args) {
+    if (this.warningLoggingEnabled) {
+      console.warn(...args);
+    }
+  }
+
   logUdpFieldMapping(fieldName, candidateIds, element, value) {
+    if (!this.fieldLoggingEnabled) return;
     const ids = Array.isArray(candidateIds) ? candidateIds : [candidateIds];
     const resolvedId = element?.id || `NOT_FOUND(${ids.join('|')})`;
     const suffix = value === undefined ? '' : ` -> ${value}`;
@@ -255,9 +278,9 @@ class ScoreboardOverlay {
         ? 'athletes.athlete1_short|athlete1_long'
         : 'athletes.athlete2_short|athlete2_long';
       this.logUdpFieldMapping(sourceField, candidateIds, nameElement, display);
-      console.log(`✅ Updated ${player} player name: ${display}`);
+      this.debugLog(`✅ Updated ${player} player name: ${display}`);
     } else {
-      console.warn(`⚠️ Could not find name element for ${player} (tried: ${candidateIds.join(', ')})`);
+      this.warnLog(`⚠️ Could not find name element for ${player} (tried: ${candidateIds.join(', ')})`);
     }
   }
 
@@ -280,10 +303,10 @@ class ScoreboardOverlay {
         ? 'current_scores.athlete1_score'
         : 'current_scores.athlete2_score';
       this.logUdpFieldMapping(sourceField, candidateIds, scoreElement, score);
-      console.log(`✅ Updated ${player} player score: ${score}`);
+      this.debugLog(`✅ Updated ${player} player score: ${score}`);
     } else {
-      console.warn(`⚠️ Could not find score element for ${player} (tried: ${candidateIds.join(', ')})`);
-      console.warn(`⚠️ Available elements with 'Score' in ID:`, Array.from(this.svg.querySelectorAll('[id*="Score"]')).map(el => el.id));
+      this.warnLog(`⚠️ Could not find score element for ${player} (tried: ${candidateIds.join(', ')})`);
+      this.warnLog(`⚠️ Available elements with 'Score' in ID:`, Array.from(this.svg.querySelectorAll('[id*="Score"]')).map(el => el.id));
     }
   }
 
@@ -303,9 +326,9 @@ class ScoreboardOverlay {
 
     if (imageEl) {
       this.hideStaticFlagArtwork(player, imageEl);
-      console.log(`✅ Updated ${player} player country flag: ${code}`);
+      this.debugLog(`✅ Updated ${player} player country flag: ${code}`);
     } else {
-      console.warn(`⚠️ Could not find flag element for ${player}`);
+      this.warnLog(`⚠️ Could not find flag element for ${player}`);
     }
 
     const labelCandidates = player === 'blue'
@@ -403,9 +426,9 @@ class ScoreboardOverlay {
         ? 'warnings.athlete1_warnings'
         : 'warnings.athlete2_warnings';
       this.logUdpFieldMapping(sourceField, penaltyIdCandidates, penaltiesElement, displayValue);
-      console.log(`✅ Updated ${player} player warnings: ${displayValue}`);
+      this.debugLog(`✅ Updated ${player} player warnings: ${displayValue}`);
     } else {
-      console.warn(`⚠️ Could not find penalty element for ${player} (tried: ${penaltyIdCandidates.join(', ')})`);
+      this.warnLog(`⚠️ Could not find penalty element for ${player} (tried: ${penaltyIdCandidates.join(', ')})`);
     }
   }
 
@@ -456,9 +479,9 @@ class ScoreboardOverlay {
         ? 'winner_rounds.blue_total'
         : 'winner_rounds.red_total';
       this.logUdpFieldMapping(sourceField, roundIdCandidates, winsElement, wins || 0);
-      console.log(`✅ Updated ${player} player rounds: ${wins || 0}`);
+      this.debugLog(`✅ Updated ${player} player rounds: ${wins || 0}`);
     } else {
-      console.warn(`⚠️ Could not find rounds element for ${player} (tried: ${roundIdCandidates.join(', ')})`);
+      this.warnLog(`⚠️ Could not find rounds element for ${player} (tried: ${roundIdCandidates.join(', ')})`);
     }
   }
 
@@ -476,9 +499,9 @@ class ScoreboardOverlay {
       updated = true;
     }
     if (updated) {
-      console.log(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+      this.debugLog(`✅ Updated match timer: ${minutes}:${seconds.toString().padStart(2, '0')}`);
     } else {
-      console.warn(`⚠️ Could not find match timer element (tried: ${candidates.join(', ')})`);
+      this.warnLog(`⚠️ Could not find match timer element (tried: ${candidates.join(', ')})`);
     }
   }
 
@@ -497,9 +520,9 @@ class ScoreboardOverlay {
         : this.getOrdinalSuffix(round);
       this.setTextForElementOrGroup(roundElement, value);
       this.logUdpFieldMapping('round.current_round', ['roundNumber'], roundElement, value);
-      console.log(`✅ Updated current round: ${value}`);
+      this.debugLog(`✅ Updated current round: ${value}`);
     } else {
-      console.warn(`⚠️ Could not find round element (tried: roundNumber, currentRound)`);
+      this.warnLog(`⚠️ Could not find round element (tried: roundNumber, currentRound)`);
     }
   }
 
@@ -511,17 +534,17 @@ class ScoreboardOverlay {
       if (typeof time === 'string') {
         this.setTextForElementOrGroup(injuryElement, time);
         this.logUdpFieldMapping('injury.time', ['injuryTimer', 'injuryTime', 'injury_x5F_time'], injuryElement, time);
-        console.log(`✅ Updated injury time: ${time}`);
+        this.debugLog(`✅ Updated injury time: ${time}`);
       } else {
         // Fallback for separate minutes/seconds parameters
         const minutes = arguments[0] || 0;
         const seconds = arguments[1] || 0;
         this.setTextForElementOrGroup(injuryElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
         this.logUdpFieldMapping('injury.time', ['injuryTimer', 'injuryTime', 'injury_x5F_time'], injuryElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
-        console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+        this.debugLog(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
       }
     } else {
-      console.warn(`⚠️ Could not find injury time element (tried: injuryTime, injury_x5F_time)`);
+      this.warnLog(`⚠️ Could not find injury time element (tried: injuryTime, injury_x5F_time)`);
     }
   }
 
@@ -539,9 +562,9 @@ class ScoreboardOverlay {
     this.toggleArcadeTimerGroups(true);
     this.logUdpFieldMapping('injury.action(show)', ['injurySection', 'injuryTimer', 'injury_x5F_bg'], injurySection || timeElement || bgElement, 'show');
     if (!injurySection && !timeElement) {
-      console.warn('⚠️ Could not find injurySection element');
+      this.warnLog('⚠️ Could not find injurySection element');
     } else {
-      console.log('✅ Injury section shown');
+      this.debugLog('✅ Injury section shown');
     }
   }
 
@@ -559,9 +582,9 @@ class ScoreboardOverlay {
     this.toggleArcadeTimerGroups(false);
     this.logUdpFieldMapping('injury.action(hide)', ['injurySection', 'injuryTimer', 'injury_x5F_bg'], injurySection || timeElement || bgElement, 'hide');
     if (!injurySection && !timeElement) {
-      console.warn('⚠️ Could not find injurySection element');
+      this.warnLog('⚠️ Could not find injurySection element');
     } else {
-      console.log('✅ Injury section hidden');
+      this.debugLog('✅ Injury section hidden');
     }
   }
 
@@ -585,9 +608,9 @@ class ScoreboardOverlay {
     const injuryElement = this.getSvgElementAny(['injuryTimer', 'injuryTime', 'injury_x5F_time']);
     if (injuryElement) {
       this.setTextForElementOrGroup(injuryElement, '0:00');
-      console.log('✅ Injury time reset to 0:00');
+      this.debugLog('✅ Injury time reset to 0:00');
     } else {
-      console.warn('⚠️ Could not find injuryTime element');
+      this.warnLog('⚠️ Could not find injuryTime element');
     }
   }
 
@@ -825,7 +848,7 @@ class ScoreboardOverlay {
   // Change overlay type
   changeOverlayType(type) {
     // This would be handled by loading a different SVG file
-    console.log(`Changing overlay type to: ${type}`);
+    this.debugLog(`Changing overlay type to: ${type}`);
   }
 
   // Show/hide sections
@@ -888,18 +911,18 @@ class PlayerStatOverlay extends ScoreboardOverlay {
     const normalizedSide = this.normalizeSide(side);
     const canonicalStat = this.normalizeStatKey(statKey);
     if (!canonicalStat) {
-      console.warn(`⚠️ Unknown stat key "${statKey}"`);
+      this.warnLog(`⚠️ Unknown stat key "${statKey}"`);
       return;
     }
     const candidates = this.getStatIds(normalizedSide, canonicalStat);
     const target = this.getSvgElementAny(candidates);
     if (!target) {
-      console.warn(`⚠️ Could not find ${canonicalStat} element for ${normalizedSide} (tried: ${candidates.join(', ')})`);
+      this.warnLog(`⚠️ Could not find ${canonicalStat} element for ${normalizedSide} (tried: ${candidates.join(', ')})`);
       return;
     }
     const display = PlayerStatOverlay.formatStatValue(value);
     this.setTextForElementOrGroup(target, display);
-    console.log(`✅ Updated ${normalizedSide} ${canonicalStat}: ${display}`);
+    this.debugLog(`✅ Updated ${normalizedSide} ${canonicalStat}: ${display}`);
   }
 
   updatePlayerStats(side, stats = {}) {
@@ -937,7 +960,7 @@ class PlayerStatOverlay extends ScoreboardOverlay {
   updateDivisionLabel(label) {
     const container = this.getSvgElementAny(['modern_title_info']);
     if (!container) {
-      console.warn('⚠️ Could not find division label container');
+      this.warnLog('⚠️ Could not find division label container');
       return;
     }
     let target = container;
@@ -945,12 +968,12 @@ class PlayerStatOverlay extends ScoreboardOverlay {
       target = Array.from(container.querySelectorAll('text')).find((el) => !el.id);
     }
     if (!target) {
-      console.warn('⚠️ Could not resolve division label text node');
+      this.warnLog('⚠️ Could not resolve division label text node');
       return;
     }
     const value = label == null ? '' : String(label);
     this.setTextForElementOrGroup(target, value);
-    console.log(`✅ Updated division label: ${value}`);
+    this.debugLog(`✅ Updated division label: ${value}`);
   }
 }
 
@@ -996,7 +1019,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
     // Apply default theme
     this.applyTheme(this.currentTheme);
 
-    console.log('✅ Player Introduction Overlay initialized');
+    this.debugLog('✅ Player Introduction Overlay initialized');
   }
 
   // Update Player 1 (Blue) information
@@ -1030,7 +1053,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
         nameElement.textContent = capitalizeName(name);
       }
 
-      console.log(`✅ Updated Player 1 name: ${capitalizeName(name)}`);
+      this.debugLog(`✅ Updated Player 1 name: ${capitalizeName(name)}`);
     }
   }
 
@@ -1052,7 +1075,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
         nameElement.textContent = capitalizeName(name);
       }
 
-      console.log(`✅ Updated Player 2 name: ${capitalizeName(name)}`);
+      this.debugLog(`✅ Updated Player 2 name: ${capitalizeName(name)}`);
     }
   }
 
@@ -1074,7 +1097,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
       if (glassRect) {
         glassRect.setAttribute('width', flagWidth.toString());
       }
-      console.log(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
+      this.debugLog(`✅ Updated Player 1 flag glass effect: width=${flagWidth}`);
     };
 
     this.onSvgImageLoad(imageEl, adjustLeftFlag);
@@ -1085,7 +1108,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
       this.setTextForElementOrGroup(countryLabel, this.normalizeFlagCode(countryCode));
     }
 
-    console.log(`✅ Updated Player 1 flag: ${this.normalizeFlagCode(countryCode)}`);
+    this.debugLog(`✅ Updated Player 1 flag: ${this.normalizeFlagCode(countryCode)}`);
   }
 
   // Update Player 2 flag
@@ -1148,7 +1171,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
         glassRect.setAttribute('width', flagWidth.toString());
       }
 
-      console.log(`✅ Updated Player 2 flag position: x=${targetX}, width=${flagWidth}`);
+      this.debugLog(`✅ Updated Player 2 flag position: x=${targetX}, width=${flagWidth}`);
     };
 
     this.onSvgImageLoad(imageEl, adjustFlagPosition);
@@ -1159,7 +1182,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
       this.setTextForElementOrGroup(countryLabel, this.normalizeFlagCode(countryCode));
     }
 
-    console.log(`✅ Updated Player 2 flag: ${this.normalizeFlagCode(countryCode)}`);
+    this.debugLog(`✅ Updated Player 2 flag: ${this.normalizeFlagCode(countryCode)}`);
   }
 
   // Apply announcement effect
@@ -1167,7 +1190,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
     const announcementSection = this.svg.getElementById('announcementSection');
     if (announcementSection) {
       announcementSection.classList.add('announcement-fade-in');
-      console.log('✅ Applied announcement effect');
+      this.debugLog('✅ Applied announcement effect');
     }
   }
 
@@ -1178,7 +1201,7 @@ class PlayerIntroductionOverlay extends ScoreboardOverlay {
       const newText = `${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`;
       nameElement.textContent = newText;
 
-      console.log(`✅ Updated VS string: ${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`);
+    this.debugLog(`✅ Updated VS string: ${capitalizeName(player1Name)} VS ${capitalizeName(player2Name)}`);
     }
   }
 
