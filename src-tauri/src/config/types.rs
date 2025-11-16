@@ -392,6 +392,8 @@ pub struct OverlaySettings {
     pub always_on_top: bool,
     /// Click through overlay
     pub click_through: bool,
+    /// Overlay routing rules (PSS triggers → overlay windows)
+    pub routing_rules: Option<Vec<crate::types::OverlayRoutingRule>>,
 }
 
 /// Theme configuration
@@ -802,6 +804,7 @@ impl Default for AppConfig {
                     theme: "dark".to_string(),
                     always_on_top: true,
                     click_through: false,
+                    routing_rules: None,
                 },
                 theme: ThemeSettings {
                     current: "dark".to_string(),

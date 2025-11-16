@@ -84,6 +84,31 @@ export type OverlayPosition =
 export type OverlayTheme = 'dark' | 'light' | 'transparent';
 
 // ============================================================================
+// Overlay Routing Types
+// ============================================================================
+
+export type OverlayId = 'none' | 'olympic' | 'modern' | 'arcade';
+
+export type OverlayTriggerType =
+  | 'fight_loaded'
+  | 'fight_ready'
+  | 'round_start'
+  | 'round_end'
+  | 'winner'
+  | 'injury_show'
+  | 'injury_hide';
+
+export interface OverlayRoutingRule {
+  trigger: OverlayTriggerType;
+  overlay: OverlayId;
+  action: 'show' | 'hide' | 'toggle';
+}
+
+export interface OverlayRoutingConfig {
+  rules: OverlayRoutingRule[];
+}
+
+// ============================================================================
 // PSS Protocol Types
 // ============================================================================
 

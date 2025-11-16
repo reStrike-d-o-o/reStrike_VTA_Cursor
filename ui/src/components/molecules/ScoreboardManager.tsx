@@ -8,6 +8,8 @@ import TabGroup from '../molecules/TabGroup';
 import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n/index';
+import OverlayRoutingSettings from './OverlayRoutingSettings';
+import { openOverlayWindow } from '../../utils/overlayWindows';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -139,6 +141,28 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     return `${fallbackBase}${relativePath}`;
   };
 
+  const handleOpenOverlayWindow = async (id: 'olympic' | 'modern' | 'arcade') => {
+    try {
+      await openOverlayWindow(id);
+    } catch (error) {
+      console.error(`Failed to open overlay window (${id}):`, error);
+      alert('Failed to open overlay window. Please check the console for details.');
+    }
+  };
+
+  const handleCloseOverlayWindow = async (id: 'olympic' | 'modern' | 'arcade') => {
+    const label =
+      id === 'olympic' ? 'overlay_olympic' :
+      id === 'modern' ? 'overlay_modern' :
+      'overlay_arcade';
+    try {
+      await invoke('close_overlay_window', { label });
+    } catch (error) {
+      console.error(`Failed to close overlay window (${id}):`, error);
+      alert('Failed to close overlay window. Please check the console for details.');
+    }
+  };
+
   const openOverlayExternally = async (relativePath: string) => {
     const url = getOverlayUrl(relativePath);
 
@@ -266,6 +290,63 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
       <div className="p-6 theme-card shadow-lg">
         <h4 className="text-md font-semibold text-gray-100 mb-4">{t('ovr.obs_integration.title', 'OBS Integration')}</h4>
         <div className="space-y-4">
+          {/* Overlay preview windows */}
+          <div className="p-3 bg-gray-900/30 rounded-lg border border-gray-600/40">
+            <Label className="text-sm text-gray-200 mb-2">
+              {t('ovr.windows.title', 'Overlay Windows (Olympic / Modern / Arcade)')}
+            </Label>
+            <p className="text-xs text-gray-400 mb-2">
+              {t(
+                'ovr.windows.help',
+                'Open dedicated chroma-key windows for each scoreboard layout (for OBS Window Capture).',
+              )}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleOpenOverlayWindow('olympic')}
+              >
+                {t('ovr.windows.olympic', 'Open Olympic')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleCloseOverlayWindow('olympic')}
+              >
+                {t('ovr.windows.close_olympic', 'Close Olympic')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleOpenOverlayWindow('modern')}
+              >
+                {t('ovr.windows.modern', 'Open Modern')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleCloseOverlayWindow('modern')}
+              >
+                {t('ovr.windows.close_modern', 'Close Modern')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleOpenOverlayWindow('arcade')}
+              >
+                {t('ovr.windows.arcade', 'Open Arcade')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleCloseOverlayWindow('arcade')}
+              >
+                {t('ovr.windows.close_arcade', 'Close Arcade')}
+              </Button>
+            </div>
+          </div>
+
           {/* HTML Overlay URLs */}
           <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
             <Label className="text-sm text-blue-300 mb-2">{t('ovr.urls.title', 'HTML Overlay URLs (Real-time PSS Updates)')}</Label>
@@ -469,6 +550,9 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
           </div>
         </div>
       </div>
+
+      {/* Overlay routing (PSS → overlay windows) */}
+      <OverlayRoutingSettings className="mt-4" />
 
       {/* PSS Data Status */}
       <div className="p-6 theme-card shadow-lg">

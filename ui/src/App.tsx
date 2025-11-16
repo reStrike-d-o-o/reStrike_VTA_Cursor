@@ -15,6 +15,8 @@ import PausedOverlay from './components/molecules/PausedOverlay';
 import GlobalModals from './components/molecules/GlobalModals';
 import { useSettingsStore } from './stores/settingsStore';
 import MedalCeremonyExternalDisplay from './components/ovr/MedalCeremonyExternalDisplay';
+import { useOverlayController } from './hooks/useOverlayController';
+import { useOverlayRoutingStore } from './stores/overlayRoutingStore';
 
 const App: React.FC = () => {
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
@@ -28,11 +30,14 @@ const App: React.FC = () => {
   const theme = useSettingsStore((s)=>s.theme);
   const sharp = useSettingsStore((s)=>s.sharp);
   const [externalMode, setExternalMode] = React.useState<'medal' | null>(null);
+  const loadOverlayRouting = useOverlayRoutingStore((s) => s.loadFromBackend);
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
   
   // Initialize live data events for Event Table
   const { isConnected: liveDataConnected, eventCount } = useLiveDataEvents();
+  // Initialize overlay controller (routes PSS triggers to overlay windows)
+  useOverlayController();
   
   // Initialize OBS status listener for real-time status updates
   const { setupStatusListener } = useEnvironmentObs();
@@ -120,13 +125,14 @@ const App: React.FC = () => {
   React.useEffect(() => {
     if (tauriAvailable && !isLoading) {
       loadWindowSettings();
+      loadOverlayRouting();
       
       // Set window to startup position (x=1, y=1)
       invoke('set_window_startup_position').catch((error) => {
         console.error('Failed to set window startup position:', error);
       });
     }
-  }, [tauriAvailable, isLoading, loadWindowSettings]);
+  }, [tauriAvailable, isLoading, loadWindowSettings, loadOverlayRouting]);
 
   // Apply theme attribute
   React.useEffect(() => {

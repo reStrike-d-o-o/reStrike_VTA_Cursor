@@ -324,6 +324,6 @@ export const useLiveDataEvents = () => {
     isConnected: useLiveDataStore.getState().isConnected,
     eventCount: useLiveDataStore.getState().events.length,
   };
-  
+
   return currentState;
-}; 
+};

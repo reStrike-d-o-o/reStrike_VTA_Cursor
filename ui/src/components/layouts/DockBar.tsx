@@ -251,7 +251,7 @@ const DockBar: React.FC = () => {
                     </ReplayButton>
                   </div>
                 </div>
-                
+
                 {/* Manual Mode Toggle and Advanced Button Stack */}
                 {/* Manual Mode Toggle and Advanced Button Stack */}
                 <div className="flex flex-col items-center space-y-2">
