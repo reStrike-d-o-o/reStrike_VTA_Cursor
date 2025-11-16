@@ -26,6 +26,8 @@
       this.maxRetries = options.maxRetries ?? 5;
       this.retryDelayMs = options.retryDelayMs ?? 2000;
       this.resolveUrl = options.resolveUrl ?? this.defaultUrlResolver;
+      // Track previous warnings so we can derive Gam-jeom points when needed
+      this.prevWarnings = { blue: 0, red: 0 };
       this.connect();
       this.attachFallbackListeners();
     }
@@ -194,9 +196,22 @@
         case 'clock':
           this.updateClock(event.time, event.action);
           break;
-        case 'round':
-          this.state.rounds.current = Number(event.current_round || event.round || 1);
+        case 'round': {
+          const nextRound = Number(event.current_round || event.round || 1);
+          const prevRound = Number(this.state.rounds.current || 0);
+          if (nextRound !== prevRound) {
+            this.state.rounds.current = nextRound;
+            // Reset per-round scores and warnings; they do not carry over.
+            this.state.scores.current.blue = 0;
+            this.state.scores.current.red = 0;
+            this.state.warnings.blue = 0;
+            this.state.warnings.red = 0;
+            this.prevWarnings = { blue: 0, red: 0 };
+          } else {
+            this.state.rounds.current = nextRound;
+          }
           break;
+        }
         case 'winner_rounds':
           this.updateWinnerRounds(event);
           break;
@@ -208,9 +223,26 @@
         case 'scores':
           this.updateRoundScores(event);
           break;
-        case 'warnings':
+        case 'warnings': {
+          const prevBlue = this.prevWarnings?.blue ?? 0;
+          const prevRed = this.prevWarnings?.red ?? 0;
           this.updateWarnings(event);
+          const nextBlue = this.state.warnings.blue || 0;
+          const nextRed = this.state.warnings.red || 0;
+          const deltaBlue = nextBlue - prevBlue;
+          const deltaRed = nextRed - prevRed;
+          // Each additional warning for one athlete gives +1 to the opponent.
+          if (deltaBlue > 0) {
+            this.state.scores.current.red =
+              Number(this.state.scores.current.red || 0) + deltaBlue;
+          }
+          if (deltaRed > 0) {
+            this.state.scores.current.blue =
+              Number(this.state.scores.current.blue || 0) + deltaRed;
+          }
+          this.prevWarnings = { blue: nextBlue, red: nextRed };
           break;
+        }
         case 'injury':
           this.updateInjury(event);
           break;

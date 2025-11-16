@@ -2,7 +2,7 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background: transparent;
+    background: #00ff00;
     font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif;
 }
 
@@ -62,5 +62,4 @@ body {
     justify-content: center;
     font-size: 48px;
 }
-
 

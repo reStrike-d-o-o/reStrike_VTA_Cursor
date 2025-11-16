@@ -1,4 +1,4 @@
-body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif; }
+body { margin: 0; padding: 0; overflow: hidden; background: #00ff00; font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif; }
 
 #scoreboard-container { width: 1920px; height: 1080px; position: relative; }
 
@@ -9,5 +9,4 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
 .connection-status.connected { background: #10b981; }
 
 .scoreboard-fallback { width: 1920px; height: 1080px; background: #000000; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 48px; }
-
 

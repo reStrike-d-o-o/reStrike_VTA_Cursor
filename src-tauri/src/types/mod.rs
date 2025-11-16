@@ -92,6 +92,13 @@ pub enum OverlayTheme {
     Transparent,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OverlayRoutingRule {
+    pub trigger: String,
+    pub overlay: String,
+    pub action: String,
+}
+
 // ============================================================================
 // PSS Protocol Types
 // ============================================================================

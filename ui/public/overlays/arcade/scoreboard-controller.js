@@ -9,7 +9,7 @@
 
   function initOverlay() {
     if (scoreboardInstance) return;
-    const obj = document.getElementById('scoreboard-2"');
+    const obj = document.getElementById('scoreboard-svg');
     const doc = obj?.contentDocument || obj?.contentWindow?.document;
     const svg = doc?.querySelector('svg');
     if (!svg || typeof ScoreboardOverlay === 'undefined') {

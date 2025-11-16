@@ -1,7 +1,10 @@
+use crate::config::types::OverlaySettings as UiOverlaySettings;
+use crate::core::app::App;
 use crate::database::models::OverlayTemplate;
+use crate::types::OverlayRoutingRule;
 use chrono::Utc;
 use std::sync::Arc;
-use tauri::{command, Error as TauriError, State};
+use tauri::{command, Error as TauriError, Manager, State, Window};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct OverlayTemplatePayload {
@@ -14,6 +17,18 @@ pub struct OverlayTemplatePayload {
     pub duration_ms: Option<i32>,
     pub is_active: Option<bool>,
     pub url: Option<String>,
+}
+
+/// Close an overlay window by its label (e.g. "overlay_olympic").
+#[command]
+pub async fn close_overlay_window(window: Window, label: String) -> Result<(), TauriError> {
+    let app_handle = window.app_handle();
+    if let Some(webview) = app_handle.get_webview_window(&label) {
+        if let Err(err) = webview.close() {
+            log::warn!("Failed to close overlay window '{label}': {err}");
+        }
+    }
+    Ok(())
 }
 
 #[command]
@@ -149,4 +164,68 @@ pub async fn overlays_populate_from_files(
         .await
         .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
     Ok(list)
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct OverlayRoutingRuleConfig {
+    pub trigger: String,
+    pub overlay: String,
+    pub action: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct OverlayRoutingConfigPayload {
+    pub rules: Vec<OverlayRoutingRuleConfig>,
+}
+
+#[command]
+pub async fn get_overlay_routing_config(
+    app: State<'_, Arc<App>>,
+) -> Result<OverlayRoutingConfigPayload, TauriError> {
+    let config = app.config_manager().get_config().await;
+    let settings: &UiOverlaySettings = &config.ui.overlay;
+
+    let rules: Vec<OverlayRoutingRule> = settings
+        .routing_rules
+        .clone()
+        .unwrap_or_default();
+
+    let payload = OverlayRoutingConfigPayload {
+        rules: rules
+            .into_iter()
+            .map(|r| OverlayRoutingRuleConfig {
+                trigger: r.trigger,
+                overlay: r.overlay,
+                action: r.action,
+            })
+            .collect(),
+    };
+
+    Ok(payload)
+}
+
+#[command]
+pub async fn set_overlay_routing_config(
+    app: State<'_, Arc<App>>,
+    config: OverlayRoutingConfigPayload,
+) -> Result<(), TauriError> {
+    let rules: Vec<OverlayRoutingRule> = config
+        .rules
+        .into_iter()
+        .map(|r| OverlayRoutingRule {
+            trigger: r.trigger,
+            overlay: r.overlay,
+            action: r.action,
+        })
+        .collect();
+
+    app.config_manager()
+        .update_section(|cfg| {
+            cfg.ui.overlay.routing_rules = Some(rules.clone());
+            &mut cfg.ui.overlay
+        })
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!(e.to_string())))?;
+
+    Ok(())
 }

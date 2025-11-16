@@ -154,6 +154,12 @@ async fn main() -> AppResult<()> {
         .on_window_event({
             let shutdown_app = shutdown_app.clone();
             move |window, event| {
+                // Only intercept close for the main application window.
+                // Overlay and auxiliary windows should be allowed to close normally.
+                if window.label() != "main" {
+                    return;
+                }
+
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
 
@@ -744,6 +750,9 @@ async fn main() -> AppResult<()> {
             re_strike_vta::tauri_commands_triggers::triggers_preview_evaluate,
             re_strike_vta::tauri_commands_overlays::overlays_sync_templates,
             re_strike_vta::tauri_commands_overlays::overlays_populate_from_files,
+            re_strike_vta::tauri_commands_overlays::get_overlay_routing_config,
+            re_strike_vta::tauri_commands_overlays::set_overlay_routing_config,
+            re_strike_vta::tauri_commands_overlays::close_overlay_window,
             re_strike_vta::tauri_commands_obs_connections::obs_connections_get_all,
             re_strike_vta::tauri_commands_obs_connections::obs_connections_get_active,
             re_strike_vta::tauri_commands_obs_connections::obs_connections_save,
