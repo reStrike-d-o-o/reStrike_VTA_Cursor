@@ -584,6 +584,12 @@ impl WebSocketServer {
         let client_count = clients.len();
         log::info!("Broadcasting message to {client_count} connected clients");
 
+        // Fast-exit: if no overlay clients are connected, skip JSON construction and send loop entirely.
+        // This avoids unnecessary work and keeps the PSS→WebSocket bridge lightweight when overlays are inactive.
+        if client_count == 0 {
+            return Ok(());
+        }
+
         let mut disconnected_clients = Vec::new();
 
         // Convert WebSocketMessage to the format expected by overlays
