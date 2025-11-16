@@ -117,17 +117,17 @@
         <g id="player2_x5F_red">
           <rect id="player2_x5F_bg" class="cls-18" x="879.949353" y=".339072" width="654.828957" height="65.999524"
             transform="translate(2414.727663 66.677669) rotate(180)" />
-          <text text-anchor="middle" id="athlete2Country" class="cls-11" transform="translate(1413.594635 49.984619)">
-            <tspan x="55" y="0">CRO</tspan>
+          <text text-anchor="start" id="athlete2Country" class="cls-11" transform="translate(1413.594635 49.984619)">
+            <tspan x="0" y="0">CRO</tspan>
           </text>
           <rect class="cls-15" x="945.948813" y=".339072" width="65.99946" height="65.999524"
             transform="translate(1957.897087 66.677669) rotate(180)" />
-          <g id="athlete2FlagPlaceholder" transform="translate(945.948813 .339072) rotate(180)">
+          <g id="athlete2FlagPlaceholder">
             <rect class="cls-3" x="1331.991211" y="11.836426" width="64.167969" height="43.004395" />
             <path class="cls-19"
               d="M1395.820435,12.175446v42.326781h-63.490112V12.175446h63.490112M1396.498413,11.497448h-64.846069v43.682778h64.846069V11.497448h0Z" />
           </g>
-          <g id="athlete2Flag" transform="translate(1332.330358 12.175466)">
+          <g id="athlete2flag">
             <g class="cls-20">
               <g>
                 <rect class="cls-6" x="1321.748655" y="12.175456" width="84.653512" height="42.326756" />
@@ -606,23 +606,23 @@
             </g>
           </g>
           <text text-anchor="end" id="athlete2Name" class="cls-9" transform="translate(1138.577301 46.014893)">
-            <tspan x="170" y="0">M. NILSEN</tspan>
+            <tspan x="160" y="0">M. NILSEN</tspan>
           </text>
           <rect class="cls-2" x="879.949353" y=".339072" width="654.828957" height="65.999524"
             transform="translate(2414.727663 66.677669) rotate(180)" />
         </g>
         <g id="player1_x5F_blue">
           <rect id="player1_x5F_bg" class="cls-18" x=".677989" y=".339106" width="654.828957" height="65.99946" />
-          <text text-anchor="middle" id="athlete1Country" class="cls-11" transform="translate(21.567543 49.997314)">
-            <tspan x="45" y="0">AUT</tspan>
+          <text text-anchor="end" id="athlete1Country" class="cls-11" transform="translate(21.567543 49.997314)">
+            <tspan x="100" y="0">AUT</tspan>
           </text>
           <rect class="cls-17" x="523.508025" y=".339106" width="65.99946" height="65.99946" />
-          <g id="athlete1FlagPlaceholder" transform="translate(523.508025 .339106)">
+          <g id="athlete1FlagPlaceholder">
             <rect class="cls-3" x="139.296875" y="11.836426" width="64.167969" height="43.004395" />
             <path class="cls-19"
               d="M203.125946,12.175468v42.326738h-63.490112V12.175468h63.490112M203.803955,11.497467h-64.84613v43.682739h64.84613V11.497467h0Z" />
           </g>
-          <g id="athlete1Flag" transform="translate(523.508025 .339106)">
+          <g id="athlete1Flag">
             <rect class="cls-14" x="139.635835" y="12.175468" width="63.490106" height="42.326737" />
             <rect class="cls-12" x="139.635835" y="26.28438" width="63.490106" height="14.108912" />
           </g>
