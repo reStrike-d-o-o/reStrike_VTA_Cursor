@@ -1103,6 +1103,7 @@ impl UdpServer {
             PssEvent::FightLoaded => "O".to_string(),    // Fight loaded (pre-match)
             PssEvent::FightReady => "O".to_string(),     // Fight ready (pre-match)
             PssEvent::Supremacy { .. } => "O".to_string(), // Supremacy (system event)
+            PssEvent::VideoTime { .. } => "O".to_string(),
             PssEvent::Raw(_raw_msg) => {
                 // Raw protocol events are treated as "Other" unless explicitly categorized elsewhere.
                 "O".to_string()
@@ -1482,6 +1483,16 @@ impl UdpServer {
                     "timestamp": chrono::Utc::now().timestamp_millis()
                 })
             }
+            PssEvent::VideoTime { value } => {
+                serde_json::json!({
+                    "type": "video_time",
+                    "event_code": event_code,
+                    "athlete": "",
+                    "value": value,
+                    "description": format!("Video time marker: {}", value),
+                    "timestamp": chrono::Utc::now().timestamp_millis()
+                })
+            }
             PssEvent::Raw(message) => {
                 // Defensive programming for raw messages
                 let safe_message = message.as_str();
@@ -1814,6 +1825,11 @@ impl UdpServer {
                 Some(value.to_string()),
                 "u8".to_string(),
             )]),
+            PssEvent::VideoTime { value } => Some(vec![(
+                "value".to_string(),
+                Some(value.to_string()),
+                "u8".to_string(),
+            )]),
             PssEvent::Raw(message) => Some(vec![(
                 "message".to_string(),
                 Some(message.clone()),
@@ -1831,7 +1847,7 @@ impl UdpServer {
         event_tx: mpsc::UnboundedSender<PssEvent>,
         status: Arc<Mutex<UdpServerStatus>>,
         stats: Arc<Mutex<UdpStats>>,
-        protocol_manager: Arc<ProtocolManager>,
+        _protocol_manager: Arc<ProtocolManager>,
         protocol_parser: Arc<PssProtocol>,
         recent_events: Arc<Mutex<VecDeque<PssEvent>>>,
         database: Arc<DatabasePlugin>,
@@ -1921,8 +1937,9 @@ impl UdpServer {
 
                     // Parse the message with panic protection
                     let parser = protocol_parser.clone();
+                    let message_for_parse = message.clone();
                     let parse_result =
-                        std::panic::catch_unwind(move || parser.parse_message(&message));
+                        std::panic::catch_unwind(move || parser.parse_message(&message_for_parse));
 
                     match parse_result {
                         Ok(parse_result) => {

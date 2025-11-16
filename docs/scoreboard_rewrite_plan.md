@@ -30,6 +30,11 @@ This document tracks every task required to rebuild the scoreboard stack strictl
 - [x] **P4.2** Create and run deterministic verification sequences for each overlay (doc the procedure). _(See `docs/scoreboard_verification.md`.)_
 - [x] **P4.3** Publish `docs/scoreboard_contract.md` summarizing the normalized event schema and testing steps.
 
+## Phase 5 – Build Stabilization (in progress)
+
+- [x] **P5.1** Wire the new `pss::protocol` module through every consumer so `crate::pss::protocol::{PssEvent, PssProtocol}` resolves cleanly across the core, plugins, and Tauri commands.
+- [x] **P5.2** Fix compile blockers inside `core::pss_listener` caused by pushing `Option<String>` values into SVG encoding helpers (now unwrap to owned strings before pushing).
+
 ---
 
 Updates will be applied here after each task or sub-task is completed.

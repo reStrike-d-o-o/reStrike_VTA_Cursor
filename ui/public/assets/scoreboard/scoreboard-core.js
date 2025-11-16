@@ -144,7 +144,20 @@
       if (!payload) return;
       const eventPayload = payload.type === 'pss_event' ? payload.data : payload;
       if (!eventPayload || typeof eventPayload !== 'object') return;
-      this.processEvent(eventPayload);
+      this.processEvent(this.mergeStructuredData(eventPayload));
+    }
+
+    mergeStructuredData(event) {
+      if (!event || typeof event !== 'object') return event;
+      const structured =
+        event.structured_data ||
+        event.structuredData ||
+        event.data ||
+        null;
+      if (!structured || typeof structured !== 'object') {
+        return event;
+      }
+      return { ...structured, ...event };
     }
 
     processEvent(event) {
@@ -269,11 +282,26 @@
     }
 
     updateWarnings(event) {
-      if (event.athlete1_warnings !== undefined) {
-        this.state.warnings.blue = Number(event.athlete1_warnings);
+      const blueValue =
+        event.athlete1_warnings ??
+        event.athlete1Warnings ??
+        event.blue ??
+        event.blueWarnings ??
+        event.warnings_blue ??
+        event.warningsBlue;
+      const redValue =
+        event.athlete2_warnings ??
+        event.athlete2Warnings ??
+        event.red ??
+        event.redWarnings ??
+        event.warnings_red ??
+        event.warningsRed;
+
+      if (blueValue !== undefined) {
+        this.state.warnings.blue = Number(blueValue);
       }
-      if (event.athlete2_warnings !== undefined) {
-        this.state.warnings.red = Number(event.athlete2_warnings);
+      if (redValue !== undefined) {
+        this.state.warnings.red = Number(redValue);
       }
     }
 

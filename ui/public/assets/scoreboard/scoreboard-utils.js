@@ -35,6 +35,13 @@ class ScoreboardOverlay {
     this.hideInjurySection();
   }
 
+  logUdpFieldMapping(fieldName, candidateIds, element, value) {
+    const ids = Array.isArray(candidateIds) ? candidateIds : [candidateIds];
+    const resolvedId = element?.id || `NOT_FOUND(${ids.join('|')})`;
+    const suffix = value === undefined ? '' : ` -> ${value}`;
+    console.log(`[UDP->SVG] ${fieldName} -> ${resolvedId}${suffix}`);
+  }
+
   // Try to locate the match info <text> element and assign id="matchInfo" if missing
   ensureMatchInfoElement() {
     if (this.getSvgElement('matchInfo')) return;
@@ -244,6 +251,10 @@ class ScoreboardOverlay {
       // Preserve case for IOC/country codes (2-4 uppercase letters/digits)
       const display = /^[A-Z0-9]{2,4}$/.test(raw.trim()) ? raw.trim().toUpperCase() : capitalizeName(raw);
       this.setTextForElementOrGroup(nameElement, display);
+      const sourceField = player === 'blue'
+        ? 'athletes.athlete1_short|athlete1_long'
+        : 'athletes.athlete2_short|athlete2_long';
+      this.logUdpFieldMapping(sourceField, candidateIds, nameElement, display);
       console.log(`✅ Updated ${player} player name: ${display}`);
     } else {
       console.warn(`⚠️ Could not find name element for ${player} (tried: ${candidateIds.join(', ')})`);
@@ -265,6 +276,10 @@ class ScoreboardOverlay {
       this.setTextForElementOrGroup(scoreElement, score);
       scoreElement.classList.add('score-update');
       setTimeout(() => scoreElement.classList.remove('score-update'), 500);
+      const sourceField = player === 'blue'
+        ? 'current_scores.athlete1_score'
+        : 'current_scores.athlete2_score';
+      this.logUdpFieldMapping(sourceField, candidateIds, scoreElement, score);
       console.log(`✅ Updated ${player} player score: ${score}`);
     } else {
       console.warn(`⚠️ Could not find score element for ${player} (tried: ${candidateIds.join(', ')})`);
@@ -281,6 +296,10 @@ class ScoreboardOverlay {
       ? ['athlete1FlagPlaceholder', 'athlete1Flag']
       : ['athlete2FlagPlaceholder', 'athlete2Flag'];
     const imageEl = this.setFlagForElementCandidates(flagCandidates, code);
+    const sourceField = player === 'blue'
+      ? 'athletes.athlete1_country'
+      : 'athletes.athlete2_country';
+    this.logUdpFieldMapping(sourceField, flagCandidates, imageEl, code);
 
     if (imageEl) {
       this.hideStaticFlagArtwork(player, imageEl);
@@ -293,6 +312,7 @@ class ScoreboardOverlay {
       ? ['athlete1Country']
       : ['athlete2Country'];
     const labelElement = this.getSvgElementAny(labelCandidates);
+    this.logUdpFieldMapping(sourceField, labelCandidates, labelElement, code);
     if (labelElement) {
       this.setTextForElementOrGroup(labelElement, code);
     }
@@ -379,6 +399,10 @@ class ScoreboardOverlay {
       // Apply pop-out animation
       penaltiesElement.classList.add('update');
       setTimeout(() => penaltiesElement.classList.remove('update'), 500);
+      const sourceField = player === 'blue'
+        ? 'warnings.athlete1_warnings'
+        : 'warnings.athlete2_warnings';
+      this.logUdpFieldMapping(sourceField, penaltyIdCandidates, penaltiesElement, displayValue);
       console.log(`✅ Updated ${player} player warnings: ${displayValue}`);
     } else {
       console.warn(`⚠️ Could not find penalty element for ${player} (tried: ${penaltyIdCandidates.join(', ')})`);
@@ -428,6 +452,10 @@ class ScoreboardOverlay {
       // Apply pop-out animation
       winsElement.classList.add('update');
       setTimeout(() => winsElement.classList.remove('update'), 500);
+      const sourceField = player === 'blue'
+        ? 'winner_rounds.blue_total'
+        : 'winner_rounds.red_total';
+      this.logUdpFieldMapping(sourceField, roundIdCandidates, winsElement, wins || 0);
       console.log(`✅ Updated ${player} player rounds: ${wins || 0}`);
     } else {
       console.warn(`⚠️ Could not find rounds element for ${player} (tried: ${roundIdCandidates.join(', ')})`);
@@ -444,6 +472,7 @@ class ScoreboardOverlay {
       const el = this.svg.getElementById(id);
       if (!el) continue;
       this.setTextForElementOrGroup(el, `${minutes}:${seconds.toString().padStart(2, '0')}`);
+      this.logUdpFieldMapping('clock.time', [id], el, `${minutes}:${seconds.toString().padStart(2, '0')}`);
       updated = true;
     }
     if (updated) {
@@ -467,6 +496,7 @@ class ScoreboardOverlay {
         ? `ROUND ${round}`
         : this.getOrdinalSuffix(round);
       this.setTextForElementOrGroup(roundElement, value);
+      this.logUdpFieldMapping('round.current_round', ['roundNumber'], roundElement, value);
       console.log(`✅ Updated current round: ${value}`);
     } else {
       console.warn(`⚠️ Could not find round element (tried: roundNumber, currentRound)`);
@@ -480,12 +510,14 @@ class ScoreboardOverlay {
       // Handle both string format ("1:00") and separate parameters (minutes, seconds)
       if (typeof time === 'string') {
         this.setTextForElementOrGroup(injuryElement, time);
+        this.logUdpFieldMapping('injury.time', ['injuryTimer', 'injuryTime', 'injury_x5F_time'], injuryElement, time);
         console.log(`✅ Updated injury time: ${time}`);
       } else {
         // Fallback for separate minutes/seconds parameters
         const minutes = arguments[0] || 0;
         const seconds = arguments[1] || 0;
         this.setTextForElementOrGroup(injuryElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
+        this.logUdpFieldMapping('injury.time', ['injuryTimer', 'injuryTime', 'injury_x5F_time'], injuryElement, `${minutes}:${seconds.toString().padStart(2, '0')}`);
         console.log(`✅ Updated injury time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
       }
     } else {
@@ -505,6 +537,7 @@ class ScoreboardOverlay {
     if (timeElement) timeElement.style.display = 'block';
     if (bgElement) bgElement.style.display = 'block';
     this.toggleArcadeTimerGroups(true);
+    this.logUdpFieldMapping('injury.action(show)', ['injurySection', 'injuryTimer', 'injury_x5F_bg'], injurySection || timeElement || bgElement, 'show');
     if (!injurySection && !timeElement) {
       console.warn('⚠️ Could not find injurySection element');
     } else {
@@ -524,6 +557,7 @@ class ScoreboardOverlay {
     if (timeElement) timeElement.style.display = 'none';
     if (bgElement) bgElement.style.display = 'none';
     this.toggleArcadeTimerGroups(false);
+    this.logUdpFieldMapping('injury.action(hide)', ['injurySection', 'injuryTimer', 'injury_x5F_bg'], injurySection || timeElement || bgElement, 'hide');
     if (!injurySection && !timeElement) {
       console.warn('⚠️ Could not find injurySection element');
     } else {
@@ -680,6 +714,7 @@ class ScoreboardOverlay {
     const segments = [toText(weight), toText(division), toText(category)].filter(Boolean);
     if (!segments.length) {
       this.setTextForElementOrGroup(matchInfoElement, '');
+      this.logUdpFieldMapping('match_config.(weight/division/category)', ['matchInfo', 'tournament_x5F_name'], matchInfoElement, '');
       return;
     }
     const tspans = matchInfoElement.querySelectorAll('tspan');
@@ -689,6 +724,7 @@ class ScoreboardOverlay {
     } else {
       this.setTextForElementOrGroup(matchInfoElement, segments.join(' • '));
     }
+    this.logUdpFieldMapping('match_config.(weight/division/category)', ['matchInfo', 'tournament_x5F_name'], matchInfoElement, segments.join(' • '));
   }
 
   // Update match number (strip leading zeros)
@@ -696,6 +732,7 @@ class ScoreboardOverlay {
     const raw = (num == null) ? '' : String(num).trim();
     const normalized = raw.replace(/^0+/, '') || '0';
     const target = this.getSvgElementAny(['matchNumber']);
+    this.logUdpFieldMapping('match_config.number', ['matchNumber'], target, normalized);
     if (target) {
       this.setTextForElementOrGroup(target, normalized);
     }
@@ -703,10 +740,12 @@ class ScoreboardOverlay {
 
   updateCategoryLabels(genderLabel, weightLabel) {
     const genderEl = this.getSvgElementAny(['categoryGender', 'category_gender']);
+    this.logUdpFieldMapping('match_config.weight (gender label)', ['categoryGender', 'category_gender'], genderEl, genderLabel || '');
     if (genderEl) {
       this.setTextForElementOrGroup(genderEl, genderLabel || '');
     }
     const weightEl = this.getSvgElementAny(['categoryWeight', 'category_weight']);
+    this.logUdpFieldMapping('match_config.weight', ['categoryWeight', 'category_weight'], weightEl, weightLabel || '');
     if (weightEl) {
       this.setTextForElementOrGroup(weightEl, weightLabel || '');
     }

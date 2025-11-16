@@ -36,6 +36,7 @@ pub use core::app::App;
 pub use plugins::plugin_playback::PlaybackPlugin;
 pub use plugins::plugin_udp::UdpPlugin;
 pub use types::*;
+pub use pss::protocol::{PssEvent, PssProtocol};
 
 /// Application version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

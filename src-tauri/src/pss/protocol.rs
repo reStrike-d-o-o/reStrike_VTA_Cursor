@@ -498,6 +498,6 @@ impl PssProtocol {
             _ => Ok(PssEvent::Raw(message.to_string())),
         };
 
-        result
+        event
     }
 }
