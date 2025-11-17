@@ -306,6 +306,35 @@ export const obsObwsCommands = {
   },
 
   /**
+   * Set source visibility for a scene (wrapper over Tauri obs_set_source_visibility command).
+   * This targets the active OBS instance (typically OBS_STR for streaming).
+   */
+  async setSourceVisibility(
+    sceneName: string,
+    sourceName: string,
+    visible: boolean,
+  ): Promise<TauriCommandResponse> {
+    try {
+      if (isTauriAvailable()) {
+        const result = await safeInvoke('obs_set_source_visibility', {
+          scene_name: sceneName,
+          source_name: sourceName,
+          visible,
+        });
+        return {
+          success: result.success || false,
+          data: result.data || null,
+          error: result.error || null,
+        };
+      }
+      return { success: false, error: 'Tauri not available' };
+    } catch (error) {
+      console.error('Failed to set OBS source visibility:', error);
+      return { success: false, error: String(error) };
+    }
+  },
+
+  /**
    * Get OBS version using obws
    */
   async getVersion(connectionName?: string): Promise<TauriCommandResponse> {

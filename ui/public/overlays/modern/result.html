@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reStrike VTA - Modern Result Overlay</title>
+  <link rel="stylesheet" href="/assets/fonts/fonts.css">
+  <link rel="stylesheet" href="/overlays/modern/scoreboard.css">
+</head>
+<body data-tauri-drag-region>
+  <div id="connection-status" class="connection-status"></div>
+  <div id="scoreboard-container">
+    <object id="scoreboard-svg" data="/assets/scoreboard/modern/modern_result_match_overlay.svg" type="image/svg+xml">
+      <div class="scoreboard-fallback">Result Overlay Loading...</div>
+    </object>
+  </div>
+
+  <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
+  <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-core.js"></script>
+  <script>
+    const resultCore = new window.ScoreboardCore();
+    let resultOverlay = null;
+
+    function setConnectionStatus(connected) {
+      const indicator = document.getElementById('connection-status');
+      if (!indicator) return;
+      indicator.classList.toggle('connected', Boolean(connected));
+    }
+
+    function initResultOverlay() {
+      if (resultOverlay) return;
+      const obj = document.getElementById('scoreboard-svg');
+      const doc = obj?.contentDocument || obj?.contentWindow?.document;
+      const svg = doc?.querySelector('svg');
+      if (!svg || typeof ScoreboardOverlay === 'undefined') {
+        setTimeout(initResultOverlay, 250);
+        return;
+      }
+
+      resultOverlay = new ScoreboardOverlay(svg);
+      applyResultState(resultCore.getState());
+    }
+
+    function applyResultState(state) {
+      if (!resultOverlay || !state) return;
+      const { match, scores, rounds, warnings } = state;
+
+      if (match?.athletes?.blue) {
+        const blue = match.athletes.blue;
+        const name = blue.short || blue.long || '';
+        if (name) resultOverlay.updatePlayerName('blue', name);
+        if (blue.country) resultOverlay.updateCountry('blue', blue.country);
+      }
+
+      if (match?.athletes?.red) {
+        const red = match.athletes.red;
+        const name = red.short || red.long || '';
+        if (name) resultOverlay.updatePlayerName('red', name);
+        if (red.country) resultOverlay.updateCountry('red', red.country);
+      }
+
+      if (match?.weight) {
+        const { genderLabel, weightLabel } = resultOverlay.computeCategoryLabels(match.weight);
+        const genderEl = resultOverlay.getSvgElementAny(['genderCategory']);
+        const weightEl = resultOverlay.getSvgElementAny(['weightCategory']);
+        if (genderEl) resultOverlay.setTextForElementOrGroup(genderEl, genderLabel);
+        if (weightEl) resultOverlay.setTextForElementOrGroup(weightEl, weightLabel);
+      }
+
+      const byRound = scores?.byRound;
+      if (byRound) {
+        setResultText('athlete1R1', byRound.blue[0]);
+        setResultText('athlete1R2', byRound.blue[1]);
+        setResultText('athlete1R3', byRound.blue[2]);
+        setResultText('athlete2R1', byRound.red[0]);
+        setResultText('athlete2R2', byRound.red[1]);
+        setResultText('athlete2R3', byRound.red[2]);
+      }
+
+      const currentRound = rounds?.current ?? 1;
+      const roundIndex = Math.max(0, Math.min(2, (currentRound || 1) - 1));
+
+      if (byRound) {
+        setResultText('athlete1CurrentRound', byRound.blue[roundIndex]);
+        setResultText('athlete2CurrentRound', byRound.red[roundIndex]);
+      }
+
+      if (warnings) {
+        setResultText('athlete1GJ', warnings.blue ?? 0);
+        setResultText('athlete2GJ', warnings.red ?? 0);
+      }
+
+      const phaseEl = resultOverlay.getSvgElementAny(['currentPhase']);
+      if (phaseEl) {
+        const phaseText = `ROUND ${currentRound || 1}`;
+        resultOverlay.setTextForElementOrGroup(phaseEl, phaseText);
+      }
+
+      applyCurrentResults(state);
+    }
+
+    function applyCurrentResults(state) {
+      if (!resultOverlay || !state) return;
+      const round = state.rounds?.current ?? 1;
+      const matchNoRaw = state.match?.number ? String(state.match.number).trim() : '';
+      const matchNo = matchNoRaw || '';
+      const text = `RESULT/ROUND ${round || 1} /MATCH #${matchNo || '---'}`;
+      const el = resultOverlay.getSvgElementAny(['currentResults']);
+      if (el) {
+        resultOverlay.setTextForElementOrGroup(el, text);
+      }
+    }
+
+    function setResultText(id, value) {
+      if (!resultOverlay) return;
+      const el = resultOverlay.getSvgElementAny([id]);
+      if (!el) return;
+      const display = value == null ? '' : String(value);
+      resultOverlay.setTextForElementOrGroup(el, display);
+    }
+
+    resultCore.on('state', (state) => {
+      applyResultState(state);
+    });
+
+    resultCore.on('connection', ({ connected }) => setConnectionStatus(connected));
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const obj = document.getElementById('scoreboard-svg');
+      if (window.ScoreboardFontInjector) {
+        window.ScoreboardFontInjector.initForObject('#scoreboard-svg');
+      }
+      obj?.addEventListener('load', initResultOverlay);
+      if (obj?.contentDocument) {
+        initResultOverlay();
+      }
+    });
+
+    window.ModernResultOverlay = {
+      core: resultCore,
+      applyState: applyResultState,
+    };
+  </script>
+</body>
+</html>

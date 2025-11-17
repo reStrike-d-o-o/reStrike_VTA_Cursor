@@ -108,16 +108,16 @@
             <tspan x="50" y="0">AUT</tspan>
           </text>
           <rect class="cls-16" x="1130.365378" y="193.388139" width="403.734954" height="65.99946" />
-          <g id="flag_x5F_placeholder">
+          <g id="athkleteFlagPlaceholder">
             <rect class="cls-6" x="138.458008" y="204.724609" width="64.489746" height="43.326172" />
             <path class="cls-13"
               d="M202.447968,205.224499v42.326735h-63.490112v-42.326735h63.490112M203.447968,204.224499h-65.490112v44.326735h65.490112v-44.326735h0Z" />
           </g>
-          <g id="flag">
+          <g id="athleteFlag">
             <rect class="cls-14" x="138.957857" y="205.2245" width="63.490106" height="42.326737" />
             <rect class="cls-13" x="138.957857" y="219.333413" width="63.490106" height="14.108912" />
           </g>
-          <text id="athleteName" class="cls-9" transform="translate(227.713051 239.075439)">
+          <text text-anchor="start" id="athleteName" class="cls-9" transform="translate(227.713051 239.075439)">
             <tspan x="0" y="0">L. ANDRICH</tspan>
           </text>
           <text text-anchor="middle" id="winnerLabel" class="cls-1" transform="translate(1239.154922 242.225098)">
@@ -128,7 +128,7 @@
           d="M1515.087936,64.278701H18.531407C8.296852,64.278701.000107,72.575447.000107,82.810001v46.115429h1533.619079v-46.115479c0-10.234527-8.296723-18.53125-18.53125-18.53125Z" />
         <rect class="cls-12" x=".00001" y="128.92543" width="1534.100321" height="64.462709" />
         <text id="division" class="cls-2" transform="translate(18.89127 173.246826)">
-          <tspan id="modern_phase" x="0" y="0">SEMI FINALS</tspan>
+          <tspan id="modernPhase" x="0" y="0">SEMI FINALS</tspan>
         </text>
         <g id="logo">
           <path class="cls-13"

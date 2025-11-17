@@ -1,28 +1,78 @@
 import { useEffect } from 'react';
 import { useOverlayRoutingStore } from '../stores/overlayRoutingStore';
 import type { OverlayId, OverlayRoutingRule, OverlayTriggerType } from '../types';
-import { openOverlayWindow } from '../utils/overlayWindows';
+import { obsObwsCommands } from '../utils/tauriCommandsObws';
 
-async function applyOverlayAction(overlay: OverlayId, action: OverlayRoutingRule['action']) {
+// Local visibility cache so "toggle" does not depend on OBS state.
+const overlayVisibility: Partial<Record<OverlayId, boolean>> = {};
+
+interface ObsSourceTarget {
+  scene: string;
+  source: string;
+}
+
+function mapOverlayToObsTarget(overlay: OverlayId): ObsSourceTarget | null {
   switch (overlay) {
-    case 'olympic':
-      if (action === 'show' || action === 'toggle') {
-        await openOverlayWindow('olympic');
-      }
-      break;
-    case 'modern':
-      if (action === 'show' || action === 'toggle') {
-        await openOverlayWindow('modern');
-      }
-      break;
-    case 'arcade':
-      if (action === 'show' || action === 'toggle') {
-        await openOverlayWindow('arcade');
-      }
-      break;
+    // Olympic theme
+    case 'olympicScoreboard':
+      return { scene: 'OLYMPIC', source: 'Scoreboard' };
+    case 'olympicPlayers':
+      return { scene: 'OLYMPIC', source: 'Players' };
+    case 'olympicMatchResult':
+      return { scene: 'OLYMPIC', source: 'MatchResult' };
+    case 'olympicWinner':
+      return { scene: 'OLYMPIC', source: 'Winner' };
+    case 'olympicVideoReplay':
+      return { scene: 'OLYMPIC', source: 'VideoReplay' };
+    // Modern theme
+    case 'modernScoreboard':
+      return { scene: 'MODERN', source: 'Scoreboard' };
+    case 'modernPlayers':
+      return { scene: 'MODERN', source: 'Players' };
+    case 'modernMatchResult':
+      return { scene: 'MODERN', source: 'MatchResult' };
+    case 'modernWinner':
+      return { scene: 'MODERN', source: 'Winner' };
+    case 'modernVideoReplay':
+      return { scene: 'MODERN', source: 'VideoReplay' };
+    // Arcade theme
+    case 'arcadeScoreboard':
+      return { scene: 'ARCADE', source: 'Scoreboard' };
+    case 'arcadePlayers':
+      return { scene: 'ARCADE', source: 'Players' };
+    case 'arcadeMatchResult':
+      return { scene: 'ARCADE', source: 'MatchResult' };
+    case 'arcadeWinner':
+      return { scene: 'ARCADE', source: 'Winner' };
+    case 'arcadeVideoReplay':
+      return { scene: 'ARCADE', source: 'VideoReplay' };
     case 'none':
     default:
-      break;
+      return null;
+  }
+}
+
+async function applyOverlayAction(overlay: OverlayId, action: OverlayRoutingRule['action']) {
+  if (overlay === 'none') return;
+  const target = mapOverlayToObsTarget(overlay);
+  if (!target) return;
+
+  const current = overlayVisibility[overlay] ?? false;
+  let nextVisible = current;
+
+  if (action === 'show') {
+    nextVisible = true;
+  } else if (action === 'hide') {
+    nextVisible = false;
+  } else if (action === 'toggle') {
+    nextVisible = !current;
+  }
+
+  overlayVisibility[overlay] = nextVisible;
+  try {
+    await obsObwsCommands.setSourceVisibility(target.scene, target.source, nextVisible);
+  } catch {
+    // Errors are already logged in the command helper; do not throw into UI loop.
   }
 }
 

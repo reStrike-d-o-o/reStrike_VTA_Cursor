@@ -1,16 +1,22 @@
-/* Shared/First document styles */
+/* Shared/first document styles */
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
   background: transparent;
   font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
 }
 
 #overlay-container {
-  width: 1920px;
-  height: 1080px;
   position: relative;
+  width: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  aspect-ratio: 16 / 9;
 }
 
 #overlay-svg {
@@ -36,8 +42,8 @@ body {
 }
 
 .loading-fallback {
-  width: 1920px;
-  height: 1080px;
+  width: 100%;
+  height: 100%;
   background: #000;
   color: #ffffff;
   display: flex;
@@ -47,16 +53,17 @@ body {
 }
 
 /* Second document styles */
-html, body {
-  width: 1920px;
-  height: 1080px;
+html,
+body {
   background: transparent;
 }
 
 #root {
   position: relative;
-  width: 1920px;
-  height: 1080px;
+  width: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  aspect-ratio: 16 / 9;
 }
 
 .bg {
@@ -173,5 +180,4 @@ html, body {
   justify-content: flex-end;
   width: 100%;
 }
-
 

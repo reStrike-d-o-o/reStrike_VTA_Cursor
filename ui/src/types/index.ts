@@ -84,10 +84,29 @@ export type OverlayPosition =
 export type OverlayTheme = 'dark' | 'light' | 'transparent';
 
 // ============================================================================
-// Overlay Routing Types
+// Overlay Routing Types (OBS source control)
 // ============================================================================
 
-export type OverlayId = 'none' | 'olympic' | 'modern' | 'arcade';
+export type OverlayId =
+  | 'none'
+  // Olympic theme
+  | 'olympicScoreboard'
+  | 'olympicPlayers'
+  | 'olympicMatchResult'
+  | 'olympicWinner'
+  | 'olympicVideoReplay'
+  // Modern theme
+  | 'modernScoreboard'
+  | 'modernPlayers'
+  | 'modernMatchResult'
+  | 'modernWinner'
+  | 'modernVideoReplay'
+  // Arcade theme
+  | 'arcadeScoreboard'
+  | 'arcadePlayers'
+  | 'arcadeMatchResult'
+  | 'arcadeWinner'
+  | 'arcadeVideoReplay';
 
 export type OverlayTriggerType =
   | 'fight_loaded'

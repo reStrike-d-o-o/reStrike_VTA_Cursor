@@ -36,12 +36,12 @@ export type OverlayRoutingStore = OverlayRoutingState & OverlayRoutingActions;
 const defaultRules: OverlayRoutingRule[] = [
   {
     trigger: 'fight_loaded',
-    overlay: 'olympic',
+    overlay: 'olympicScoreboard',
     action: 'show',
   },
   {
     trigger: 'winner',
-    overlay: 'modern',
+    overlay: 'modernWinner',
     action: 'show',
   },
 ] ;

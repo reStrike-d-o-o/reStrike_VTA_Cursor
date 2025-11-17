@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reStrike VTA - Arcade Result Overlay</title>
+  <link rel="stylesheet" href="/assets/fonts/fonts.css">
+  <link rel="stylesheet" href="/overlays/arcade/scoreboard.css">
+</head>
+<body data-tauri-drag-region>
+  <div id="connection-status" class="connection-status"></div>
+  <div id="scoreboard-container">
+    <object id="scoreboard-svg" data="/assets/scoreboard/arcade/arcade_result_match_overlay.svg" type="image/svg+xml">
+      <div class="scoreboard-fallback">Result Overlay Loading...</div>
+    </object>
+  </div>
+
+  <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
+  <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-core.js"></script>
+  <script>
+    const arcadeResultCore = new window.ScoreboardCore();
+    let arcadeResultOverlay = null;
+
+    function arcadeResultSetConnectionStatus(connected) {
+      const indicator = document.getElementById('connection-status');
+      if (!indicator) return;
+      indicator.classList.toggle('connected', Boolean(connected));
+    }
+
+    function arcadeResultInitOverlay() {
+      if (arcadeResultOverlay) return;
+      const obj = document.getElementById('scoreboard-svg');
+      const doc = obj?.contentDocument || obj?.contentWindow?.document;
+      const svg = doc?.querySelector('svg');
+      if (!svg || typeof ScoreboardOverlay === 'undefined') {
+        setTimeout(arcadeResultInitOverlay, 250);
+        return;
+      }
+
+      arcadeResultOverlay = new ScoreboardOverlay(svg);
+      arcadeResultApplyState(arcadeResultCore.getState());
+    }
+
+    function arcadeResultApplyState(state) {
+      if (!arcadeResultOverlay || !state) return;
+      const { match, scores, rounds, warnings } = state;
+
+      if (match?.athletes?.blue) {
+        const blue = match.athletes.blue;
+        const name = blue.short || blue.long || '';
+        if (name) {
+          arcadeResultSetText('athlete1Name', name);
+        }
+        if (blue.country) {
+          arcadeResultOverlay.setFlagForElementCandidates(
+            ['athlete1Flag', 'athlete1FlagPlaceholder'],
+            blue.country,
+          );
+          arcadeResultSetText('athlete1Country', blue.country.toUpperCase());
+        }
+      }
+
+      if (match?.athletes?.red) {
+        const red = match.athletes.red;
+        const name = red.short || red.long || '';
+        if (name) {
+          arcadeResultSetText('athlete2Name', name);
+        }
+        if (red.country) {
+          arcadeResultOverlay.setFlagForElementCandidates(
+            ['athlete2Flag', 'athlete2FlagPlaceholder'],
+            red.country,
+          );
+          arcadeResultSetText(
+            ['athlete2Ccountry', 'athlete2Country'],
+            red.country.toUpperCase(),
+          );
+        }
+      }
+
+      if (match?.weight) {
+        const { genderLabel, weightLabel } =
+          arcadeResultOverlay.computeCategoryLabels(match.weight);
+        const genderEl = arcadeResultOverlay.getSvgElementAny(['categoryGender']);
+        const weightEl = arcadeResultOverlay.getSvgElementAny(['categoryWeight']);
+        if (genderEl) {
+          arcadeResultOverlay.setTextForElementOrGroup(genderEl, genderLabel);
+        }
+        if (weightEl) {
+          arcadeResultOverlay.setTextForElementOrGroup(weightEl, weightLabel);
+        }
+      }
+
+      const byRound = scores?.byRound;
+      if (byRound) {
+        arcadeResultSetText('athlete1R1', byRound.blue[0]);
+        arcadeResultSetText('athlete1R2', byRound.blue[1]);
+        arcadeResultSetText('athlete1R3', byRound.blue[2]);
+        arcadeResultSetText('athlete2R1', byRound.red[0]);
+        arcadeResultSetText('athlete2R2', byRound.red[1]);
+        arcadeResultSetText('athlete2R3', byRound.red[2]);
+      }
+
+      const currentRound = rounds?.current ?? 1;
+      const roundIndex = Math.max(0, Math.min(2, (currentRound || 1) - 1));
+
+      if (byRound) {
+        arcadeResultSetText(
+          'athlete1CurrentTotalRoundScore',
+          byRound.blue[roundIndex],
+        );
+        arcadeResultSetText(
+          'athlete2CurrentTotalRoundScore',
+          byRound.red[roundIndex],
+        );
+      }
+
+      if (warnings) {
+        arcadeResultSetText(
+          'athlete1CurrentRoundWarnings',
+          warnings.blue ?? 0,
+        );
+        arcadeResultSetText(
+          'athlete2CurrentRoundWarnings',
+          warnings.red ?? 0,
+        );
+      }
+
+      const roundLabelEl = arcadeResultOverlay.getSvgElementAny(['currentRound']);
+      if (roundLabelEl) {
+        arcadeResultOverlay.setTextForElementOrGroup(
+          roundLabelEl,
+          `ROUND ${currentRound || 1}`,
+        );
+      }
+
+      arcadeResultApplyCurrentResults(state);
+    }
+
+    function arcadeResultApplyCurrentResults(state) {
+      if (!arcadeResultOverlay || !state) return;
+      const round = state.rounds?.current ?? 1;
+      const matchNoRaw = state.match?.number ? String(state.match.number).trim() : '';
+      const matchNo = matchNoRaw || '';
+      const text = `RESULT/ROUND ${round || 1} /MATCH #${matchNo || '---'}`;
+      const el = arcadeResultOverlay.getSvgElementAny(['phase']);
+      if (el) {
+        arcadeResultOverlay.setTextForElementOrGroup(el, text);
+      }
+    }
+
+    function arcadeResultSetText(idOrIds, value) {
+      if (!arcadeResultOverlay) return;
+      const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+      const el = arcadeResultOverlay.getSvgElementAny(ids);
+      if (!el) return;
+      const display = value == null ? '' : String(value);
+      arcadeResultOverlay.setTextForElementOrGroup(el, display);
+    }
+
+    arcadeResultCore.on('state', (state) => {
+      arcadeResultApplyState(state);
+    });
+
+    arcadeResultCore.on('connection', ({ connected }) =>
+      arcadeResultSetConnectionStatus(connected),
+    );
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const obj = document.getElementById('scoreboard-svg');
+      if (window.ScoreboardFontInjector) {
+        window.ScoreboardFontInjector.initForObject('#scoreboard-svg');
+      }
+      obj?.addEventListener('load', arcadeResultInitOverlay);
+      if (obj?.contentDocument) {
+        arcadeResultInitOverlay();
+      }
+    });
+
+    window.ArcadeResultOverlay = {
+      core: arcadeResultCore,
+      applyState: arcadeResultApplyState,
+    };
+  </script>
+</body>
+</html>
+
