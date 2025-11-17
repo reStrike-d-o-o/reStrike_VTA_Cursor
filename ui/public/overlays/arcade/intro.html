@@ -14,79 +14,64 @@
             <div class="loading-fallback">Player Introduction Overlay Loading...</div>
         </object>
     </div>
-
+    <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+    <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
     <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+    <script src="/assets/scoreboard/scoreboard-core.js"></script>
     <script>
-        let overlayInstance=null;
-        function updateConnectionStatus(c){const e=document.getElementById('connection-status'); if(c)e.classList.add('connected'); else e.classList.remove('connected');}
-        function initialize(){ const o=document.getElementById('overlay-svg'); const d=o.contentDocument||o.contentWindow?.document; if(d&&d.querySelector('svg')){ try{ overlayInstance=new PlayerIntroductionOverlay(d.querySelector('svg')); updateConnectionStatus(false);}catch(_){ setTimeout(initialize,1000);} } else { setTimeout(initialize,1000);} }
-        function handle(e){ if(!overlayInstance) return; if(e.type==='athletes'){ if(e.athlete1_long) overlayInstance.updatePlayer1Name(e.athlete1_long); if(e.athlete2_long) overlayInstance.updatePlayer2Name(e.athlete2_long); if(e.athlete1_country) overlayInstance.updatePlayer1Flag(e.athlete1_country); if(e.athlete2_country) overlayInstance.updatePlayer2Flag(e.athlete2_country);} }
-        function forward(payload){ if(!payload) return; const evt=(payload.type==='pss_event'&&payload.data)?payload.data:(payload.detail??payload); if(evt) handle(evt); }
-        let ws=null, tries=0; const max=5, delay=2000; function connect(){ try{ const h=window.location.hostname; const w=(h==='localhost'||h==='127.0.0.1')?'127.0.0.1':h; const url=`ws://${w}:3001`; ws=new WebSocket(url); ws.onopen=()=>{updateConnectionStatus(true); tries=0;}; ws.onmessage=(ev)=>{ try{ const d=JSON.parse(ev.data); forward(d);}catch(_){}}; ws.onclose=()=>{updateConnectionStatus(false); if(tries<max){tries++; setTimeout(connect,delay);} }; ws.onerror=()=>updateConnectionStatus(false);}catch(_){updateConnectionStatus(false);} }
-        function attachFallback(){ window.addEventListener('pss-event',(evt)=>{ if(evt?.detail) forward(evt); }); window.addEventListener('storage',(evt)=>{ if(evt.key!=='pss_event'||!evt.newValue) return; try{ const parsed=JSON.parse(evt.newValue); forward(parsed);}catch(_){}}); }
-        document.addEventListener('DOMContentLoaded',()=>{ const o=document.getElementById('overlay-svg'); o.addEventListener('load', initialize); connect(); attachFallback(); if(o.contentDocument) initialize();});
-        window.ArcadeIntro={handle: forward};
+        const arcadeIntroCore = new window.ScoreboardCore();
+        let arcadeIntroOverlay = null;
+
+        function updateConnectionStatus(connected) {
+            const e = document.getElementById('connection-status');
+            if (!e) return;
+            e.classList.toggle('connected', Boolean(connected));
+        }
+
+        function applyState(state) {
+            if (!arcadeIntroOverlay || !state || !state.match || !state.match.athletes) {
+                return;
+            }
+            const blue = state.match.athletes.blue || {};
+            const red = state.match.athletes.red || {};
+
+            const blueName = blue.long || blue.short || '';
+            const redName = red.long || red.short || '';
+
+            if (blueName) arcadeIntroOverlay.updatePlayer1Name(blueName);
+            if (redName) arcadeIntroOverlay.updatePlayer2Name(redName);
+            if (blue.country) arcadeIntroOverlay.updatePlayer1Flag(blue.country);
+            if (red.country) arcadeIntroOverlay.updatePlayer2Flag(red.country);
+        }
+
+        function initialize() {
+            if (arcadeIntroOverlay) return;
+            const o = document.getElementById('overlay-svg');
+            const d = o?.contentDocument || o?.contentWindow?.document;
+            const svg = d?.querySelector('svg');
+
+            if (!svg || typeof PlayerIntroductionOverlay === 'undefined') {
+                setTimeout(initialize, 250);
+                return;
+            }
+
+            arcadeIntroOverlay = new PlayerIntroductionOverlay(svg);
+            applyState(arcadeIntroCore.getState());
+        }
+
+        arcadeIntroCore.on('state', applyState);
+        arcadeIntroCore.on('connection', ({ connected }) => updateConnectionStatus(connected));
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const o = document.getElementById('overlay-svg');
+            if (window.ScoreboardFontInjector) {
+                window.ScoreboardFontInjector.initForObject('#overlay-svg');
+            }
+            o.addEventListener('load', initialize);
+            if (o.contentDocument) {
+                initialize();
+            }
+        });
     </script>
 </body>
 </html>
-
-<!doctype html>
-<html>
-<head>
-  <title>Arcade Intro Overlay</title>
-  <link rel="stylesheet" href="/assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="./intro.css" />
-</head>
-<body>
-  <div id="root">
-    <div class="bg"></div>
-    <div class="badge" id="badge">TAEKWONDO CHAMPIONSHIP</div>
-    <div class="meta" id="meta">MEN'S -58KG • GOLD MEDAL CONTEST</div>
-    <div class="panel blue panel-blue-pos">
-      <div class="col">
-        <img class="flag" id="flagBlue" alt="" />
-        <div class="name" id="nameBlue">BLUE FIGHTER</div>
-      </div>
-    </div>
-    <div class="panel red panel-red-pos">
-      <div class="col col-right">
-        <div class="name" id="nameRed">RED FIGHTER</div>
-        <img class="flag" id="flagRed" alt="" />
-      </div>
-    </div>
-    <div class="vs">VS</div>
-  </div>
-  <script src="./shared.js"></script>
-  <script>
-    const { OverlayBus, mapEvent } = window.__ARCADE_OVERLAY__;
-    const el = {
-      nameBlue: document.getElementById('nameBlue'),
-      nameRed: document.getElementById('nameRed'),
-      flagBlue: document.getElementById('flagBlue'),
-      flagRed: document.getElementById('flagRed'),
-      meta: document.getElementById('meta'),
-      badge: document.getElementById('badge'),
-    };
-    function setFlag(img, code) {
-      if (!code) return;
-      img.src = `../../assets/flags/svg/${code.toUpperCase()}.svg`;
-    }
-    OverlayBus.subscribe((raw) => {
-      const e = mapEvent(raw);
-      switch (e.kind) {
-        case 'athletes':
-          if (e.blue) { el.nameBlue.textContent = (e.blue.long || e.blue.short || 'BLUE').toUpperCase(); setFlag(el.flagBlue, e.blue.country || e.blue.iocCode); }
-          if (e.red) { el.nameRed.textContent = (e.red.long || e.red.short || 'RED').toUpperCase(); setFlag(el.flagRed, e.red.country || e.red.iocCode); }
-          break;
-        case 'round':
-          el.badge.textContent = 'MATCH READY';
-          break;
-        case 'clock':
-          // could animate countdown to start
-          break;
-      }
-    });
-  </script>
-</body>
-</html>
-

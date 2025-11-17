@@ -332,6 +332,35 @@
       if (event.athlete2_r2 !== undefined) rounds.red[1] = Number(event.athlete2_r2);
       if (event.athlete1_r3 !== undefined) rounds.blue[2] = Number(event.athlete1_r3);
       if (event.athlete2_r3 !== undefined) rounds.red[2] = Number(event.athlete2_r3);
+
+      // Derive current scoreboard totals from round scores when a dedicated
+      // current_scores event is not present. This ensures live overlays update
+      // correctly even when the PSS only sends per-round breakdown packets.
+      let fromPayload = NaN;
+      if (typeof event.current_round !== 'undefined') {
+        fromPayload = Number(event.current_round);
+      } else if (typeof event.round !== 'undefined') {
+        fromPayload = Number(event.round);
+      }
+
+      let currentRound = Number.isFinite(fromPayload) && fromPayload > 0
+        ? fromPayload
+        : Number(this.state.rounds.current || 1);
+
+      if (!Number.isFinite(currentRound) || currentRound <= 0) {
+        currentRound = 1;
+      }
+
+      const idx = Math.min(Math.max(currentRound - 1, 0), 2);
+      const blueTotal = (rounds.blue && typeof rounds.blue[idx] !== 'undefined')
+        ? Number(rounds.blue[idx])
+        : Number(this.state.scores.current.blue || 0);
+      const redTotal = (rounds.red && typeof rounds.red[idx] !== 'undefined')
+        ? Number(rounds.red[idx])
+        : Number(this.state.scores.current.red || 0);
+
+      this.state.scores.current.blue = blueTotal;
+      this.state.scores.current.red = redTotal;
     }
 
     updateWarnings(event) {
