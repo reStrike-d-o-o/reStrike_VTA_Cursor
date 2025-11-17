@@ -67,27 +67,43 @@ Before implementing anything, the agent should understand the existing data flow
 
 ## Implementation Progress (GPT‑driven updates)
 
-Latest update: 2025‑11‑16
+Latest update: 2025‑11‑17
 
-- Implemented a frontend overlay window helper `openOverlayWindow` in `ui/src/utils/overlayWindows.ts` using Tauri’s `WebviewWindow` API with fixed labels (`overlay_olympic`, `overlay_modern`, `overlay_arcade`) and 1920×1080, borderless, always-on-top windows.
-- Wired “Overlay windows” buttons (Olympic / Modern / Arcade) in `DockBar` (`ui/src/components/layouts/DockBar.tsx`) and the overlay controller to call `openOverlayWindow(...)`, removing the need for dedicated Rust window commands while keeping behavior identical to the original design.
-- Updated overlay backgrounds for OBS chroma key:
-  - `ui/public/overlays/olympic/scoreboard.css` → `body { background: #00ff00; }`
-  - `ui/public/overlays/modern/scoreboard.css` → `body { background: #00ff00; }`
-  - `ui/public/overlays/arcade/scoreboard.html` inline `html, body` style → `background: #00ff00;`
-- Added overlay routing types in `ui/src/types/index.ts` (`OverlayId`, `OverlayTriggerType`, `OverlayRoutingRule`, `OverlayRoutingConfig`).
-- Created Zustand store `useOverlayRoutingStore` in `ui/src/stores/overlayRoutingStore.ts` with defaults (`fight_loaded` → Olympic, `winner` → Modern) plus load/save helpers that call new Tauri commands.
-- Implemented `OverlayRoutingSettings` UI component in `ui/src/components/molecules/OverlayRoutingSettings.tsx` and mounted it inside the existing **PSS → Scoreboard** sub‑tab in `ScoreboardManager` (`ui/src/components/molecules/ScoreboardManager.tsx`).
-- Added `useOverlayController` hook in `ui/src/hooks/useOverlayController.ts` that listens to browser `pss-event` custom events emitted by `handlePssEvent` and calls overlay window commands based on routing rules; hook is mounted once in `ui/src/App.tsx`.
-- Overlay controller reuses the same PSS event stream as the rest of the app (no extra WebSocket/Tauri listeners), keeping latency low and behavior aligned with existing overlay updates.
-- Implemented backend persistence for overlay routing:
-  - New Rust types `OverlayRoutingRule` in `src-tauri/src/types/mod.rs`.
-  - New Tauri commands `get_overlay_routing_config` / `set_overlay_routing_config` in `src-tauri/src/tauri_commands_overlays.rs`, wired into `src-tauri/src/main.rs`.
-- On app startup, routing config is loaded once in `ui/src/App.tsx`, and UI changes are immediately persisted back to the backend.
+- Overlay windows are managed from the frontend via `openOverlayWindow` in `ui/src/utils/overlayWindows.ts`, which creates dedicated Webview windows (`overlay_olympic`, `overlay_modern`, `overlay_arcade`) at 1280×720 with standard OS decorations and resizing enabled so users can move/close them easily.
+- Overlay open/close controls now live in the **PSS → Scoreboard** tab (`ui/src/components/molecules/ScoreboardManager.tsx`), not in the sidebar. That tab exposes:
+  - Window controls for all overlays:
+    - Olympic: scoreboard, players intro, video replay.
+    - Modern: scoreboard, players intro, result, winner, video replay.
+    - Arcade: scoreboard, players intro, result, winner, video replay.
+  - Copyable HTML URLs for each overlay theme so OBS can still use them as Browser Sources if desired.
+- Rust side provides a generic `close_overlay_window` command in `src-tauri/src/tauri_commands_overlays.rs` that looks up a Webview window by label via `app_handle.get_webview_window(label)` and closes it without affecting the main window.
+- Overlay routing remains persisted end‑to‑end:
+  - Types in `ui/src/types/index.ts` (`OverlayId`, `OverlayRoutingRule`, `OverlayRoutingConfig`).
+  - Store `useOverlayRoutingStore` in `ui/src/stores/overlayRoutingStore.ts`.
+  - Tauri commands `get_overlay_routing_config` / `set_overlay_routing_config` plus config wiring in `src-tauri/src/main.rs`.
+  - UI editor `OverlayRoutingSettings` mounted inside the Scoreboard tab.
+- All scoreboard overlays (Olympic / Modern / Arcade) use a responsive layout based on flexbox + `aspect-ratio: 16 / 9`:
+  - `ui/public/overlays/*/scoreboard.css` centers the SVG and scales it with the window while preserving aspect ratio.
+  - Player‑intro overlays for Modern and Arcade were updated to use the same responsive pattern via `ui/public/overlays/modern/intro.css` and `ui/public/overlays/arcade/intro.css`.
+- Modern result overlay wiring:
+  - `ui/public/overlays/modern/result.html` now loads `scoreboard-core.js` and `scoreboard-utils.js` and instantiates a `ScoreboardCore` + `ScoreboardOverlay` pair.
+  - It maps `ScoreboardState` to `modern_result_match_overlay.svg`, including athlete names/flags, per‑round scores (`athlete*R1/2/3`), current round totals, and Gam‑jeom warnings.
+  - The `currentResults` text is driven by the state using the rule `RESULT/ROUND {round} /MATCH #{matchNumber}`, matching the user’s specification.
+- Additional overlays added for Modern and Arcade themes:
+  - `ui/public/overlays/modern/winner.html` → `modern_winner_overlay.svg`, showing the computed match winner (based on round wins, then scores) plus a compact “MATCH RESULT • MATCH #X • ROUNDS B‑R” label.
+  - `ui/public/overlays/arcade/result.html` → `arcade_result_match_overlay.svg`, with the same result text rule as Modern and full per‑round breakdown.
+  - `ui/public/overlays/arcade/winner.html` → `arcade_winner_overlay.svg`, wiring winner name/country/flag and a normalized gender/weight label from `ScoreboardCore`.
+  - Video replay overlays:
+    - `ui/public/overlays/olympic/replay.html` → `olympic_video_replay_overlay.svg`.
+    - `ui/public/overlays/modern/replay.html` → `vmodern_video_replay_overlay.svg`.
+    - `ui/public/overlays/arcade/replay.html` → `arcade_video_replay_overlay.svg`.
+- The Scoreboard tab’s HTML URL section now lists all main overlays per theme:
+  - Modern: scoreboard, player intro, result, and winner overlays.
+  - Arcade: scoreboard, player intro, result, and winner overlays.
 
 Next steps:
-- Refine trigger-to-event mapping once final PSS event types are confirmed.
-- Manually verify end-to-end behavior with live PSS data and OBS, adjusting any UX details (e.g., labels, defaults, debounce) as needed.
+- If needed, add dedicated overlay windows (labels + routes) for the new Modern/Arcade result and winner overlays using the existing `openOverlayWindow` helper.
+- Manually verify all overlays (scoreboard, intro, result, winner, video replay) with simulated PSS traffic and OBS window/browser capture, and adjust any remaining layout or mapping issues.
 
 ---
 

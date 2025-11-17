@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reStrike VTA - Arcade Winner Overlay</title>
+  <link rel="stylesheet" href="/assets/fonts/fonts.css">
+  <link rel="stylesheet" href="/overlays/arcade/scoreboard.css">
+</head>
+<body data-tauri-drag-region>
+  <div id="connection-status" class="connection-status"></div>
+  <div id="scoreboard-container">
+    <object id="scoreboard-svg" data="/assets/scoreboard/arcade/arcade_winner_overlay.svg" type="image/svg+xml">
+      <div class="scoreboard-fallback">Winner Overlay Loading...</div>
+    </object>
+  </div>
+
+  <script src="/assets/scoreboard/scoreboard-name-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-font-injector.js"></script>
+  <script src="/assets/scoreboard/scoreboard-utils.js"></script>
+  <script src="/assets/scoreboard/scoreboard-core.js"></script>
+  <script>
+    const arcadeWinnerCore = new window.ScoreboardCore();
+    let arcadeWinnerOverlay = null;
+
+    function arcadeWinnerSetConnectionStatus(connected) {
+      const indicator = document.getElementById('connection-status');
+      if (!indicator) return;
+      indicator.classList.toggle('connected', Boolean(connected));
+    }
+
+    function arcadeWinnerInitOverlay() {
+      if (arcadeWinnerOverlay) return;
+      const obj = document.getElementById('scoreboard-svg');
+      const doc = obj?.contentDocument || obj?.contentWindow?.document;
+      const svg = doc?.querySelector('svg');
+      if (!svg || typeof ScoreboardOverlay === 'undefined') {
+        setTimeout(arcadeWinnerInitOverlay, 250);
+        return;
+      }
+
+      arcadeWinnerOverlay = new ScoreboardOverlay(svg);
+      arcadeWinnerApplyState(arcadeWinnerCore.getState());
+    }
+
+    function arcadeWinnerComputeWinner(state) {
+      const scores = state?.scores;
+      const rounds = state?.rounds;
+      const winners = rounds?.winners || [];
+      const blueWins = winners.filter((v) => v === 1).length;
+      const redWins = winners.filter((v) => v === 2).length;
+
+      let winnerSide = 0;
+      if (blueWins > redWins) {
+        winnerSide = 1;
+      } else if (redWins > blueWins) {
+        winnerSide = 2;
+      } else {
+        const blueScore = scores?.current?.blue ?? 0;
+        const redScore = scores?.current?.red ?? 0;
+        if (blueScore > redScore) winnerSide = 1;
+        else if (redScore > blueScore) winnerSide = 2;
+      }
+
+      return { winnerSide, blueWins, redWins };
+    }
+
+    function arcadeWinnerApplyState(state) {
+      if (!arcadeWinnerOverlay || !state) return;
+      const { match } = state;
+      const { winnerSide, blueWins, redWins } = arcadeWinnerComputeWinner(state);
+      if (!winnerSide || !match?.athletes) return;
+
+      const athlete =
+        winnerSide === 1 ? match.athletes.blue : match.athletes.red;
+      if (!athlete) return;
+
+      const nameRaw = athlete.long || athlete.short || '';
+      const name = nameRaw ? nameRaw.toUpperCase() : '';
+      const country = (athlete.country || '').toUpperCase();
+
+      if (name) {
+        arcadeWinnerSetText('athlete1Name', name);
+      }
+      if (country) {
+        arcadeWinnerSetText('athlete_country', country);
+        arcadeWinnerOverlay.setFlagForElementCandidates(
+          ['athlete1Flag', 'athlete1FlagPlaceholder'],
+          country,
+        );
+      }
+
+      if (match?.weight) {
+        const { genderLabel, weightLabel } =
+          arcadeWinnerOverlay.computeCategoryLabels(match.weight);
+        const genderEl = arcadeWinnerOverlay.getSvgElementAny(['categoryGender']);
+        if (genderEl) {
+          const value = [genderLabel, weightLabel].filter(Boolean).join(' ');
+          arcadeWinnerOverlay.setTextForElementOrGroup(genderEl, value);
+        }
+      }
+    }
+
+    function arcadeWinnerSetText(idOrIds, value) {
+      if (!arcadeWinnerOverlay) return;
+      const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+      const el = arcadeWinnerOverlay.getSvgElementAny(ids);
+      if (!el) return;
+      const display = value == null ? '' : String(value);
+      arcadeWinnerOverlay.setTextForElementOrGroup(el, display);
+    }
+
+    arcadeWinnerCore.on('state', (state) => {
+      arcadeWinnerApplyState(state);
+    });
+
+    arcadeWinnerCore.on('connection', ({ connected }) =>
+      arcadeWinnerSetConnectionStatus(connected),
+    );
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const obj = document.getElementById('scoreboard-svg');
+      if (window.ScoreboardFontInjector) {
+        window.ScoreboardFontInjector.initForObject('#scoreboard-svg');
+      }
+      obj?.addEventListener('load', arcadeWinnerInitOverlay);
+      if (obj?.contentDocument) {
+        arcadeWinnerInitOverlay();
+      }
+    });
+
+    window.ArcadeWinnerOverlay = {
+      core: arcadeWinnerCore,
+      applyState: arcadeWinnerApplyState,
+    };
+  </script>
+</body>
+</html>
+

@@ -7,9 +7,24 @@ import { useI18n } from '../../i18n';
 
 const overlayOptions: { value: OverlayId; label: string }[] = [
   { value: 'none', label: 'None' },
-  { value: 'olympic', label: 'Olympic' },
-  { value: 'modern', label: 'Modern' },
-  { value: 'arcade', label: 'Arcade' },
+  // Olympic theme
+  { value: 'olympicScoreboard', label: 'Olympic – Scoreboard' },
+  { value: 'olympicPlayers', label: 'Olympic – Players' },
+  { value: 'olympicMatchResult', label: 'Olympic – Match Result' },
+  { value: 'olympicWinner', label: 'Olympic – Winner' },
+  { value: 'olympicVideoReplay', label: 'Olympic – Video Replay' },
+  // Modern theme
+  { value: 'modernScoreboard', label: 'Modern – Scoreboard' },
+  { value: 'modernPlayers', label: 'Modern – Players' },
+  { value: 'modernMatchResult', label: 'Modern – Match Result' },
+  { value: 'modernWinner', label: 'Modern – Winner' },
+  { value: 'modernVideoReplay', label: 'Modern – Video Replay' },
+  // Arcade theme
+  { value: 'arcadeScoreboard', label: 'Arcade – Scoreboard' },
+  { value: 'arcadePlayers', label: 'Arcade – Players' },
+  { value: 'arcadeMatchResult', label: 'Arcade – Match Result' },
+  { value: 'arcadeWinner', label: 'Arcade – Winner' },
+  { value: 'arcadeVideoReplay', label: 'Arcade – Video Replay' },
 ];
 
 const actionOptions = [

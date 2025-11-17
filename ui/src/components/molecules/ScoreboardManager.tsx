@@ -9,7 +9,7 @@ import { usePssMatchStore } from '../../stores/pssMatchStore';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { useI18n } from '../../i18n/index';
 import OverlayRoutingSettings from './OverlayRoutingSettings';
-import { openOverlayWindow } from '../../utils/overlayWindows';
+import { openOverlayWindow, resolveOverlayLabel, type OverlayWindowId } from '../../utils/overlayWindows';
 
 // Use the proper Tauri v2 invoke function with fallback
 const invoke = async (command: string, args?: any) => {
@@ -141,7 +141,7 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     return `${fallbackBase}${relativePath}`;
   };
 
-  const handleOpenOverlayWindow = async (id: 'olympic' | 'modern' | 'arcade') => {
+  const handleOpenOverlayWindow = async (id: OverlayWindowId) => {
     try {
       await openOverlayWindow(id);
     } catch (error) {
@@ -150,11 +150,8 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
     }
   };
 
-  const handleCloseOverlayWindow = async (id: 'olympic' | 'modern' | 'arcade') => {
-    const label =
-      id === 'olympic' ? 'overlay_olympic' :
-      id === 'modern' ? 'overlay_modern' :
-      'overlay_arcade';
+  const handleCloseOverlayWindow = async (id: OverlayWindowId) => {
+    const label = resolveOverlayLabel(id);
     try {
       await invoke('close_overlay_window', { label });
     } catch (error) {
@@ -293,57 +290,222 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
           {/* Overlay preview windows */}
           <div className="p-3 bg-gray-900/30 rounded-lg border border-gray-600/40">
             <Label className="text-sm text-gray-200 mb-2">
-              {t('ovr.windows.title', 'Overlay Windows (Olympic / Modern / Arcade)')}
+              {t('ovr.windows.title', 'Overlay Windows')}
             </Label>
-            <p className="text-xs text-gray-400 mb-2">
+            <p className="text-xs text-gray-400 mb-3">
               {t(
                 'ovr.windows.help',
-                'Open dedicated chroma-key windows for each scoreboard layout (for OBS Window Capture).',
+                'Open dedicated chroma-key windows for each overlay layout (for OBS Window Capture).',
               )}
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleOpenOverlayWindow('olympic')}
-              >
-                {t('ovr.windows.olympic', 'Open Olympic')}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleCloseOverlayWindow('olympic')}
-              >
-                {t('ovr.windows.close_olympic', 'Close Olympic')}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleOpenOverlayWindow('modern')}
-              >
-                {t('ovr.windows.modern', 'Open Modern')}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleCloseOverlayWindow('modern')}
-              >
-                {t('ovr.windows.close_modern', 'Close Modern')}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleOpenOverlayWindow('arcade')}
-              >
-                {t('ovr.windows.arcade', 'Open Arcade')}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleCloseOverlayWindow('arcade')}
-              >
-                {t('ovr.windows.close_arcade', 'Close Arcade')}
-              </Button>
+
+            {/* Olympic theme windows */}
+            <div className="mb-3 space-y-1">
+              <div className="text-xs font-semibold text-gray-300">
+                {t('ovr.windows.group_olympic', 'Olympic')}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('olympic')}
+                >
+                  {t('ovr.windows.olympic_scoreboard', 'Open Scoreboard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('olympic')}
+                >
+                  {t('ovr.windows.close_olympic_scoreboard', 'Close Scoreboard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('olympicIntro')}
+                >
+                  {t('ovr.windows.olympic_intro', 'Open Players')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('olympicIntro')}
+                >
+                  {t('ovr.windows.close_olympic_intro', 'Close Players')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('olympicVideoReplay')}
+                >
+                  {t('ovr.windows.olympic_video_replay', 'Open Video Replay')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('olympicVideoReplay')}
+                >
+                  {t('ovr.windows.close_olympic_video_replay', 'Close Video Replay')}
+                </Button>
+              </div>
+            </div>
+
+            {/* Modern theme windows */}
+            <div className="mb-3 space-y-1">
+              <div className="text-xs font-semibold text-gray-300">
+                {t('ovr.windows.group_modern', 'Modern')}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('modern')}
+                >
+                  {t('ovr.windows.modern_scoreboard', 'Open Scoreboard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('modern')}
+                >
+                  {t('ovr.windows.close_modern_scoreboard', 'Close Scoreboard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('modernIntro')}
+                >
+                  {t('ovr.windows.modern_intro', 'Open Players')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('modernIntro')}
+                >
+                  {t('ovr.windows.close_modern_intro', 'Close Players')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('modernResult')}
+                >
+                  {t('ovr.windows.modern_result', 'Open Result')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('modernResult')}
+                >
+                  {t('ovr.windows.close_modern_result', 'Close Result')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('modernWinner')}
+                >
+                  {t('ovr.windows.modern_winner', 'Open Winner')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('modernWinner')}
+                >
+                  {t('ovr.windows.close_modern_winner', 'Close Winner')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('modernVideoReplay')}
+                >
+                  {t('ovr.windows.modern_video_replay', 'Open Video Replay')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('modernVideoReplay')}
+                >
+                  {t('ovr.windows.close_modern_video_replay', 'Close Video Replay')}
+                </Button>
+              </div>
+            </div>
+
+            {/* Arcade theme windows */}
+            <div className="space-y-1">
+              <div className="text-xs font-semibold text-gray-300">
+                {t('ovr.windows.group_arcade', 'Arcade')}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('arcade')}
+                >
+                  {t('ovr.windows.arcade_scoreboard', 'Open Scoreboard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('arcade')}
+                >
+                  {t('ovr.windows.close_arcade_scoreboard', 'Close Scoreboard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('arcadeIntro')}
+                >
+                  {t('ovr.windows.arcade_intro', 'Open Players')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('arcadeIntro')}
+                >
+                  {t('ovr.windows.close_arcade_intro', 'Close Players')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('arcadeResult')}
+                >
+                  {t('ovr.windows.arcade_result', 'Open Result')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('arcadeResult')}
+                >
+                  {t('ovr.windows.close_arcade_result', 'Close Result')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('arcadeWinner')}
+                >
+                  {t('ovr.windows.arcade_winner', 'Open Winner')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('arcadeWinner')}
+                >
+                  {t('ovr.windows.close_arcade_winner', 'Close Winner')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenOverlayWindow('arcadeVideoReplay')}
+                >
+                  {t('ovr.windows.arcade_video_replay', 'Open Video Replay')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCloseOverlayWindow('arcadeVideoReplay')}
+                >
+                  {t('ovr.windows.close_arcade_video_replay', 'Close Video Replay')}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -461,6 +623,54 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                           </Button>
                         </div>
                       </div>
+                      <div>
+                        <Label className="text-xs text-gray-300">{t('ovr.urls.result_overlay', 'Result Overlay')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={getOverlayUrl('/overlays/modern/result.html')}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/modern/result.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/modern/result.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-300">{t('ovr.urls.winner_overlay', 'Winner Overlay')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={getOverlayUrl('/overlays/modern/winner.html')}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/modern/winner.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/modern/winner.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )
                 },
@@ -512,6 +722,54 @@ const ScoreboardManager: React.FC<ScoreboardManagerProps> = ({ className = '' })
                             size="sm"
                             variant="secondary"
                             onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/arcade/intro.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-300">{t('ovr.urls.result_overlay', 'Result Overlay')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={getOverlayUrl('/overlays/arcade/result.html')}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/arcade/result.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/arcade/result.html'))}
+                          >
+                            {t('common.copy', 'Copy')}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-300">{t('ovr.urls.winner_overlay', 'Winner Overlay')}</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={getOverlayUrl('/overlays/arcade/winner.html')}
+                            readOnly
+                            className="flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openOverlayExternally('/overlays/arcade/winner.html')}
+                          >
+                            {t('common.open_browser', 'Open in Browser')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => navigator.clipboard.writeText(getOverlayUrl('/overlays/arcade/winner.html'))}
                           >
                             {t('common.copy', 'Copy')}
                           </Button>

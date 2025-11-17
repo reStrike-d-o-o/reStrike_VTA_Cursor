@@ -142,7 +142,7 @@
           <tspan x="0" y="0">SEMI FINALS</tspan>
         </text>
         <text id="category_weight" class="cls-2" transform="translate(91.666247 113.76709)">
-          <tspan class="cls-14" x="0" y="0">Men’s under </tspan>
+          <tspan id="categoryGender" class="cls-14" x="0" y="0">Men’s under </tspan>
           <tspan class="cls-20" x="228.231445" y="0">68kg</tspan>
         </text>
         <g id="player_x5F_winner">
@@ -153,16 +153,16 @@
           <text id="athlete_country" class="cls-1" transform="translate(54.538315 245.013428)">
             <tspan x="0" y="0">AUT</tspan>
           </text>
-          <g id="athlete_flagPlaceholder">
+          <g id="athlete1FlagPlaceholder">
             <rect class="cls-8" x="156.634766" y="206.045898" width="64.490234" height="43.327148" />
             <path class="cls-4"
               d="M220.625092,206.546165v42.326735h-63.490112v-42.326735h63.490112M221.625092,205.546165h-65.490112v44.326735h65.490112v-44.326735h0Z" />
           </g>
-          <g id="athlete_flag">
+          <g id="athlete1Flag">
             <rect class="cls-16" x="157.134979" y="206.546164" width="63.490106" height="42.326737" />
             <rect class="cls-4" x="157.134979" y="220.655076" width="63.490106" height="14.108912" />
           </g>
-          <g id="athlete_name">
+          <g id="athlete1Name">
             <text class="cls-3" transform="translate(245.890366 240.209717)">
               <tspan x="0" y="0">L. andrich</tspan>
             </text>

@@ -4,12 +4,18 @@ body {
     overflow: hidden;
     background: #00ff00;
     font-family: 'Fixel Display', 'Fixel Text', Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
 }
 
 #scoreboard-container {
-    width: 1920px;
-    height: 1080px;
     position: relative;
+    width: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: 16 / 9;
 }
 
 #scoreboard-svg {
@@ -53,8 +59,8 @@ body {
 
 /* Fallback content shown while the SVG is loading */
 .scoreboard-fallback {
-    width: 1920px;
-    height: 1080px;
+    width: 100%;
+    height: 100%;
     background: #000;
     color: white;
     display: flex;
@@ -62,4 +68,3 @@ body {
     justify-content: center;
     font-size: 48px;
 }
-

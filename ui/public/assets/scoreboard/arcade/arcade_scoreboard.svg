@@ -613,7 +613,7 @@
               <tspan x="0" y="0">7</tspan>
             </text>
           </g>
-          <text text-anchor="start" id="athlete2_round_won" class="cls-7" transform="translate(886.406309 167.787968)">
+          <text text-anchor="start" id="athlete2RoundsWon" class="cls-7" transform="translate(886.406309 167.787968)">
             <tspan x="0" y="0">0</tspan>
           </text>
           <g id="athlete2FlagPlaceholder">
@@ -1180,7 +1180,7 @@
             <tspan x="0" y="0">5</tspan>
           </text>
           <text text-anchor="s
-          " id="athlete1_round_won" class="cls-7" transform="translate(633.257872 167.787968)">
+          " id="athlete2RoundsWon" class="cls-7" transform="translate(633.257872 167.787968)">
             <tspan x="0" y="0">0</tspan>
           </text>
           <g id="athlete1FlagPlaceholder">

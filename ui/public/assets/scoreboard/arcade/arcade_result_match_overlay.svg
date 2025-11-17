@@ -169,49 +169,49 @@
           points="1532.843724 131.99831 23.485212 131.99831 .000026 197.997681 1509.358538 197.997681 1532.843724 131.99831" />
         <polygon class="cls-13"
           points="1509.358538 65.99893 71.417866 65.99893 47.932679 131.998302 1485.873351 131.998302 1509.358538 65.99893" />
-        <text id="result_phase" class="cls-6" transform="translate(91.666016 179.766602)">
+        <text id="phase" class="cls-6" transform="translate(91.666016 179.766602)">
           <tspan x="0" y="0">result / SEMI FINALS</tspan>
         </text>
-        <text id="category_weight" class="cls-2" transform="translate(91.666247 113.76709)">
-          <tspan class="cls-19" x="0" y="0">Men’s under </tspan>
-          <tspan class="cls-24" x="228.231445" y="0">68kg</tspan>
+        <text id="category_weight_all" class="cls-2" transform="translate(91.666247 113.76709)">
+          <tspan id="categoryGender" class="cls-19" x="0" y="0">Men’s under </tspan>
+          <tspan id="categoryWeight" class="cls-24" x="228.231445" y="0">68kg</tspan>
         </text>
         <g id="player2_x5F_red">
           <polygon class="cls-12"
             points="1532.843525 257.421307 24.447464 257.421307 3.302216 316.844851 1511.698278 316.844851 1532.843525 257.421307" />
           <polygon class="cls-11"
             points="1462.388165 257.421307 1258.735742 257.421307 1237.590494 316.844851 1441.242917 316.844851 1462.388165 257.421307" />
-          <text id="athlete2_country" class="cls-1" transform="translate(54.538315 304.437012)">
+          <text id="athlete2Ccountry" class="cls-1" transform="translate(54.538315 304.437012)">
             <tspan x="0" y="0">AUT</tspan>
           </text>
-          <g id="athlete2_flagPlaceholder">
+          <g id="athlete2FlagPlaceholder">
             <rect class="cls-8" x="156.634766" y="265.469727" width="64.490234" height="43.327148" />
             <path class="cls-4"
               d="M220.625092,265.969711v42.326735h-63.490112v-42.326735h63.490112M221.625092,264.969711h-65.490112v44.326735h65.490112v-44.326735h0Z" />
           </g>
-          <g id="athlete2_flag">
+          <g id="athlete2Flag">
             <rect class="cls-20" x="157.134979" y="265.96971" width="63.490106" height="42.326737" />
             <rect class="cls-4" x="157.134979" y="280.078623" width="63.490106" height="14.108912" />
           </g>
-          <g id="athlete2_name">
+          <g id="athlete2Name">
             <text class="cls-3" transform="translate(245.890366 299.633301)">
               <tspan x="0" y="0">L. andrich</tspan>
             </text>
           </g>
           <g id="score-2">
-            <text id="athlete2_round1_score" class="cls-5" transform="translate(1052.229126 299.633057)">
+            <text id="athlete2R1" class="cls-5" transform="translate(1052.229126 299.633057)">
               <tspan x="0" y="0">2</tspan>
             </text>
-            <text id="athlete2_round2_score" class="cls-5" transform="translate(1118.228638 299.8479)">
+            <text id="athlete2R2" class="cls-5" transform="translate(1118.228638 299.8479)">
               <tspan x="0" y="0">2</tspan>
             </text>
-            <text id="athlete2_round3_score" class="cls-5" transform="translate(1182.745728 299.436768)">
+            <text id="athlete2R3" class="cls-5" transform="translate(1182.745728 299.436768)">
               <tspan x="0" y="0">0</tspan>
             </text>
-            <text id="athlete2_current_total_round_score" class="cls-5" transform="translate(1339.793579 299.633545)">
+            <text id="athlete2CurrentTotalRoundScore" class="cls-5" transform="translate(1339.793579 299.633545)">
               <tspan x="0" y="0">2</tspan>
             </text>
-            <text id="athlete2_current_round_warnings" class="cls-5" transform="translate(1476.052368 299.633545)">
+            <text id="athlete2CurrentRoundWarnings" class="cls-5" transform="translate(1476.052368 299.633545)">
               <tspan x="0" y="0">0</tspan>
             </text>
           </g>
@@ -221,37 +221,37 @@
             points="1532.843525 197.997762 24.447464 197.997762 3.302216 257.421307 1511.698278 257.421307 1532.843525 197.997762" />
           <polygon class="cls-10"
             points="1462.388165 197.997762 1258.735742 197.997762 1237.590494 257.421307 1441.242917 257.421307 1462.388165 197.997762" />
-          <text id="athlete1_country" class="cls-1" transform="translate(54.538315 245.013428)">
+          <text id="athlete1Country" class="cls-1" transform="translate(54.538315 245.013428)">
             <tspan x="0" y="0">AUT</tspan>
           </text>
-          <g id="athlete1_flagPlaceholder">
+          <g id="athlete1FlagPlaceholder">
             <rect class="cls-8" x="156.634766" y="206.045898" width="64.490234" height="43.327148" />
             <path class="cls-4"
               d="M220.625092,206.546165v42.326736h-63.490112v-42.326736h63.490112M221.625092,205.546165h-65.490112v44.326736h65.490112v-44.326736h0Z" />
           </g>
-          <g id="athlete1_flag">
+          <g id="athlete1Flag">
             <rect class="cls-20" x="157.134979" y="206.546166" width="63.490106" height="42.326737" />
             <rect class="cls-4" x="157.134979" y="220.655078" width="63.490106" height="14.108912" />
           </g>
-          <g id="athlete1_name">
+          <g id="athlete1Name">
             <text class="cls-3" transform="translate(245.890366 240.209717)">
               <tspan x="0" y="0">L. andrich</tspan>
             </text>
           </g>
           <g id="score-1" data-name="score">
-            <text id="athlete1_round1_score" class="cls-5" transform="translate(1052.229126 240.209473)">
+            <text id="athlete1R1" class="cls-5" transform="translate(1052.229126 240.209473)">
               <tspan x="0" y="0">2</tspan>
             </text>
-            <text id="athlete1_round2_score" class="cls-5" transform="translate(1118.228638 240.424316)">
+            <text id="athlete1R2" class="cls-5" transform="translate(1118.228638 240.424316)">
               <tspan x="0" y="0">2</tspan>
             </text>
-            <text id="athlete1_round3_score" class="cls-5" transform="translate(1182.745728 240.013184)">
+            <text id="athlete1R3" class="cls-5" transform="translate(1182.745728 240.013184)">
               <tspan x="0" y="0">0</tspan>
             </text>
-            <text id="athlete1_current_total_round_score" class="cls-5" transform="translate(1339.793579 240.209961)">
+            <text id="athlete1CurrentTotalRoundScore" class="cls-5" transform="translate(1339.793579 240.209961)">
               <tspan x="0" y="0">2</tspan>
             </text>
-            <text id="athlete1_current_round_warnings" class="cls-5" transform="translate(1476.052368 240.209961)">
+            <text id="athlete1CurrentRoundWarnings" class="cls-5" transform="translate(1476.052368 240.209961)">
               <tspan x="0" y="0">0</tspan>
             </text>
           </g>
@@ -266,7 +266,7 @@
           <text class="cls-16" transform="translate(1183.424438 177.301758)">
             <tspan x="0" y="0">3</tspan>
           </text>
-          <text id="current_round" class="cls-16" transform="translate(1280.013306 177.497559)">
+          <text id="currentRound" class="cls-16" transform="translate(1280.013306 177.497559)">
             <tspan x="0" y="0">ROUND 2</tspan>
           </text>
         </g>
