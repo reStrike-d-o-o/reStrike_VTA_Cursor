@@ -38,10 +38,10 @@
             const blueName = blue.long || blue.short || '';
             const redName = red.long || red.short || '';
 
-            if (blueName) arcadeIntroOverlay.updatePlayer1Name(blueName);
-            if (redName) arcadeIntroOverlay.updatePlayer2Name(redName);
-            if (blue.country) arcadeIntroOverlay.updatePlayer1Flag(blue.country);
-            if (red.country) arcadeIntroOverlay.updatePlayer2Flag(red.country);
+            if (blueName) arcadeIntroOverlay.updateAthleteName('blue', blueName);
+            if (redName) arcadeIntroOverlay.updateAthleteName('red', redName);
+            if (blue.country) arcadeIntroOverlay.updateAthleteFlag('blue', blue.country);
+            if (red.country) arcadeIntroOverlay.updateAthleteFlag('red', red.country);
         }
 
         function initialize() {

@@ -4122,7 +4122,7 @@ pub async fn scan_and_populate_flags(
 
         // Check if this flag already exists in the database
         let exists: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM flags WHERE filename = ? OR (ioc_code = ? AND ioc_code IS NOT NULL)",
+            "SELECT COUNT(*) FROM flag WHERE filename = ? OR (ioc_code = ? AND ioc_code IS NOT NULL)",
             [filename, &ioc_code],
             |row| row.get(0),
         ).unwrap_or(0);
@@ -4134,7 +4134,7 @@ pub async fn scan_and_populate_flags(
 
         // Insert the flag into the database
         let result = conn.execute(
-            "INSERT INTO flags (filename, ioc_code, country_name, recognition_status, recognition_confidence, upload_date, last_modified, file_size, file_path, is_recognized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO flag (filename, ioc_code, country_name, recognition_status, recognition_confidence, upload_date, last_modified, file_size, file_path, is_recognized) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rusqlite::params![
                 filename,
                 if ioc_code.is_empty() { None } else { Some(ioc_code.clone()) },
@@ -4210,7 +4210,7 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 
     // Get all flags from the database
     let flags: Vec<serde_json::Value> = match conn.prepare(
-        "SELECT id, filename, ioc_code, country_name, recognition_status, recognition_confidence, upload_date, last_modified, file_size, file_path, is_recognized FROM flags ORDER BY filename"
+        "SELECT id, filename, ioc_code, country_name, recognition_status, recognition_confidence, upload_date, last_modified, file_size, file_path, is_recognized FROM flag ORDER BY filename"
     ) {
         Ok(mut stmt) => {
             let mut flag_data = Vec::new();
@@ -4244,7 +4244,7 @@ pub async fn get_flags_data(app: State<'_, Arc<App>>) -> Result<serde_json::Valu
 
     // Get statistics
     let stats = match conn
-        .prepare("SELECT recognition_status, COUNT(*) FROM flags GROUP BY recognition_status")
+        .prepare("SELECT recognition_status, COUNT(*) FROM flag GROUP BY recognition_status")
     {
         Ok(mut stmt) => {
             let mut stats_map = std::collections::HashMap::new();
@@ -4295,7 +4295,7 @@ pub async fn clear_flags_table(app: State<'_, Arc<App>>) -> Result<serde_json::V
         }
     };
 
-    match conn.execute("DELETE FROM flags", []) {
+    match conn.execute("DELETE FROM flag", []) {
         Ok(deleted_count) => {
             log::info!("Cleared {deleted_count} entries from flags table");
             Ok(serde_json::json!({

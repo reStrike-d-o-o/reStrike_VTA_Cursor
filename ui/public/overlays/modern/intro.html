@@ -39,10 +39,10 @@
             const blueName = blue.long || blue.short || '';
             const redName = red.long || red.short || '';
 
-            if (blueName) modernIntroOverlay.updatePlayer1Name(blueName);
-            if (redName) modernIntroOverlay.updatePlayer2Name(redName);
-            if (blue.country) modernIntroOverlay.updatePlayer1Flag(blue.country);
-            if (red.country) modernIntroOverlay.updatePlayer2Flag(red.country);
+            if (blueName) modernIntroOverlay.updateAthleteName('blue', blueName);
+            if (redName) modernIntroOverlay.updateAthleteName('red', redName);
+            if (blue.country) modernIntroOverlay.updateAthleteFlag('blue', blue.country);
+            if (red.country) modernIntroOverlay.updateAthleteFlag('red', red.country);
         }
 
         function initializeOverlay() {
