@@ -12,19 +12,15 @@ body {
 
 #scoreboard-container {
     position: relative;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
     max-width: 100vw;
     max-height: 100vh;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    aspect-ratio: 16 / 9;
 }
 
 #scoreboard-svg {
-    width: auto;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     display: block;
 }
 
