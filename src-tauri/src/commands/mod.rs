@@ -1,2 +1,14 @@
-// Command modules
-// pub mod tauri_commands;
+pub mod database;
+pub mod google_drive;
+pub mod manual_mode;
+pub mod medal_ceremony;
+pub mod obs;
+pub mod overlays;
+pub mod resources;
+pub mod security;
+pub mod settings;
+pub mod system;
+pub mod tournament;
+pub mod triggers;
+pub mod udp;
+pub mod video;
