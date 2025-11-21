@@ -29,43 +29,7 @@ pub struct ObsObwsConnectionResponse {
 // IVR Replay Settings and Actions
 // ============================================================================
 
-#[tauri::command]
-pub async fn ivr_get_replay_settings(
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let settings = match app.database_plugin().get_all_ui_settings().await {
-        Ok(map) => map,
-        Err(err) => {
-            log::warn!(
-                "ivr_get_replay_settings: failed to load UI settings; returning defaults: {err}"
-            );
-            std::collections::HashMap::<String, String>::new()
-        }
-    };
-    let mpv_path = settings.get("ivr.replay.mpv_path").cloned();
-    let seconds_from_end = settings
-        .get("ivr.replay.seconds_from_end")
-        .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or(10);
-    let max_wait_ms = settings
-        .get("ivr.replay.max_wait_ms")
-        .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or(500);
-    let auto_on_challenge = settings
-        .get("ivr.replay.auto_on_challenge")
-        .map(|s| s == "true")
-        .unwrap_or(false);
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({
-          "mpv_path": mpv_path,
-          "seconds_from_end": seconds_from_end,
-          "max_wait_ms": max_wait_ms,
-          "auto_on_challenge": auto_on_challenge
-        })),
-        error: None,
-    })
-}
+// ivr_get_replay_settings moved to commands/obs.rs
 
 #[tauri::command]
 pub async fn ivr_save_replay_settings(

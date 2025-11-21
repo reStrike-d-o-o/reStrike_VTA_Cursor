@@ -16,16 +16,17 @@ pub mod openapi;
 pub mod plugins;
 pub mod pss;
 pub mod security;
-pub mod tauri_commands;
-pub mod tauri_commands_manual_mode;
-pub mod tauri_commands_medal_ceremony;
+// pub mod tauri_commands; // Removed during refactoring
+// Commands are now in the commands module
+// pub mod tauri_commands_manual_mode;  // Moved to commands/manual_mode.rs
+// pub mod tauri_commands_medal_ceremony;  // Moved to commands/medal_ceremony.rs
 pub mod tauri_commands_obs_connections;
 #[cfg(feature = "obs-obws")]
 pub mod tauri_commands_obws;
 pub mod tauri_commands_openapi;
 pub mod tauri_commands_overlays;
-pub mod tauri_commands_security;
-pub mod tauri_commands_triggers;
+// pub mod tauri_commands_security;  // Moved to commands/security.rs
+// pub mod tauri_commands_triggers;  // Moved to commands/triggers.rs
 pub mod types;
 pub mod ui_settings;
 pub mod utils;

@@ -4,23 +4,31 @@ use crate::core::app::App;
 use crate::plugins::obs_obws::ObsConnectionConfig;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{Error as TauriError, State};
+use tauri::{Emitter, Error as TauriError, State};
+pub use crate::tauri_commands_obws::{
+    obs_obws_connect, obs_obws_disconnect,
+    obs_obws_get_connection_status, obs_obws_get_connections, obs_obws_get_current_scene,
+    obs_obws_get_recording_path_settings, obs_obws_get_replay_buffer_status,
+    obs_obws_get_status, obs_obws_get_streaming_status, obs_obws_get_version,
+    obs_obws_remove_connection, obs_obws_save_replay_buffer, obs_obws_set_current_scene,
+    obs_obws_set_recording_filename, obs_obws_set_recording_path,
+    obs_obws_set_source_visibility, obs_obws_start_recording, obs_obws_start_replay_buffer,
+    obs_obws_start_streaming, obs_obws_stop_recording, obs_obws_stop_replay_buffer,
+    obs_obws_stop_streaming, obs_obws_create_test_folders, obs_obws_manual_start_recording,
+    obs_obws_manual_stop_recording, obs_obws_generate_recording_path,
+    obs_obws_setup_status_listener, obs_obws_save_full_config,
+    obs_obws_get_filename_formatting, ivr_match_history_snapshot, ivr_round_replay_now,
+    ivr_save_replay_settings, ivr_open_event_video, ivr_validate_mpv_path,
+    obs_obws_get_record_directory, ivr_open_video_file, obs_obws_add_connection,
+};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ObsObwsConnectionRequest {
-    pub name: String,
-    pub host: String,
-    pub port: u16,
-    pub password: Option<String>,
-    pub enabled: bool,
-}
+use crate::tauri_commands_obws::{
+    obs_obws_add_connection as impl_obs_obws_add_connection,
+    obs_obws_update_connection as impl_obs_obws_update_connection,
+    ObsObwsConnectionRequest, ObsObwsConnectionResponse,
+};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ObsObwsConnectionResponse {
-    pub success: bool,
-    pub data: Option<serde_json::Value>,
-    pub error: Option<String>,
-}
+
 
 // ============================================================================
 // IVR Replay Settings and Actions
@@ -64,376 +72,91 @@ pub async fn ivr_get_replay_settings(
     })
 }
 
-#[tauri::command]
-pub async fn ivr_save_replay_settings(
-    mpv_path: Option<String>,
-    seconds_from_end: u32,
-    max_wait_ms: u32,
-    auto_on_challenge: bool,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    use crate::database::seaorm_ops::ui_settings as sea_ui_settings;
-
-    let sea = app.database_plugin().seaorm();
-    let ensure_specs = [
-        ("ivr.replay.mpv_path", "MPV Path", "string", None),
-        (
-            "ivr.replay.seconds_from_end",
-            "IVR Seconds From End",
-            "integer",
-            Some("10"),
-        ),
-        (
-            "ivr.replay.max_wait_ms",
-            "IVR Max Wait (ms)",
-            "integer",
-            Some("500"),
-        ),
-        (
-            "ivr.replay.auto_on_challenge",
-            "IVR Auto on Challenge",
-            "boolean",
-            Some("false"),
-        ),
-    ];
-
-    for (key, display, data_type, default) in ensure_specs {
-        if let Err(err) = sea_ui_settings::ensure_key(&sea, key, display, data_type, default).await
-        {
-            log::warn!("Failed to ensure UI setting '{key}': {err}");
-        }
-    }
-
-    let secs = seconds_from_end.min(20);
-    let wait = max_wait_ms.clamp(50, 500);
-
-    if let Some(path) = mpv_path {
-        if let Err(err) = app
-            .database_plugin()
-            .set_ui_setting(
-                "ivr.replay.mpv_path",
-                &path,
-                "user",
-                Some("update mpv path"),
-            )
-            .await
-        {
-            log::warn!("Failed to persist ivr.replay.mpv_path: {err}");
-        }
-    }
-
-    if let Err(err) = app
-        .database_plugin()
-        .set_ui_setting(
-            "ivr.replay.seconds_from_end",
-            &secs.to_string(),
-            "user",
-            Some("update ivr seconds"),
-        )
-        .await
-    {
-        log::warn!("Failed to persist ivr.replay.seconds_from_end: {err}");
-    }
-
-    if let Err(err) = app
-        .database_plugin()
-        .set_ui_setting(
-            "ivr.replay.max_wait_ms",
-            &wait.to_string(),
-            "user",
-            Some("update ivr wait"),
-        )
-        .await
-    {
-        log::warn!("Failed to persist ivr.replay.max_wait_ms: {err}");
-    }
-
-    if let Err(err) = app
-        .database_plugin()
-        .set_ui_setting(
-            "ivr.replay.auto_on_challenge",
-            if auto_on_challenge { "true" } else { "false" },
-            "user",
-            Some("update ivr auto"),
-        )
-        .await
-    {
-        log::warn!("Failed to persist ivr.replay.auto_on_challenge: {err}");
-    }
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({"message":"IVR replay settings saved"})),
-        error: None,
-    })
-}
 
 #[tauri::command]
-pub async fn ivr_round_replay_now(
-    connection_name: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let conn_name = connection_name.unwrap_or_else(|| "OBS_REC".to_string());
-    match app.replay_round_now(Some(&conn_name)).await {
-        Ok(()) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({"launched":true})),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
 
-/// Open recorded video at the exact time of the specified event
-#[tauri::command]
-pub async fn ivr_open_event_video(
-    event_id: i64,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    match app.open_event_video(event_id).await {
-        Ok(()) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({"opened": true})),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
 
-/// Validate mpv.exe path exists and is a file
-#[tauri::command]
-pub async fn ivr_validate_mpv_path(
-    mpv_path: String,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    use std::path::Path;
-    let p = Path::new(&mpv_path);
-    if p.exists() && p.is_file() {
-        Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({"valid": true})),
-            error: None,
-        })
-    } else {
-        Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: Some(serde_json::json!({"valid": false})),
-            error: Some("Path does not exist or is not a file".to_string()),
-        })
-    }
-}
 
 /// Snapshot of recent matches with recorded videos for IVR history panel
-#[tauri::command]
-pub async fn ivr_match_history_snapshot(
-    limit: Option<u32>,
-    date: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    use crate::database::seaorm_ops::pss_catalog;
+// ============================================================================
+// OBS Command Wrappers (Frontend Compatibility)
+// ============================================================================
 
-    let sea = app.database_plugin().seaorm();
-    let limit = limit.unwrap_or(40).min(200) as i64;
-    let selected_date = date
-        .as_ref()
-        .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
-        .unwrap_or_else(|| chrono::Utc::now().date_naive())
-        .format("%Y-%m-%d")
+#[tauri::command(rename_all = "snake_case", rename = "obs_connect")]
+pub async fn obs_connect_impl(
+    url: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS connect called with URL: {url}");
+    crate::utils::ensure_license_ok(&app).await?;
+    // Parse basic info
+    let host = url
+        .replace("ws://", "")
+        .replace("wss://", "")
+        .split(':')
+        .next()
+        .unwrap_or("localhost")
         .to_string();
-
-    let history_entries = pss_catalog::get_match_history_with_videos(&sea, &selected_date, limit)
-        .await
-        .map_err(|e| {
-            TauriError::from(anyhow::anyhow!(format!(
-                "Failed to load match history: {e}"
-            )))
-        })?;
-
-    let mut matches_json = Vec::with_capacity(history_entries.len());
-    for entry in history_entries {
-        let match_db_id = entry.match_row.id;
-        let athletes_raw = match app
-            .database_plugin()
-            .get_pss_match_athletes(match_db_id)
-            .await
-        {
-            Ok(list) => list,
-            Err(e) => {
-                log::warn!("Failed to load match athletes for {match_db_id}: {e}");
-                Vec::new()
-            }
-        };
-
-        let athletes = athletes_raw
-            .into_iter()
-            .map(|(match_athlete, athlete)| {
-                serde_json::json!({
-                    "id": athlete.id,
-                    "name": athlete.long_name,
-                    "short_name": athlete.short_name,
-                    "country_code": athlete.country_code,
-                    "position": match_athlete.athlete_position,
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let videos = entry
-            .videos
-            .into_iter()
-            .map(|video| {
-                serde_json::json!({
-                    "id": video.id,
-                    "video_type": video.video_type,
-                    "file_path": video.file_path,
-                    "record_directory": video.record_directory,
-                    "start_time": video.start_time,
-                    "duration_seconds": video.duration_seconds,
-                    "created_at": video.created_at,
-                })
-            })
-            .collect::<Vec<_>>();
-
-        matches_json.push(serde_json::json!({
-            "match_db_id": match_db_id,
-            "match_id": entry.match_row.match_code,
-            "match_number": entry.match_row.match_number,
-            "category": entry.match_row.category,
-            "weight": entry.match_row.weight_class,
-            "division": entry.match_row.division,
-            "created_at": entry.match_row.created_at,
-            "athletes": athletes,
-            "videos": videos,
-        }));
-    }
-
-    Ok(ObsObwsConnectionResponse {
-        success: true,
-        data: Some(serde_json::json!({ "matches": matches_json })),
-        error: None,
-    })
-}
-
-/// Open a recorded video file at an optional offset
-#[tauri::command]
-pub async fn ivr_open_video_file(
-    file_path: String,
-    offset_seconds: Option<i64>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    match app
-        .open_video_at(file_path, offset_seconds.unwrap_or(0))
-        .await
-    {
-        Ok(()) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({"opened": true})),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
-
-// ============================================================================
-// OBS Profile Read-backs
-// ============================================================================
-
-#[tauri::command]
-pub async fn obs_obws_get_record_directory(
-    connection_name: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let res = app
-        .obs_obws_plugin()
-        .get_record_directory(connection_name.as_deref())
-        .await;
-    match res {
-        Ok(dir) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({"directory": dir})),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
-
-#[tauri::command]
-pub async fn obs_obws_get_filename_formatting(
-    connection_name: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    let res = app
-        .obs_obws_plugin()
-        .get_filename_formatting(connection_name.as_deref())
-        .await;
-    match res {
-        Ok(fmt) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({"formatting": fmt})),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
-
-/// Add a new OBS connection using obws
-#[tauri::command]
-pub async fn obs_obws_add_connection(
-    connection: ObsObwsConnectionRequest,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!(
-        "OBS obws add connection called: {}@{}:{}",
-        connection.name,
-        connection.host,
-        connection.port
-    );
-
-    let config = ObsConnectionConfig {
-        name: connection.name,
-        host: connection.host,
-        port: connection.port,
-        password: connection.password,
-        timeout_seconds: 30,
-        role: crate::plugins::obs_obws::ObsConnectionRole::None,
+    // Create connection via obws, name default to OBS_REC if not provided in UI
+    let req = ObsObwsConnectionRequest {
+        name: "OBS_REC".to_string(),
+        host,
+        port: 4455,
+        password: None,
+        enabled: true,
     };
+    let _ = obs_obws_add_connection(req, app.clone()).await;
+    let _ = obs_obws_connect("OBS_REC".to_string(), app.clone()).await;
+    Ok(serde_json::json!({ "success": true, "message": "OBS connection initiated" }))
+}
 
-    match app.obs_obws_plugin().add_connection(config).await {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "OBS connection added successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+#[tauri::command]
+pub async fn obs_add_connection(
+    name: String,
+    host: String,
+    port: u16,
+    password: Option<String>,
+    enabled: bool,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS add connection called: {name}@{host}:{port}");
+    crate::utils::ensure_license_ok(&app).await?;
+    // Delegate to obws add_connection
+    let req = ObsObwsConnectionRequest {
+        name: name.clone(),
+        host: host.clone(),
+        port,
+        password: password.clone(),
+        enabled,
+    };
+    let res = impl_obs_obws_add_connection(req, app.clone()).await;
+    res?;
+    // Persist to config as before
+    let config_conn = crate::config::types::ObsConnectionConfig {
+        name: name.clone(),
+        host: host.clone(),
+        port,
+        password: password.clone(),
+        protocol_version: "v5".to_string(),
+        enabled,
+        timeout_seconds: 30,
+        auto_reconnect: true,
+        max_reconnect_attempts: 5,
+    };
+    let mut connections = app.config_manager().get_obs_connections().await;
+    connections.retain(|c| c.name != config_conn.name);
+    connections.push(config_conn);
+    let _ = app
+        .config_manager()
+        .update_obs_connections(connections)
+        .await;
+    Ok(serde_json::json!({ "success": true, "message": "OBS connection added successfully" }))
 }
 
 /// Update an existing OBS connection using obws
-#[tauri::command]
-pub async fn obs_obws_update_connection(
+/// Update an existing OBS connection using obws
+#[tauri::command(rename = "obs_obws_update_connection")]
+pub async fn obs_update_connection_wrapper(
     old_name: String,
     connection: ObsObwsConnectionRequest,
     app: State<'_, Arc<App>>,
@@ -446,337 +169,232 @@ pub async fn obs_obws_update_connection(
         connection.port
     );
 
-    let config = ObsConnectionConfig {
-        name: connection.name,
-        host: connection.host,
+    let req = ObsObwsConnectionRequest {
+        name: connection.name.clone(),
+        host: connection.host.clone(),
         port: connection.port,
-        password: connection.password,
-        timeout_seconds: 30,
-        role: crate::plugins::obs_obws::ObsConnectionRole::None,
+        password: connection.password.clone(),
+        enabled: connection.enabled,
     };
 
-    match app
-        .obs_obws_plugin()
-        .update_connection(&old_name, config)
-        .await
-    {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "OBS connection updated successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+    // Call the obws command
+    let res = impl_obs_obws_update_connection(old_name.clone(), req, app.clone()).await;
+    res?;
+
+    // Update config manager
+    let config_conn = crate::config::types::ObsConnectionConfig {
+        name: connection.name.clone(),
+        host: connection.host.clone(),
+        port: connection.port,
+        password: connection.password.clone(),
+        protocol_version: "v5".to_string(),
+        enabled: connection.enabled,
+        timeout_seconds: 30,
+        auto_reconnect: true,
+        max_reconnect_attempts: 5,
+    };
+
+    let mut connections = app.config_manager().get_obs_connections().await;
+    connections.retain(|c| c.name != old_name);
+    connections.push(config_conn);
+    let _ = app
+        .config_manager()
+        .update_obs_connections(connections)
+        .await;
+
+    Ok(ObsObwsConnectionResponse {
+        success: true,
+        data: Some(serde_json::json!({
+            "message": "OBS connection updated successfully"
+        })),
+        error: None,
+    })
 }
 
-/// Connect to an OBS instance using obws
 #[tauri::command]
-pub async fn obs_obws_connect(
+pub async fn obs_connect_to_connection(
     connection_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws connect called: {connection_name}");
-
-    match app.obs_obws_plugin().connect(&connection_name).await {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Connected to OBS successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS connect to connection called: {connection_name}");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_connect(connection_name, app.clone()).await;
+    match res {
+        Ok(_) => Ok(serde_json::json!({ "success": true })),
+        Err(e) => Err(e),
     }
 }
 
-/// Disconnect from an OBS instance using obws
 #[tauri::command]
-pub async fn obs_obws_disconnect(
+pub async fn obs_get_connection_status(
     connection_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws disconnect called: {connection_name}");
-
-    match app.obs_obws_plugin().disconnect(&connection_name).await {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Disconnected from OBS successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get connection status called: {connection_name}");
+    let res = obs_obws_get_connection_status(connection_name, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Get connection status using obws
 #[tauri::command]
-pub async fn obs_obws_get_connection_status(
+pub async fn obs_get_connections(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get connections called");
+    let res = obs_obws_get_connections(app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+#[tauri::command]
+pub async fn obs_disconnect(
     connection_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get connection status called: {connection_name}");
-
-    match app
-        .obs_obws_plugin()
-        .get_connection_status(&connection_name)
-        .await
-    {
-        Ok(status) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "status": status
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS disconnect called for connection: '{connection_name}'");
+    if connection_name.is_empty() {
+        return Err(TauriError::from(anyhow::anyhow!(
+            "Connection name cannot be empty"
+        )));
     }
+    let res = obs_obws_disconnect(connection_name, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Get all connections using obws
 #[tauri::command]
-pub async fn obs_obws_get_connections(
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get connections called");
-
-    match app.obs_obws_plugin().get_connections().await {
-        Ok(connections) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "connections": connections
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
-}
-
-/// Remove a connection using obws
-#[tauri::command]
-pub async fn obs_obws_remove_connection(
+pub async fn obs_remove_connection(
     connection_name: String,
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws remove connection called: {connection_name}");
-
-    match app
-        .obs_obws_plugin()
-        .remove_connection(&connection_name)
-        .await
-    {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Connection removed successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS remove connection called for connection: {connection_name}");
+    let _ = obs_obws_remove_connection(connection_name.clone(), app.clone()).await?;
+    // Remove from configuration manager
+    let mut connections = app.config_manager().get_obs_connections().await;
+    connections.retain(|c| c.name != connection_name);
+    let _ = app
+        .config_manager()
+        .update_obs_connections(connections)
+        .await;
+    Ok(serde_json::json!({ "success": true, "message": "OBS connection removed" }))
 }
 
-/// Get OBS status using obws
 #[tauri::command]
-pub async fn obs_obws_get_status(
-    connection_name: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get status called");
-
-    match app
-        .obs_obws_plugin()
-        .get_status(connection_name.as_deref())
-        .await
-    {
-        Ok(status) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "status": status
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+pub async fn obs_get_status(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get status");
+    let res = obs_obws_get_status(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Start recording using obws
 #[tauri::command]
-pub async fn obs_obws_start_recording(
-    connection_name: Option<String>,
+pub async fn obs_start_recording(
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws start recording called");
-
-    match app
-        .obs_obws_plugin()
-        .start_recording(connection_name.as_deref())
-        .await
-    {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Recording started successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS start recording called");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_start_recording(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Stop recording using obws
 #[tauri::command]
-pub async fn obs_obws_stop_recording(
-    connection_name: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws stop recording called");
-
-    match app
-        .obs_obws_plugin()
-        .stop_recording(connection_name.as_deref())
-        .await
-    {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Recording stopped successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+pub async fn obs_stop_recording(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS stop recording called");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_stop_recording(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Get recording status using obws
 #[tauri::command]
-pub async fn obs_obws_get_recording_status(
-    connection_name: Option<String>,
+pub async fn obs_start_streaming(
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get recording status called");
-
-    match app
-        .obs_obws_plugin()
-        .get_recording_status(connection_name.as_deref())
-        .await
-    {
-        Ok(status) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "status": status
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS start streaming called");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_start_streaming(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Start streaming using obws
 #[tauri::command]
-pub async fn obs_obws_start_streaming(
-    connection_name: Option<String>,
-    app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws start streaming called");
-
-    match app
-        .obs_obws_plugin()
-        .start_streaming(connection_name.as_deref())
-        .await
-    {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Streaming started successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+pub async fn obs_stop_streaming(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS stop streaming called");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_stop_streaming(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Stop streaming using obws
 #[tauri::command]
-pub async fn obs_obws_stop_streaming(
-    connection_name: Option<String>,
+pub async fn obs_get_streaming_status(
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws stop streaming called");
-
-    match app
-        .obs_obws_plugin()
-        .stop_streaming(connection_name.as_deref())
-        .await
-    {
-        Ok(_) => Ok(ObsObwsConnectionResponse {
-            success: true,
-            data: Some(serde_json::json!({
-                "message": "Streaming stopped successfully"
-            })),
-            error: None,
-        }),
-        Err(e) => Ok(ObsObwsConnectionResponse {
-            success: false,
-            data: None,
-            error: Some(e.to_string()),
-        }),
-    }
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get streaming status called");
+    let res = obs_obws_get_streaming_status(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
 }
 
-/// Get streaming status using obws
 #[tauri::command]
-pub async fn obs_obws_get_streaming_status(
-    connection_name: Option<String>,
+pub async fn obs_get_current_scene(
     app: State<'_, Arc<App>>,
-) -> Result<ObsObwsConnectionResponse, TauriError> {
-    log::info!("OBS obws get streaming status called");
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get current scene");
+    let res = obs_obws_get_current_scene(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+#[tauri::command]
+pub async fn obs_set_current_scene(
+    scene_name: String,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS set current scene: {scene_name}");
+    let res = obs_obws_set_current_scene(scene_name, None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+#[tauri::command]
+pub async fn obs_get_obs_version(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get version called");
+    let res = obs_obws_get_version(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+#[tauri::command]
+pub async fn obs_get_replay_buffer_status(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS get replay buffer status called");
+    let res = obs_obws_get_replay_buffer_status(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+#[tauri::command]
+pub async fn obs_start_replay_buffer(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS start replay buffer called");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_start_replay_buffer(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+#[tauri::command]
+pub async fn obs_stop_replay_buffer(
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("OBS stop replay buffer called");
+    crate::utils::ensure_license_ok(&app).await?;
+    let res = obs_obws_stop_replay_buffer(None, app.clone()).await?;
+    Ok(serde_json::json!({ "success": res.success, "data": res.data, "error": res.error }))
+}
+
+
+
+// ============================================================================
+// OBS Profile Read-backs
+// ============================================================================
+
+
+
+
+
 
 
 // ============================================================================

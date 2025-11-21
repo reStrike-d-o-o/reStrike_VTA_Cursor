@@ -12,3 +12,8 @@ pub mod tournament;
 pub mod triggers;
 pub mod udp;
 pub mod video;
+pub mod control_room;
+pub mod logging;
+pub mod ovr;
+pub mod pss;
+pub mod store;

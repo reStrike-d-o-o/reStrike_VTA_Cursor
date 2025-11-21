@@ -234,6 +234,9 @@ impl From<crate::types::AppError> for tauri::Error {
 
 pub type AppResult<T> = Result<T, AppError>;
 
+/// Type alias for Tauri command error results
+pub type TauriError = tauri::Error;
+
 // ============================================================================
 // Constants
 // ============================================================================
