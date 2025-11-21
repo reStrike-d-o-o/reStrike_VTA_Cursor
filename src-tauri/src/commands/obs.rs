@@ -73,11 +73,7 @@ pub async fn ivr_get_replay_settings(
 }
 
 
-#[tauri::command]
 
-
-
-/// Snapshot of recent matches with recorded videos for IVR history panel
 // ============================================================================
 // OBS Command Wrappers (Frontend Compatibility)
 // ============================================================================
