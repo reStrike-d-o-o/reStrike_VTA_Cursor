@@ -1,6 +1,5 @@
 use crate::core::app::App;
 use crate::types::TauriError;
-use anyhow;
 use std::sync::Arc;
 use tauri::State;
 

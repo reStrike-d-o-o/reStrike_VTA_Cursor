@@ -147,3 +147,12 @@ pub async fn store_pss_event_cmd(
         })),
     }
 }
+
+#[tauri::command]
+pub async fn protocol_get_versions(
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<crate::config::types::ProtocolVersion>, TauriError> {
+    log::info!("Getting protocol versions");
+    let config = app.config_manager().get_config().await;
+    Ok(config.udp.pss.protocol_versions.available_versions)
+}

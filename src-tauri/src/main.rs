@@ -253,13 +253,23 @@ async fn main() -> AppResult<()> {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             // Core app commands
-            // tauri_commands::get_app_status,
-            // tauri_commands::shutdown_app,
+            commands::system::get_app_status,
+            commands::system::shutdown_app,
+            commands::system::get_machine_identity,
+            commands::system::system_get_info,
+            commands::system::get_network_interfaces,
+            commands::system::get_best_network_interface,
+            commands::system::get_best_ip_address_for_interface,
             // UDP commands
-            // tauri_commands::start_udp_server,
-            // tauri_commands::stop_udp_server,
-            // tauri_commands::get_udp_status,
-            // tauri_commands::update_udp_settings,
+            commands::udp::start_udp_server,
+            commands::udp::stop_udp_server,
+            commands::udp::get_udp_status,
+            commands::udp::update_udp_settings,
+            // Settings & System
+            commands::settings::get_settings,
+            commands::system::set_window_startup_position,
+            // PSS
+            commands::pss::protocol_get_versions,
             // OpenAPI management
             re_strike_vta::tauri_commands_openapi::openapi_get_state,
             re_strike_vta::tauri_commands_openapi::openapi_save_schema,
@@ -869,19 +879,19 @@ async fn main() -> AppResult<()> {
             // tauri_commands::youtube_get_channel_info,
             // tauri_commands::youtube_get_video_analytics,
             // tauri_commands::youtube_initialize,
-            // Security commands - TODO: Fix thread safety issues with SQLite in async contexts
-            // re_strike_vta::tauri_commands_security::security_migrate_configurations,
-            // re_strike_vta::tauri_commands_security::security_verify_migration,
-            // re_strike_vta::tauri_commands_security::security_create_session,
-            // re_strike_vta::tauri_commands_security::security_get_config,
-            // re_strike_vta::tauri_commands_security::security_set_config,
-            // re_strike_vta::tauri_commands_security::security_delete_config,
-            // re_strike_vta::tauri_commands_security::security_list_config_keys,
-            // re_strike_vta::tauri_commands_security::security_invalidate_session,
-            // re_strike_vta::tauri_commands_security::security_get_audit_history,
-            // re_strike_vta::tauri_commands_security::security_clear_cache,
-            // re_strike_vta::tauri_commands_security::security_get_cache_stats,
-            // re_strike_vta::tauri_commands_security::security_test_system,
+            // Security commands
+            commands::security::security_migrate_configurations,
+            commands::security::security_verify_migration,
+            commands::security::security_create_session,
+            commands::security::security_get_config,
+            commands::security::security_set_config,
+            commands::security::security_delete_config,
+            commands::security::security_list_config_keys,
+            commands::security::security_invalidate_session,
+            commands::security::security_get_audit_history,
+            commands::security::security_clear_cache,
+            commands::security::security_get_cache_stats,
+            commands::security::security_test_system,
         ])
         .setup(|app| {
             log::info!("Tauri application setup complete");

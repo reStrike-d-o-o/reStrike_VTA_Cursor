@@ -20,7 +20,7 @@ pub mod security;
 // Commands are now in the commands module
 // pub mod tauri_commands_manual_mode;  // Moved to commands/manual_mode.rs
 // pub mod tauri_commands_medal_ceremony;  // Moved to commands/medal_ceremony.rs
-pub mod tauri_commands_obs_connections;
+// pub mod tauri_commands_obs_connections; // Removed - legacy file deleted
 #[cfg(feature = "obs-obws")]
 pub mod tauri_commands_obws;
 pub mod tauri_commands_openapi;

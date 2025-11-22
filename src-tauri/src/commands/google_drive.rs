@@ -1,9 +1,5 @@
-use crate::core::app::App;
-use crate::logging::archival::{ArchiveSchedule, AutoArchiveConfig};
 use anyhow;
 use std::path::PathBuf;
-use std::sync::Arc;
-use tauri::State;
 use crate::types::TauriError;
 
 // ============================================================================

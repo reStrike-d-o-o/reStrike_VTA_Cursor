@@ -1,6 +1,5 @@
 use crate::core::app::App;
 use anyhow;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;

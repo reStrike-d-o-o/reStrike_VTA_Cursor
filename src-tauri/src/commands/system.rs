@@ -202,3 +202,23 @@ pub async fn get_best_ip_address_for_interface(
         })),
     }
 }
+
+/// Set window startup position
+#[tauri::command]
+pub async fn set_window_startup_position(
+    window: tauri::Window,
+    app: State<'_, Arc<App>>,
+) -> Result<(), TauriError> {
+    log::info!("Setting window startup position from current window state");
+    let position = window.outer_position().map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get window position: {e}")))?;
+    
+    let mut config = app.config_manager().get_config().await;
+    config.ui.layout.window_position.x = position.x;
+    config.ui.layout.window_position.y = position.y;
+    
+    app.config_manager()
+        .update_config(config)
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to save config: {e}")))?;
+    Ok(())
+}

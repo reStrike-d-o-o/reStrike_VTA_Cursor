@@ -1,10 +1,8 @@
 //! Tauri commands for OBS WebSocket integration using obws crate
 
 use crate::core::app::App;
-use crate::plugins::obs_obws::ObsConnectionConfig;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{Emitter, Error as TauriError, State};
+use tauri::{Error as TauriError, State};
 pub use crate::tauri_commands_obws::{
     obs_obws_connect, obs_obws_disconnect,
     obs_obws_get_connection_status, obs_obws_get_connections, obs_obws_get_current_scene,
