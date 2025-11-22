@@ -222,3 +222,103 @@ pub async fn set_window_startup_position(
         .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to save config: {e}")))?;
     Ok(())
 }
+
+/// Set window to fullscreen
+#[tauri::command]
+pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), TauriError> {
+    log::info!("Setting window to fullscreen (placeholder)");
+    // window.set_fullscreen(true).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set fullscreen: {e}")))?;
+    Ok(())
+}
+
+/// Set window to compact mode
+#[tauri::command]
+pub async fn set_window_compact(
+    window: tauri::Window,
+    width: Option<f64>,
+    height: Option<f64>,
+) -> Result<(), TauriError> {
+    log::info!("Setting window to compact mode (placeholder)");
+    // window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to exit fullscreen: {e}")))?;
+    
+    let width = width.unwrap_or(450.0);
+    let height = height.unwrap_or(800.0);
+    
+    // window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+    //     .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set window size: {e}")))?;
+        
+    Ok(())
+}
+
+/// Set window to custom size
+#[tauri::command]
+pub async fn set_window_custom_size(
+    window: tauri::Window,
+    width: f64,
+    height: f64,
+) -> Result<(), TauriError> {
+    log::info!("Setting window to custom size: {width}x{height} (placeholder)");
+    // window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to exit fullscreen: {e}")))?;
+    
+    // window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+    //     .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set window size: {e}")))?;
+        
+    Ok(())
+}
+
+/// Get screen size
+#[tauri::command]
+pub async fn get_screen_size(window: tauri::Window) -> Result<serde_json::Value, TauriError> {
+    if let Some(monitor) = window.current_monitor().map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get monitor: {e}")))? {
+        let size = monitor.size();
+        let scale_factor = monitor.scale_factor();
+        Ok(serde_json::json!({
+            "width": size.width as f64 / scale_factor,
+            "height": size.height as f64 / scale_factor
+        }))
+    } else {
+        Err(TauriError::from(anyhow::anyhow!("No monitor found")))
+    }
+}
+
+/// Save window settings
+#[tauri::command]
+pub async fn save_window_settings(
+    app: State<'_, Arc<App>>,
+    settings: serde_json::Value,
+) -> Result<(), TauriError> {
+    log::info!("Saving window settings");
+    let mut config = app.config_manager().get_config().await;
+    
+    if let Some(compact_width) = settings.get("compactWidth").and_then(|v| v.as_f64()) {
+        config.ui.layout.compact_width = compact_width as i32;
+    }
+    if let Some(compact_height) = settings.get("compactHeight").and_then(|v| v.as_f64()) {
+        config.ui.layout.compact_height = compact_height as i32;
+    }
+    if let Some(fullscreen_width) = settings.get("fullscreenWidth").and_then(|v| v.as_f64()) {
+        config.ui.layout.expanded_width = fullscreen_width as i32;
+    }
+    if let Some(fullscreen_height) = settings.get("fullscreenHeight").and_then(|v| v.as_f64()) {
+        config.ui.layout.expanded_height = fullscreen_height as i32;
+    }
+    
+    app.config_manager()
+        .update_config(config)
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to save config: {e}")))?;
+        
+    Ok(())
+}
+
+/// Load window settings
+#[tauri::command]
+pub async fn load_window_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let config = app.config_manager().get_config().await;
+    Ok(serde_json::json!({
+        "compactWidth": config.ui.layout.compact_width,
+        "compactHeight": config.ui.layout.compact_height,
+        "fullscreenWidth": config.ui.layout.expanded_width,
+        "fullscreenHeight": config.ui.layout.expanded_height,
+    }))
+}

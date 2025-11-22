@@ -40,8 +40,10 @@ impl Default for MigrationConfig {
     }
 }
 
+use serde::{Deserialize, Serialize};
+
 /// Migration statistics
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct MigrationStats {
     pub total_configs_found: u32,
     pub configs_migrated: u32,

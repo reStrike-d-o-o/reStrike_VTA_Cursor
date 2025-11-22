@@ -1,0 +1,12 @@
+C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor\src-tauri\target_temp\x86_64-pc-windows-msvc\debug\deps\serde-6d71bbab40d6ec83.d: C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor\src-tauri\target_temp\x86_64-pc-windows-msvc\debug\build\serde-f7ce2e6bec543b8d\out/private.rs
+
+C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor\src-tauri\target_temp\x86_64-pc-windows-msvc\debug\deps\libserde-6d71bbab40d6ec83.rmeta: C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor\src-tauri\target_temp\x86_64-pc-windows-msvc\debug\build\serde-f7ce2e6bec543b8d\out/private.rs
+
+C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs:
+C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs:
+C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs:
+C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs:
+C:\Users\Damjan\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs:
+C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor\src-tauri\target_temp\x86_64-pc-windows-msvc\debug\build\serde-f7ce2e6bec543b8d\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\Damjan\\source\\repos\\reStrikeVTA_WO\\reStrike_VTA_Cursor\\src-tauri\\target_temp\\x86_64-pc-windows-msvc\\debug\\build\\serde-f7ce2e6bec543b8d\\out

@@ -290,24 +290,26 @@ impl SecureConfigManager {
         session.source_ip = source_ip;
         session.user_agent = user_agent;
 
-        // Store session in database
-        let conn = self.database.get_connection().await?;
-        conn.execute(
-            "INSERT INTO security_sessions
-            (session_id, user_context, access_level, created_at, last_accessed, expires_at, is_active, source_ip, user_agent)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                session.session_id,
-                session.user_context,
-                session.access_level.as_str(),
-                session.created_at.to_rfc3339(),
-                session.last_accessed.to_rfc3339(),
-                session.expires_at.to_rfc3339(),
-                session.is_active,
-                session.source_ip,
-                session.user_agent,
-            ],
-        )?;
+        // Store session in database - Scope the connection to ensure it's dropped before await
+        {
+            let conn = self.database.get_connection().await?;
+            conn.execute(
+                "INSERT INTO security_sessions
+                (session_id, user_context, access_level, created_at, last_accessed, expires_at, is_active, source_ip, user_agent)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                params![
+                    session.session_id,
+                    session.user_context,
+                    session.access_level.as_str(),
+                    session.created_at.to_rfc3339(),
+                    session.last_accessed.to_rfc3339(),
+                    session.expires_at.to_rfc3339(),
+                    session.is_active,
+                    session.source_ip,
+                    session.user_agent,
+                ],
+            )?;
+        }
 
         // Store in memory cache
         let mut sessions = self.sessions.lock().await;
@@ -341,59 +343,61 @@ impl SecureConfigManager {
             }
         }
 
-        // Check database
-        let conn = self.database.get_connection().await?;
-        let mut stmt = conn.prepare(
-            "SELECT session_id, user_context, access_level, created_at, last_accessed, expires_at, is_active, source_ip, user_agent
-             FROM security_sessions WHERE session_id = ? AND is_active = 1"
-        )?;
+        // Check database - Scope connection and statement
+        let session_result = {
+            let conn = self.database.get_connection().await?;
+            let mut stmt = conn.prepare(
+                "SELECT session_id, user_context, access_level, created_at, last_accessed, expires_at, is_active, source_ip, user_agent
+                 FROM security_sessions WHERE session_id = ? AND is_active = 1"
+            )?;
 
-        let session_result = stmt.query_row(params![session_id], |row| {
-            let access_level_str: String = row.get(2)?;
-            let access_level = access_level_str.parse::<AccessLevel>().map_err(|_| {
-                rusqlite::Error::InvalidColumnType(
-                    2,
-                    "access_level".to_string(),
-                    rusqlite::types::Type::Text,
-                )
-            })?;
+            stmt.query_row(params![session_id], |row| {
+                let access_level_str: String = row.get(2)?;
+                let access_level = access_level_str.parse::<AccessLevel>().map_err(|_| {
+                    rusqlite::Error::InvalidColumnType(
+                        2,
+                        "access_level".to_string(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?;
 
-            Ok(SecuritySession {
-                session_id: row.get(0)?,
-                user_context: row.get(1)?,
-                access_level,
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                    .map_err(|_| {
-                        rusqlite::Error::InvalidColumnType(
-                            3,
-                            "created_at".to_string(),
-                            rusqlite::types::Type::Text,
-                        )
-                    })?
-                    .with_timezone(&Utc),
-                last_accessed: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                    .map_err(|_| {
-                        rusqlite::Error::InvalidColumnType(
-                            4,
-                            "last_accessed".to_string(),
-                            rusqlite::types::Type::Text,
-                        )
-                    })?
-                    .with_timezone(&Utc),
-                expires_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
-                    .map_err(|_| {
-                        rusqlite::Error::InvalidColumnType(
-                            5,
-                            "expires_at".to_string(),
-                            rusqlite::types::Type::Text,
-                        )
-                    })?
-                    .with_timezone(&Utc),
-                is_active: row.get(6)?,
-                source_ip: row.get(7)?,
-                user_agent: row.get(8)?,
+                Ok(SecuritySession {
+                    session_id: row.get(0)?,
+                    user_context: row.get(1)?,
+                    access_level,
+                    created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
+                        .map_err(|_| {
+                            rusqlite::Error::InvalidColumnType(
+                                3,
+                                "created_at".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })?
+                        .with_timezone(&Utc),
+                    last_accessed: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
+                        .map_err(|_| {
+                            rusqlite::Error::InvalidColumnType(
+                                4,
+                                "last_accessed".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })?
+                        .with_timezone(&Utc),
+                    expires_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
+                        .map_err(|_| {
+                            rusqlite::Error::InvalidColumnType(
+                                5,
+                                "expires_at".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })?
+                        .with_timezone(&Utc),
+                    is_active: row.get(6)?,
+                    source_ip: row.get(7)?,
+                    user_agent: row.get(8)?,
+                })
             })
-        });
+        };
 
         match session_result {
             Ok(session) => {
@@ -422,11 +426,13 @@ impl SecureConfigManager {
         }
 
         // Mark as inactive in database
-        let conn = self.database.get_connection().await?;
-        conn.execute(
-            "UPDATE security_sessions SET is_active = 0 WHERE session_id = ?",
-            params![session_id],
-        )?;
+        {
+            let conn = self.database.get_connection().await?;
+            conn.execute(
+                "UPDATE security_sessions SET is_active = 0 WHERE session_id = ?",
+                params![session_id],
+            )?;
+        }
 
         Ok(())
     }
@@ -456,28 +462,30 @@ impl SecureConfigManager {
         let encrypted_json = serde_json::to_string(&encrypted_data)?;
         let kdf_params_json = serde_json::to_string(&encrypted_data.kdf_params)?;
 
-        // Store in database
-        let conn = self.database.get_connection().await?;
-        let now = Utc::now().to_rfc3339();
+        // Store in database - Scope connection
+        {
+            let conn = self.database.get_connection().await?;
+            let now = Utc::now().to_rfc3339();
 
-        conn.execute(
-            "INSERT OR REPLACE INTO secure_config
-            (config_key, encrypted_value, category, is_sensitive, salt, algorithm, kdf_params, created_at, updated_at, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                key,
-                encrypted_json.as_bytes(),
-                category.as_str(),
-                true, // All values are sensitive by default
-                base64::engine::general_purpose::STANDARD.decode(&encrypted_data.salt)
-                    .map_err(|e| SecurityError::Decryption(format!("Failed to decode salt: {e}")))?,
-                encrypted_data.algorithm,
-                kdf_params_json,
-                now,
-                now,
-                description,
-            ],
-        )?;
+            conn.execute(
+                "INSERT OR REPLACE INTO secure_config
+                (config_key, encrypted_value, category, is_sensitive, salt, algorithm, kdf_params, created_at, updated_at, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                params![
+                    key,
+                    encrypted_json.as_bytes(),
+                    category.as_str(),
+                    true, // All values are sensitive by default
+                    base64::engine::general_purpose::STANDARD.decode(&encrypted_data.salt)
+                        .map_err(|e| SecurityError::Decryption(format!("Failed to decode salt: {e}")))?,
+                    encrypted_data.algorithm,
+                    kdf_params_json,
+                    now,
+                    now,
+                    description,
+                ],
+            )?;
+        }
 
         // Update cache
         {
@@ -541,23 +549,25 @@ impl SecureConfigManager {
             }
         }
 
-        // Get from database
-        let conn = self.database.get_connection().await?;
-        let mut stmt = conn.prepare(
-            "SELECT encrypted_value, category, salt, algorithm, kdf_params, access_count
-             FROM secure_config WHERE config_key = ?",
-        )?;
+        // Get from database - Scope connection and statement
+        let result = {
+            let conn = self.database.get_connection().await?;
+            let mut stmt = conn.prepare(
+                "SELECT encrypted_value, category, salt, algorithm, kdf_params, access_count
+                 FROM secure_config WHERE config_key = ?",
+            )?;
 
-        let result = stmt.query_row(params![key], |row| {
-            let encrypted_value_bytes: Vec<u8> = row.get(0)?;
-            let category_str: String = row.get(1)?;
-            let _salt: Vec<u8> = row.get(2)?;
-            let _algorithm: String = row.get(3)?;
-            let _kdf_params: String = row.get(4)?;
-            let access_count: i64 = row.get(5)?;
+            stmt.query_row(params![key], |row| {
+                let encrypted_value_bytes: Vec<u8> = row.get(0)?;
+                let category_str: String = row.get(1)?;
+                let _salt: Vec<u8> = row.get(2)?;
+                let _algorithm: String = row.get(3)?;
+                let _kdf_params: String = row.get(4)?;
+                let access_count: i64 = row.get(5)?;
 
-            Ok((encrypted_value_bytes, category_str, access_count))
-        });
+                Ok((encrypted_value_bytes, category_str, access_count))
+            })
+        };
 
         match result {
             Ok((encrypted_value_bytes, category_str, access_count)) => {
@@ -579,11 +589,14 @@ impl SecureConfigManager {
                 // Decrypt the value
                 let decrypted_value = self.encryption.decrypt_value(&encrypted_data)?;
 
-                // Update access count and last accessed time
-                conn.execute(
-                    "UPDATE secure_config SET access_count = ?, last_accessed = ? WHERE config_key = ?",
-                    params![access_count + 1, Utc::now().to_rfc3339(), key],
-                )?;
+                // Update access count and last accessed time - Scope connection
+                {
+                    let conn = self.database.get_connection().await?;
+                    conn.execute(
+                        "UPDATE secure_config SET access_count = ?, last_accessed = ? WHERE config_key = ?",
+                        params![access_count + 1, Utc::now().to_rfc3339(), key],
+                    )?;
+                }
 
                 // Update cache
                 {
@@ -624,52 +637,62 @@ impl SecureConfigManager {
             SecurityError::Authentication("Invalid or expired session".to_string())
         })?;
 
-        // Get category to check access level
-        let conn = self.database.get_connection().await?;
-        let category_result: Result<String, _> = conn.query_row(
-            "SELECT category FROM secure_config WHERE config_key = ?",
-            params![key],
-            |row| row.get(0),
-        );
+        // Get category and delete - Scope connection
+        let delete_result = {
+            let conn = self.database.get_connection().await?;
+            let category_result: Result<String, _> = conn.query_row(
+                "SELECT category FROM secure_config WHERE config_key = ?",
+                params![key],
+                |row| row.get(0),
+            );
 
-        match category_result {
-            Ok(category_str) => {
-                if let Ok(category) = category_str.parse::<ConfigCategory>() {
-                    if !session.can_access(&category.required_access_level()) {
-                        return Err(SecurityError::Authentication(
-                            "Insufficient access level".to_string(),
-                        ));
+            match category_result {
+                Ok(category_str) => {
+                    if let Ok(category) = category_str.parse::<ConfigCategory>() {
+                        if !session.can_access(&category.required_access_level()) {
+                            return Err(SecurityError::Authentication(
+                                "Insufficient access level".to_string(),
+                            ));
+                        }
                     }
+
+                    // Delete from database
+                    let changes = conn.execute(
+                        "DELETE FROM secure_config WHERE config_key = ?",
+                        params![key],
+                    )?;
+                    Ok(Some(changes > 0))
                 }
-
-                // Delete from database
-                let changes = conn.execute(
-                    "DELETE FROM secure_config WHERE config_key = ?",
-                    params![key],
-                )?;
-
-                // Remove from cache
-                {
-                    let mut cache = self.cache.lock().await;
-                    cache.remove(key);
-                }
-
-                // Log audit event
-                self.audit
-                    .log_config_access(
-                        key,
-                        AuditAction::ConfigDelete,
-                        &session.user_context,
-                        "Configuration deleted",
-                        true,
-                        None,
-                    )
-                    .await?;
-
-                Ok(changes > 0)
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(SecurityError::Database(e)),
             }
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
-            Err(e) => Err(SecurityError::Database(e)),
+        };
+
+        match delete_result {
+            Ok(Some(deleted)) => {
+                if deleted {
+                    // Remove from cache
+                    {
+                        let mut cache = self.cache.lock().await;
+                        cache.remove(key);
+                    }
+
+                    // Log audit event
+                    self.audit
+                        .log_config_access(
+                            key,
+                            AuditAction::ConfigDelete,
+                            &session.user_context,
+                            "Configuration deleted",
+                            true,
+                            None,
+                        )
+                        .await?;
+                }
+                Ok(deleted)
+            }
+            Ok(None) => Ok(false),
+            Err(e) => Err(e),
         }
     }
 
@@ -684,32 +707,36 @@ impl SecureConfigManager {
             SecurityError::Authentication("Invalid or expired session".to_string())
         })?;
 
-        let conn = self.database.get_connection().await?;
-        let (query, params): (&str, Vec<String>) = match category {
-            Some(cat) => {
-                // Check access level
-                if !session.can_access(&cat.required_access_level()) {
-                    return Err(SecurityError::Authentication(
-                        "Insufficient access level".to_string(),
-                    ));
+        // Scope connection
+        let keys = {
+            let conn = self.database.get_connection().await?;
+            let (query, params): (&str, Vec<String>) = match category {
+                Some(cat) => {
+                    // Check access level
+                    if !session.can_access(&cat.required_access_level()) {
+                        return Err(SecurityError::Authentication(
+                            "Insufficient access level".to_string(),
+                        ));
+                    }
+                    (
+                        "SELECT config_key FROM secure_config WHERE category = ?",
+                        vec![cat.as_str().to_string()],
+                    )
                 }
-                (
-                    "SELECT config_key FROM secure_config WHERE category = ?",
-                    vec![cat.as_str().to_string()],
-                )
+                None => ("SELECT config_key FROM secure_config", vec![]),
+            };
+
+            let mut stmt = conn.prepare(query)?;
+            let rows = stmt.query_map(rusqlite::params_from_iter(params), |row| {
+                row.get::<_, String>(0)
+            })?;
+
+            let mut keys = Vec::new();
+            for row in rows {
+                keys.push(row?);
             }
-            None => ("SELECT config_key FROM secure_config", vec![]),
+            keys
         };
-
-        let mut stmt = conn.prepare(query)?;
-        let rows = stmt.query_map(rusqlite::params_from_iter(params), |row| {
-            row.get::<_, String>(0)
-        })?;
-
-        let mut keys = Vec::new();
-        for row in rows {
-            keys.push(row?);
-        }
 
         Ok(keys)
     }
