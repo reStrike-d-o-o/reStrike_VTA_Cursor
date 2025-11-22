@@ -268,12 +268,12 @@ async fn main() -> AppResult<()> {
             // Settings & System
             commands::settings::get_settings,
             commands::system::set_window_startup_position,
-            // commands::system::set_window_fullscreen,
-            // commands::system::set_window_compact,
-            // commands::system::set_window_custom_size,
-            // commands::system::get_screen_size,
-            // commands::system::save_window_settings,
-            // commands::system::load_window_settings,
+            commands::system::set_window_fullscreen,
+            commands::system::set_window_compact,
+            commands::system::set_window_custom_size,
+            commands::system::get_screen_size,
+            commands::system::save_window_settings,
+            commands::system::load_window_settings,
             // PSS
             commands::pss::protocol_get_versions,
             // OpenAPI management

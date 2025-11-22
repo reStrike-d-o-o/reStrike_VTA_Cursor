@@ -23,28 +23,28 @@ import { licenseCommands } from '../../utils/tauriCommands';
 const DockBar: React.FC = () => {
   const { tauriAvailable } = useEnvironment();
   const { t } = useI18n();
-  
+
   // Store state
   const isAdvancedPanelOpen = useAppStore((state) => state.isAdvancedPanelOpen);
   const isAdvancedModeAuthenticated = useAppStore((state) => state.isAdvancedModeAuthenticated);
   const isManualModeEnabled = useAppStore((state) => state.isManualModeEnabled);
   const windowSettings = useAppStore((state) => state.windowSettings);
-  
+
   // Store actions
   const toggleAdvancedPanel = useAppStore((state) => state.toggleAdvancedPanel);
   const authenticateAdvancedMode = useAppStore((state) => state.authenticateAdvancedMode);
   const deauthenticateAdvancedMode = useAppStore((state) => state.deauthenticateAdvancedMode);
   const toggleManualMode = useAppStore((state) => state.toggleManualMode);
-  
+
   // Real-time event connection
   const { isConnected } = useLiveDataEvents();
-  
+
   // Local state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [showNewMatchDialog, setShowNewMatchDialog] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [liveToggle, setLiveToggle] = useState<'off'|'checking'|'on'>('off');
+  const [liveToggle, setLiveToggle] = useState<'off' | 'checking' | 'on'>('off');
   const [showLiveModal, setShowLiveModal] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState<any>(null);
 
@@ -60,6 +60,7 @@ const DockBar: React.FC = () => {
     // Toggle Advanced panel and window size
     if (!isAdvancedPanelOpen) {
       // Opening Advanced panel - go fullscreen with custom dimensions
+      console.log('[Advanced] Opening panel, resizing to:', windowSettings.fullscreenWidth, 'x', windowSettings.fullscreenHeight);
       if (tauriAvailable) {
         try {
           await windowCommands.setCustomSize(windowSettings.fullscreenWidth, windowSettings.fullscreenHeight);
@@ -69,6 +70,7 @@ const DockBar: React.FC = () => {
       }
     } else {
       // Closing Advanced panel - go compact with custom dimensions
+      console.log('[Advanced] Closing panel, resizing to:', windowSettings.compactWidth, 'x', windowSettings.compactHeight);
       if (tauriAvailable) {
         try {
           await windowCommands.setCompact(windowSettings.compactWidth, windowSettings.compactHeight);
@@ -77,20 +79,20 @@ const DockBar: React.FC = () => {
         }
       }
     }
-    
+
     toggleAdvancedPanel();
   };
 
   // Handle Manual mode toggle
   const handleManualModeToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('Manual mode toggle clicked!', { 
-      currentState: isManualModeEnabled, 
-      eventTarget: event.target.checked 
+    console.log('Manual mode toggle clicked!', {
+      currentState: isManualModeEnabled,
+      eventTarget: event.target.checked
     });
     // The toggle was clicked, show confirmation dialog
     setShowManualDialog(true);
   };
-  
+
   // Debug manual mode state
   useEffect(() => {
     console.log('🔧 DockBar - Manual mode state:', isManualModeEnabled);
@@ -100,7 +102,7 @@ const DockBar: React.FC = () => {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      try { const res = await licenseCommands.getStatus(); if (mounted && res.success) setLicenseStatus(res.data); } catch {}
+      try { const res = await licenseCommands.getStatus(); if (mounted && res.success) setLicenseStatus(res.data); } catch { }
     };
     load();
     const id = setInterval(load, 30000);
@@ -109,12 +111,12 @@ const DockBar: React.FC = () => {
 
   // Handle Manual mode confirmation
   const handleManualModeConfirm = () => {
-    console.log('Manual mode confirmed!', { 
-      currentState: isManualModeEnabled 
+    console.log('Manual mode confirmed!', {
+      currentState: isManualModeEnabled
     });
     toggleManualMode();
-    console.log('Manual mode toggled!', { 
-      newState: !isManualModeEnabled 
+    console.log('Manual mode toggled!', {
+      newState: !isManualModeEnabled
     });
   };
 
@@ -145,7 +147,7 @@ const DockBar: React.FC = () => {
     try {
       const result = await invoke('manual_create_match', { matchData });
       console.log('New match created:', result);
-      
+
       // Store current events to database before clearing (if any events exist)
       const { events, storeEventsToDatabase, clearEvents } = useLiveDataStore.getState();
       if (events.length > 0) {
@@ -158,14 +160,14 @@ const DockBar: React.FC = () => {
           console.error('❌ Failed to store events to database:', error);
         }
       }
-      
+
       // Clear the event table for the new match
       clearEvents();
       console.log('✅ Cleared event table for new match');
-      
+
       // Update the PSS match store with the new match data
       const { updateAthletes, updateMatchConfig, setMatchLoaded } = usePssMatchStore.getState();
-      
+
       // Create athlete info objects
       const athlete1: PssAthleteInfo = {
         short: matchData.player1.name.split(' ')[0], // First name as short name
@@ -173,14 +175,14 @@ const DockBar: React.FC = () => {
         country: matchData.player1.ioc_code,
         iocCode: matchData.player1.ioc_code
       };
-      
+
       const athlete2: PssAthleteInfo = {
         short: matchData.player2.name.split(' ')[0], // First name as short name
         long: matchData.player2.name,
         country: matchData.player2.ioc_code,
         iocCode: matchData.player2.ioc_code
       };
-      
+
       // Create match config object
       const matchConfig: PssMatchConfig = {
         number: parseInt(matchData.match_number) || 0,
@@ -192,12 +194,12 @@ const DockBar: React.FC = () => {
         countdownType: 'standard',
         format: 1
       };
-      
+
       // Update the store
       updateAthletes(athlete1, athlete2);
       updateMatchConfig(matchConfig);
       setMatchLoaded(true);
-      
+
       alert('New match created successfully! Event table cleared and ready for new data.');
       setShowNewMatchDialog(false);
     } catch (error) {
@@ -218,21 +220,21 @@ const DockBar: React.FC = () => {
               <div className="flex-shrink-0">
                 <MatchDetailsSection />
               </div>
-              
+
               {/* Enhanced Divider */}
               <div className="flex-shrink-0 border-t border-gray-600/50 bg-gradient-to-r from-transparent via-gray-600/30 to-transparent h-px"></div>
-              
+
               {/* Event Table Section */}
               <div className="flex-shrink-0 overflow-hidden">
                 <EventTableSection />
               </div>
-              
+
               {/* Spacer for 20px gap */}
               <div className="flex-shrink-0 h-5"></div>
-              
+
               {/* Enhanced Divider */}
               <div className="flex-shrink-0 border-t border-gray-600/50 bg-gradient-to-r from-transparent via-gray-600/30 to-transparent h-px"></div>
-              
+
               {/* Controls Section */}
               <div className="flex-shrink-0 flex flex-row items-center justify-center space-x-4 p-2">
                 {/* Replay Button */}
@@ -263,7 +265,7 @@ const DockBar: React.FC = () => {
                     labelPosition="bottom"
                     className="scale-100"
                   />
-                  
+
                   {/* Advanced Button */}
                   <div className="relative group">
                     <div className="absolute inset-0 bg-purple-500/20 rounded-lg blur-sm group-hover:bg-purple-500/30 transition-all duration-300"></div>
@@ -337,7 +339,7 @@ const DockBar: React.FC = () => {
                 </>
               )}
             </div>
-            
+
             {/* Copyright Section with Logo */}
             <div className="flex-shrink-0 flex flex-col items-start justify-center py-3 px-4 border-t border-gray-600/30 bg-gray-800/20 backdrop-blur-sm">
               <div className="flex items-center justify-between w-full mb-2">
@@ -346,9 +348,9 @@ const DockBar: React.FC = () => {
               </div>
               <div className="flex items-center justify-between w-full">
                 <div className="relative z-10 min-h-[32px] min-w-[32px]">
-                  <img 
-                    src="/assets/img/logo.png" 
-                    alt="reStrike VTA Logo" 
+                  <img
+                    src="/assets/img/logo.png"
+                    alt="reStrike VTA Logo"
                     className="h-8 w-auto object-contain"
                     onError={(e) => {
                       // console.log('Logo failed to load:', e);
@@ -364,7 +366,7 @@ const DockBar: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Status bar with enhanced styling */}
             <div className="flex-shrink-0 border-t border-gray-600/30 bg-gray-800/50 backdrop-blur-sm">
               <StatusbarDock />
@@ -400,7 +402,7 @@ const DockBar: React.FC = () => {
       {/* Live Orchestrator Modal */}
       <LiveOrchestratorModal
         isOpen={showLiveModal}
-        onClose={() => { setShowLiveModal(false); if (liveToggle==='checking') setLiveToggle('off'); }}
+        onClose={() => { setShowLiveModal(false); if (liveToggle === 'checking') setLiveToggle('off'); }}
         onStarted={() => { setShowLiveModal(false); setLiveToggle('on'); alert('All systems ready. Waiting for first match load.'); }}
       />
     </>

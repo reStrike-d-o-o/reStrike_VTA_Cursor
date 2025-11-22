@@ -7,10 +7,10 @@ use std::sync::Mutex;
 static UI_SETTINGS: Lazy<Mutex<HashMap<String, String>>> = Lazy::new(|| {
     let mut settings = HashMap::new();
     // Initialize with default UI settings
-    settings.insert("window.position.x".to_string(), "100".to_string());
-    settings.insert("window.position.y".to_string(), "100".to_string());
-    settings.insert("window.size.width".to_string(), "1200".to_string());
-    settings.insert("window.size.height".to_string(), "800".to_string());
+    settings.insert("window.position.x".to_string(), "0".to_string());
+    settings.insert("window.position.y".to_string(), "0".to_string());
+    settings.insert("window.size.width".to_string(), "350".to_string());
+    settings.insert("window.size.height".to_string(), "1080".to_string());
     settings.insert("window.fullscreen".to_string(), "false".to_string());
     settings.insert("window.compact".to_string(), "false".to_string());
     settings.insert("theme.current".to_string(), "dark".to_string());

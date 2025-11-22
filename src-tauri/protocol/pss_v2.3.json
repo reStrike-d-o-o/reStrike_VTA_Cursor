@@ -1,0 +1,114 @@
+{
+    "version": "2.3",
+    "description": "PSS Protocol Version 2.3",
+    "year": 2024,
+    "streams": {
+        "pt1": {
+            "name": "pt1",
+            "description": "Main stream for athlete 1 points",
+            "required_arguments": [
+                "point_type"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "pt1;1;",
+                "pt1;2;",
+                "pt1;3;"
+            ]
+        },
+        "pt2": {
+            "name": "pt2",
+            "description": "Main stream for athlete 2 points",
+            "required_arguments": [
+                "point_type"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "pt2;1;",
+                "pt2;2;",
+                "pt2;3;"
+            ]
+        },
+        "hl1": {
+            "name": "hl1",
+            "description": "Hit level for athlete 1",
+            "required_arguments": [
+                "level"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "hl1;50;",
+                "hl1;100;"
+            ]
+        },
+        "hl2": {
+            "name": "hl2",
+            "description": "Hit level for athlete 2",
+            "required_arguments": [
+                "level"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "hl2;50;",
+                "hl2;100;"
+            ]
+        },
+        "wg1": {
+            "name": "wg1",
+            "description": "Warnings for athlete 1",
+            "required_arguments": [
+                "count"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "wg1;1;"
+            ]
+        },
+        "wg2": {
+            "name": "wg2",
+            "description": "Warnings for athlete 2",
+            "required_arguments": [
+                "count"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "wg2;1;"
+            ]
+        },
+        "clk": {
+            "name": "clk",
+            "description": "Match clock",
+            "required_arguments": [
+                "time"
+            ],
+            "optional_arguments": [
+                "action"
+            ],
+            "examples": [
+                "clk;2:00;",
+                "clk;1:59;start;",
+                "clk;1:50;stop;"
+            ]
+        },
+        "rnd": {
+            "name": "rnd",
+            "description": "Current round",
+            "required_arguments": [
+                "number"
+            ],
+            "optional_arguments": null,
+            "examples": [
+                "rnd;1;",
+                "rnd;2;"
+            ]
+        }
+    },
+    "examples": [
+        "pt1;1;",
+        "clk;2:00;start;"
+    ],
+    "metadata": {
+        "format": "json",
+        "source": "WT_UDP_v2.3_2024.txt"
+    }
+}

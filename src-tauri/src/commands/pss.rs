@@ -153,6 +153,22 @@ pub async fn protocol_get_versions(
     app: State<'_, Arc<App>>,
 ) -> Result<Vec<crate::config::types::ProtocolVersion>, TauriError> {
     log::info!("Getting protocol versions");
-    let config = app.config_manager().get_config().await;
-    Ok(config.udp.pss.protocol_versions.available_versions)
+    // Use the dynamic protocol manager instead of static config
+    match app.protocol_manager().get_versions().await {
+        Ok(versions) => Ok(versions.into_iter().map(|v| crate::config::types::ProtocolVersion {
+            version: v.version,
+            filename: v.filename,
+            file_path: v.file_path,
+            description: v.description,
+            created_date: v.created_date,
+            last_modified: v.last_modified,
+            is_active: v.is_active,
+            file_size: v.file_size,
+            checksum: v.checksum,
+        }).collect()),
+        Err(e) => {
+            log::error!("Failed to get protocol versions: {e}");
+            Err(TauriError::from(anyhow::anyhow!("Failed to get protocol versions: {e}")))
+        }
+    }
 }

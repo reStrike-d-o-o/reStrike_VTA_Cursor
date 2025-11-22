@@ -818,8 +818,8 @@ impl Default for AppConfig {
                     status_bar_visible: true,
                     task_bar_visible: true,
                     window_size: WindowSize {
-                        width: 1200,
-                        height: 800,
+                        width: 350,
+                        height: 1080,
                     },
                     window_position: WindowPosition { x: 100, y: 100 },
                 },

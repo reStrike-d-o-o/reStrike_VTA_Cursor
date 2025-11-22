@@ -1,0 +1,110 @@
+warning: re-strike-vta@0.1.0: Simulation files verified successfully
+    Checking re-strike-vta v0.1.0 (C:\Users\Damjan\source\repos\reStrikeVTA_WO\reStrike_VTA_Cursor\src-tauri)
+warning: unused import: `Deserialize`
+  --> src\security\migration.rs:43:13
+   |
+43 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `window`
+   --> src\commands\system.rs:228:36
+    |
+228 | pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), TauriError> {
+    |                                    ^^^^^^ help: if this is intentional, prefix it with an underscore: `_window`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `window`
+   --> src\commands\system.rs:237:5
+    |
+237 |     window: tauri::Window,
+    |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_window`
+
+warning: unused variable: `width`
+   --> src\commands\system.rs:244:9
+    |
+244 |     let width = width.unwrap_or(450.0);
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_width`
+
+warning: unused variable: `height`
+   --> src\commands\system.rs:245:9
+    |
+245 |     let height = height.unwrap_or(800.0);
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_height`
+
+warning: unused variable: `window`
+   --> src\commands\system.rs:256:5
+    |
+256 |     window: tauri::Window,
+    |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_window`
+
+error[E0609]: no field `compact_width` on type `LayoutSettings`
+   --> src\commands\system.rs:294:26
+    |
+294 |         config.ui.layout.compact_width = compact_width as i32;
+    |                          ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `compact_height` on type `LayoutSettings`
+   --> src\commands\system.rs:297:26
+    |
+297 |         config.ui.layout.compact_height = compact_height as i32;
+    |                          ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `expanded_width` on type `LayoutSettings`
+   --> src\commands\system.rs:300:26
+    |
+300 |         config.ui.layout.expanded_width = fullscreen_width as i32;
+    |                          ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `expanded_height` on type `LayoutSettings`
+   --> src\commands\system.rs:303:26
+    |
+303 |         config.ui.layout.expanded_height = fullscreen_height as i32;
+    |                          ^^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `compact_width` on type `LayoutSettings`
+   --> src\commands\system.rs:319:42
+    |
+319 |         "compactWidth": config.ui.layout.compact_width,
+    |                                          ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `compact_height` on type `LayoutSettings`
+   --> src\commands\system.rs:320:43
+    |
+320 |         "compactHeight": config.ui.layout.compact_height,
+    |                                           ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `expanded_width` on type `LayoutSettings`
+   --> src\commands\system.rs:321:45
+    |
+321 |         "fullscreenWidth": config.ui.layout.expanded_width,
+    |                                             ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+error[E0609]: no field `expanded_height` on type `LayoutSettings`
+   --> src\commands\system.rs:322:46
+    |
+322 |         "fullscreenHeight": config.ui.layout.expanded_height,
+    |                                              ^^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `sidebar_position`, `sidebar_width`, `status_bar_visible`, `task_bar_visible`, `window_size`, `window_position`
+
+For more information about this error, try `rustc --explain E0609`.
+warning: `re-strike-vta` (lib) generated 6 warnings
+warning: re-strike-vta@0.1.0: Simulation files verified successfully
+error: could not compile `re-strike-vta` (lib) due to 8 previous errors; 6 warnings emitted

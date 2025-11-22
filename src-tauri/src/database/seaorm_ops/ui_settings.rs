@@ -20,28 +20,28 @@ const UI_SETTINGS: &[SettingSeed] = &[
         key_name: "window.position.x",
         display_name: "Window X Position",
         data_type: "integer",
-        default_value: Some("100"),
+        default_value: Some("0"),
         validation_rules: Some(r#"{"min": 0, "max": 9999}"#),
     },
     SettingSeed {
         key_name: "window.position.y",
         display_name: "Window Y Position",
         data_type: "integer",
-        default_value: Some("100"),
+        default_value: Some("0"),
         validation_rules: Some(r#"{"min": 0, "max": 9999}"#),
     },
     SettingSeed {
         key_name: "window.size.width",
         display_name: "Window Width",
         data_type: "integer",
-        default_value: Some("1200"),
+        default_value: Some("350"),
         validation_rules: Some(r#"{"min": 350, "max": 9999}"#),
     },
     SettingSeed {
         key_name: "window.size.height",
         display_name: "Window Height",
         data_type: "integer",
-        default_value: Some("800"),
+        default_value: Some("1080"),
         validation_rules: Some(r#"{"min": 600, "max": 9999}"#),
     },
     SettingSeed {
@@ -169,6 +169,10 @@ pub async fn initialize_ui_settings(conn: &DatabaseConnection) -> Result<(), DbE
         )
         .await?;
     }
+
+
+
+    fix_legacy_window_settings(&txn).await?;
 
     txn.commit().await
 }
@@ -456,4 +460,91 @@ where
     };
 
     history.insert(conn).await.map(|_| ())
+}
+
+async fn fix_legacy_window_settings<C>(conn: &C) -> Result<(), DbErr>
+where
+    C: ConnectionTrait,
+{
+    // Fix width: 1200 -> 350
+    let width_key = settings_key::Entity::find()
+        .filter(settings_key::Column::KeyName.eq("window.size.width"))
+        .one(conn)
+        .await?;
+
+    if let Some(key) = width_key {
+        if let Some(val) = settings_value::Entity::find()
+            .filter(settings_value::Column::KeyId.eq(&key.id))
+            .one(conn)
+            .await?
+        {
+            if val.value == "1200" {
+                let mut active: settings_value::ActiveModel = val.into();
+                active.value = Set("350".to_string());
+                active.update(conn).await?;
+            }
+        }
+    }
+
+    // Fix height: 800 -> 1080
+    let height_key = settings_key::Entity::find()
+        .filter(settings_key::Column::KeyName.eq("window.size.height"))
+        .one(conn)
+        .await?;
+
+    if let Some(key) = height_key {
+        if let Some(val) = settings_value::Entity::find()
+            .filter(settings_value::Column::KeyId.eq(&key.id))
+            .one(conn)
+            .await?
+        {
+            if val.value == "800" {
+                let mut active: settings_value::ActiveModel = val.into();
+                active.value = Set("1080".to_string());
+                active.update(conn).await?;
+            }
+        }
+    }
+
+    // Fix position x: 100 -> 0
+    let pos_x_key = settings_key::Entity::find()
+        .filter(settings_key::Column::KeyName.eq("window.position.x"))
+        .one(conn)
+        .await?;
+
+    if let Some(key) = pos_x_key {
+        if let Some(val) = settings_value::Entity::find()
+            .filter(settings_value::Column::KeyId.eq(&key.id))
+            .one(conn)
+            .await?
+        {
+            if val.value == "100" {
+                let mut active: settings_value::ActiveModel = val.into();
+                active.value = Set("0".to_string());
+                active.update(conn).await?;
+            }
+        }
+    }
+
+    // Fix position y: 100 -> 0
+    let pos_y_key = settings_key::Entity::find()
+        .filter(settings_key::Column::KeyName.eq("window.position.y"))
+        .one(conn)
+        .await?;
+
+    if let Some(key) = pos_y_key {
+        if let Some(val) = settings_value::Entity::find()
+            .filter(settings_value::Column::KeyId.eq(&key.id))
+            .one(conn)
+            .await?
+        {
+            if val.value == "100" {
+                let mut active: settings_value::ActiveModel = val.into();
+                active.value = Set("0".to_string());
+                active.update(conn).await?;
+            }
+        }
+    }
+
+    Ok(())
 }

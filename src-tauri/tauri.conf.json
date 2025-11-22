@@ -14,16 +14,17 @@
     "windows": [
       {
         "fullscreen": false,
-        "resizable": false,
+        "resizable": true,
         "title": "reStrike VTA",
         "width": 350,
         "height": 1080,
         "minWidth": 350,
-        "maxWidth": 350,
         "minHeight": 1080,
         "decorations": true,
         "alwaysOnTop": false,
-        "center": true,
+        "center": false,
+        "x": 0,
+        "y": 0,
         "visible": true,
         "focus": true,
         "url": "http://localhost:3000"
@@ -36,7 +37,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.ico"],
+    "icon": [
+      "icons/icon.ico"
+    ],
     "resources": [
       "../simulation",
       "../simulation/main.py",
@@ -57,7 +60,9 @@
     },
     "http": {
       "request": true,
-      "scope": ["https://**"]
+      "scope": [
+        "https://**"
+      ]
     },
     "notification": {
       "all": false
@@ -72,4 +77,4 @@
       "emit": true
     }
   }
-} 
+}

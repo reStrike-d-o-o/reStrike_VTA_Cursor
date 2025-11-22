@@ -66,15 +66,15 @@ export interface AppState {
   obsStatus: ObsStatusInfo | null;
   obsHealth: Record<string, ObsHealthSnapshot>;
   pssStats: PssStatsSnapshot | null;
-  
+
   // Overlay Settings
   overlaySettings: OverlaySettings;
-  
+
   // Video Clips
   videoClips: VideoClip[];
   currentClip: VideoClip | null;
   isPlaying: boolean;
-  
+
   // UI State
   currentView: 'sidebar-test' | 'overlay' | 'settings' | 'clips' | 'obs-manager';
   isLoading: boolean;
@@ -82,11 +82,11 @@ export interface AppState {
   // Advanced Panel State
   isAdvancedPanelOpen: boolean;
   activeDrawer: string;
-  
+
   // Advanced Mode Authentication
   isAdvancedModeAuthenticated: boolean;
   isManualModeEnabled: boolean;
-  
+
   // Window Settings
   windowSettings: {
     compactWidth: number;
@@ -105,17 +105,17 @@ export interface AppActions {
   updateObsStatus: (status: ObsStatusInfo) => void;
   updateObsHealth: (snapshots: ObsHealthSnapshot[]) => void;
   updatePssStats: (snapshot: PssStatsSnapshot) => void;
-  
+
   // Overlay Actions
   updateOverlaySettings: (settings: Partial<OverlaySettings>) => void;
   toggleOverlayVisibility: () => void;
-  
+
   // Video Actions
   addVideoClip: (clip: Omit<VideoClip, 'id' | 'timestamp'>) => void;
   removeVideoClip: (id: string) => void;
   setCurrentClip: (clip: VideoClip | null) => void;
   setPlaying: (playing: boolean) => void;
-  
+
   // UI Actions
   setCurrentView: (view: AppState['currentView']) => void;
   setLoading: (loading: boolean) => void;
@@ -126,12 +126,12 @@ export interface AppActions {
   closeAdvancedPanel: () => void;
   toggleAdvancedPanel: () => void;
   setActiveDrawer: (drawer: string) => void;
-  
+
   // Advanced Mode Authentication Actions
   authenticateAdvancedMode: (password: string) => boolean;
   deauthenticateAdvancedMode: () => void;
   toggleManualMode: () => void;
-  
+
   // Window Settings Actions
   updateWindowSettings: (settings: Partial<AppState['windowSettings']>) => void;
   resetWindowSettings: () => void;
@@ -309,7 +309,7 @@ export const useAppStore = create<AppStore>()(
       closeAdvancedPanel: () => set({ isAdvancedPanelOpen: false }),
       toggleAdvancedPanel: () => set((state) => ({ isAdvancedPanelOpen: !state.isAdvancedPanelOpen })),
       setActiveDrawer: (drawer) => set({ activeDrawer: drawer }),
-      
+
       // Advanced Mode Authentication Actions
       authenticateAdvancedMode: (password) => {
         const isValid = password === 'reStrike';
@@ -318,21 +318,21 @@ export const useAppStore = create<AppStore>()(
         }
         return isValid;
       },
-      
+
       deauthenticateAdvancedMode: () => {
-        set({ 
+        set({
           isAdvancedModeAuthenticated: false,
-          isAdvancedPanelOpen: false 
+          isAdvancedPanelOpen: false
         });
       },
-      
+
       toggleManualMode: () => {
         // toggleManualMode called!
         set((state) => {
           const newState = !state.isManualModeEnabled;
           // Setting manual mode to: newState
-          return { 
-            isManualModeEnabled: newState 
+          return {
+            isManualModeEnabled: newState
           };
         });
       },

@@ -25,20 +25,20 @@ const App: React.FC = () => {
   const updateObsHealth = useAppStore((state) => state.updateObsHealth);
   const updatePssStats = useAppStore((state) => state.updatePssStats);
   const { tauriAvailable, environment, isLoading } = useEnvironment();
-  
+
   const paused = useTriggersStore((s) => s.paused);
-  const theme = useSettingsStore((s)=>s.theme);
-  const sharp = useSettingsStore((s)=>s.sharp);
+  const theme = useSettingsStore((s) => s.theme);
+  const sharp = useSettingsStore((s) => s.sharp);
   const [externalMode, setExternalMode] = React.useState<'medal' | null>(null);
   const loadOverlayRouting = useOverlayRoutingStore((s) => s.loadFromBackend);
   // Initialize PSS event listener for real-time events
   const { setupEventListener, fetchPendingEvents } = usePssEvents();
-  
+
   // Initialize live data events for Event Table
   const { isConnected: liveDataConnected, eventCount } = useLiveDataEvents();
   // Initialize overlay controller (routes PSS triggers to overlay windows)
   useOverlayController();
-  
+
   // Initialize OBS status listener for real-time status updates
   const { setupStatusListener } = useEnvironmentObs();
 
@@ -50,7 +50,7 @@ const App: React.FC = () => {
       setExternalMode('medal');
     }
   }, []);
-  
+
   // Debug environment detection
   React.useEffect(() => {
     // console.log('🌍 App Environment Detection:');
@@ -115,9 +115,9 @@ const App: React.FC = () => {
   }, [tauriAvailable, updateObsHealth, updatePssStats]);
   // Debug live data connection
   React.useEffect(() => {
-    console.log('📡 Live Data Events Status:', { 
-      isConnected: liveDataConnected, 
-      eventCount 
+    console.log('📡 Live Data Events Status:', {
+      isConnected: liveDataConnected,
+      eventCount
     });
   }, [liveDataConnected, eventCount]);
 
@@ -126,7 +126,7 @@ const App: React.FC = () => {
     if (tauriAvailable && !isLoading) {
       loadWindowSettings();
       loadOverlayRouting();
-      
+
       // Set window to startup position (x=1, y=1)
       invoke('set_window_startup_position').catch((error) => {
         console.error('Failed to set window startup position:', error);
@@ -157,16 +157,16 @@ const App: React.FC = () => {
       // console.log('🚀 Setting up PSS event system...');
       setupEventListener();
       fetchPendingEvents();
-      
+
       // Setup OBS status listener for real-time status updates
       setupStatusListener().catch((error) => {
         console.error('Failed to setup OBS status listener:', error);
       });
-      
+
       hasInitRef.current = true;
     }
   }, [tauriAvailable, isLoading, setupEventListener, fetchPendingEvents, setupStatusListener]);
-  
+
   if (externalMode === 'medal') {
     return <MedalCeremonyExternalDisplay />;
   }
@@ -178,37 +178,30 @@ const App: React.FC = () => {
 
       {/* Subtle background pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800/20 to-gray-900/30 opacity-50"></div>
-      
+
       {/* Main content area: DockBar (left) + AdvancedPanel (right) */}
       <div className="flex flex-1 min-h-0 relative z-10">
-        {/* DockBar (left) - dynamic width from settings, full height with enhanced styling */}
-        <div 
-          className="flex-shrink-0 relative z-20 w-[var(--dock-width)]"
+        {/* DockBar (left) - fixed 350px width */}
+        <div
+          className="flex-shrink-0 relative z-20 w-[350px]"
         >
-          <div className="absolute inset-0 w-[var(--dock-width)] bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
-          <div className="relative z-10 h-full w-[var(--dock-width)]">
+          <div className="absolute inset-0 w-[350px] bg-gradient-to-r from-gray-900/95 to-gray-800/90 backdrop-blur-sm border-r border-gray-700/50 shadow-2xl"></div>
+          <div className="relative z-10 h-full w-[350px]">
             <DockBar />
           </div>
         </div>
-        
-        {/* AdvancedPanel (right) - flexible width with enhanced styling */}
-        <div className="flex-1 min-h-0 relative z-10">
-          {isAdvancedPanelOpen ? (
+
+        {/* AdvancedPanel (right) - only shown when panel is open */}
+        {isAdvancedPanelOpen && (
+          <div className="flex-1 min-h-0 relative z-10">
             <>
               <div className="absolute inset-0 bg-gradient-to-br from-gray-800/90 to-gray-900/95 backdrop-blur-sm shadow-inner"></div>
               <div className="relative z-10 h-full">
                 <AdvancedPanel className="h-full" />
               </div>
             </>
-          ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <div className="text-2xl mb-2">Click "Advanced" to open settings</div>
-                <div className="text-sm">WebSocket connections, protocol settings, and more</div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

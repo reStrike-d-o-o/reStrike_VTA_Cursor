@@ -226,8 +226,8 @@ pub async fn set_window_startup_position(
 /// Set window to fullscreen
 #[tauri::command]
 pub async fn set_window_fullscreen(window: tauri::Window) -> Result<(), TauriError> {
-    log::info!("Setting window to fullscreen (placeholder)");
-    // window.set_fullscreen(true).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set fullscreen: {e}")))?;
+    log::info!("Setting window to fullscreen");
+    window.set_fullscreen(true).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set fullscreen: {e}")))?;
     Ok(())
 }
 
@@ -238,14 +238,27 @@ pub async fn set_window_compact(
     width: Option<f64>,
     height: Option<f64>,
 ) -> Result<(), TauriError> {
-    log::info!("Setting window to compact mode (placeholder)");
-    // window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to exit fullscreen: {e}")))?;
+    log::info!("Setting window to compact mode - received width: {:?}, height: {:?}", width, height);
     
-    let width = width.unwrap_or(450.0);
-    let height = height.unwrap_or(800.0);
+    // Exit fullscreen and unmaximize to ensure we can resize
+    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to exit fullscreen: {e}")))?;
+    window.unmaximize().map_err(|e| TauriError::from(anyhow::anyhow!("Failed to unmaximize: {e}")))?;
     
-    // window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
-    //     .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set window size: {e}")))?;
+    let mut width = width.unwrap_or(350.0);
+    let mut height = height.unwrap_or(1080.0);
+    
+    // MIGRATION FIX: If we receive the old default values (1200x800), force them to the new correct defaults (350x1080)
+    // This handles cases where the frontend has cached/persisted the old wrong defaults.
+    if (width - 1200.0).abs() < 0.1 && (height - 800.0).abs() < 0.1 {
+        log::warn!("Detected old default window size (1200x800). Migrating to new defaults (350x1080).");
+        width = 350.0;
+        height = 1080.0;
+    }
+    
+    log::info!("Setting window size to: {}x{}", width, height);
+    
+    window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set window size: {e}")))?;
         
     Ok(())
 }
@@ -257,11 +270,14 @@ pub async fn set_window_custom_size(
     width: f64,
     height: f64,
 ) -> Result<(), TauriError> {
-    log::info!("Setting window to custom size: {width}x{height} (placeholder)");
-    // window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to exit fullscreen: {e}")))?;
+    log::info!("Setting window to custom size: {width}x{height}");
     
-    // window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
-    //     .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set window size: {e}")))?;
+    // Exit fullscreen and unmaximize to ensure we can resize
+    window.set_fullscreen(false).map_err(|e| TauriError::from(anyhow::anyhow!("Failed to exit fullscreen: {e}")))?;
+    window.unmaximize().map_err(|e| TauriError::from(anyhow::anyhow!("Failed to unmaximize: {e}")))?;
+    
+    window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to set window size: {e}")))?;
         
     Ok(())
 }
@@ -290,18 +306,15 @@ pub async fn save_window_settings(
     log::info!("Saving window settings");
     let mut config = app.config_manager().get_config().await;
     
-    if let Some(compact_width) = settings.get("compactWidth").and_then(|v| v.as_f64()) {
-        config.ui.layout.compact_width = compact_width as i32;
+    // Update window size if provided
+    if let Some(width) = settings.get("compactWidth").and_then(|v| v.as_f64()) {
+        config.ui.layout.window_size.width = width as u32;
     }
-    if let Some(compact_height) = settings.get("compactHeight").and_then(|v| v.as_f64()) {
-        config.ui.layout.compact_height = compact_height as i32;
+    if let Some(height) = settings.get("compactHeight").and_then(|v| v.as_f64()) {
+        config.ui.layout.window_size.height = height as u32;
     }
-    if let Some(fullscreen_width) = settings.get("fullscreenWidth").and_then(|v| v.as_f64()) {
-        config.ui.layout.expanded_width = fullscreen_width as i32;
-    }
-    if let Some(fullscreen_height) = settings.get("fullscreenHeight").and_then(|v| v.as_f64()) {
-        config.ui.layout.expanded_height = fullscreen_height as i32;
-    }
+    // Note: fullscreenWidth/fullscreenHeight are not stored separately in config
+    // The app uses window_size for both modes
     
     app.config_manager()
         .update_config(config)
@@ -315,10 +328,12 @@ pub async fn save_window_settings(
 #[tauri::command]
 pub async fn load_window_settings(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
     let config = app.config_manager().get_config().await;
+    // Return current window size for both compact and fullscreen
+    // Frontend can use different values, but config stores one size
     Ok(serde_json::json!({
-        "compactWidth": config.ui.layout.compact_width,
-        "compactHeight": config.ui.layout.compact_height,
-        "fullscreenWidth": config.ui.layout.expanded_width,
-        "fullscreenHeight": config.ui.layout.expanded_height,
+        "compactWidth": config.ui.layout.window_size.width,
+        "compactHeight": config.ui.layout.window_size.height,
+        "fullscreenWidth": 1920,  // Default fullscreen width
+        "fullscreenHeight": 1080, // Default fullscreen height
     }))
 }
