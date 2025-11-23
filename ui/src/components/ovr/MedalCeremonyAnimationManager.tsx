@@ -38,16 +38,7 @@ const DEFAULT_ANIMATION_HEIGHT = 320;
 const MIN_ANIMATION_WIDTH = TARGET_ANIMATION_WIDTH;
 const MIN_ANIMATION_HEIGHT = 160;
 
-const readAnimationFile = async (path: string): Promise<string> => {
-  if (!canInvokeTauri()) {
-    throw new Error('Animation preview requires the desktop runtime.');
-  }
-
-  const raw = await invokeTauri<any>('plugin:fs|read_text_file', {
-    path,
-    options: { encoding: 'utf-8' },
-  });
-
+const decodeRawText = (raw: any): string => {
   if (typeof raw === 'string') {
     return raw;
   }
@@ -72,31 +63,46 @@ const readAnimationFile = async (path: string): Promise<string> => {
   }
   if (raw && typeof raw === 'object' && 'data' in raw) {
     const data = (raw as any).data;
-    if (typeof data === 'string') {
-      return data;
-    }
-    if (data instanceof Uint8Array) {
-      return new TextDecoder('utf-8').decode(data);
-    }
-    if (data instanceof ArrayBuffer) {
-      return new TextDecoder('utf-8').decode(data);
-    }
-    if (Array.isArray(data)) {
-      return new TextDecoder('utf-8').decode(Uint8Array.from(data));
-    }
-    if (data && typeof data === 'object' && 'buffer' in data && data.buffer instanceof ArrayBuffer) {
-      const view = data as { buffer: ArrayBuffer; byteOffset?: number; byteLength?: number };
-      const offset = typeof view.byteOffset === 'number' ? view.byteOffset : 0;
-      const length = typeof view.byteLength === 'number' ? view.byteLength : undefined;
-      const slice =
-        typeof length === 'number'
-          ? new Uint8Array(view.buffer, offset, length)
-          : new Uint8Array(view.buffer);
-      return new TextDecoder('utf-8').decode(slice);
+    return decodeRawText(data);
+  }
+  throw new Error('Unable to decode animation file as UTF-8 text.');
+};
+
+const normalizeAssetPath = (rawPath: string): string => {
+  const normalized = rawPath.replace(/\\/g, '/');
+  const withoutUi = normalized.replace(/^ui\/public\//i, '');
+  const withoutPublic = withoutUi.replace(/^public\//i, '');
+  if (withoutPublic.startsWith('/')) {
+    return withoutPublic;
+  }
+  return `/${withoutPublic}`;
+};
+
+const readAnimationFile = async (path: string): Promise<string> => {
+  const trimmed = path.trim();
+  if (!trimmed) {
+    throw new Error('Animation preview requires the desktop runtime.');
+  }
+
+  if (canInvokeTauri()) {
+    try {
+      const raw = await invokeTauri<any>('plugin:fs|read_text_file', {
+        path: trimmed,
+        options: { encoding: 'utf-8' },
+      });
+      return decodeRawText(raw);
+    } catch (err) {
+      // Fall through to web fetch below if the path is relative/missing in the sandbox.
+      console.warn('Falling back to web fetch for animation preview', err);
     }
   }
 
-  throw new Error('Unable to decode animation file as UTF-8 text.');
+  const url = normalizeAssetPath(trimmed);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Unable to load animation asset (${response.status})`);
+  }
+  return await response.text();
 };
 
 const MedalCeremonyAnimationManager: React.FC = () => {

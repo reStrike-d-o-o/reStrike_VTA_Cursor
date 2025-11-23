@@ -66,7 +66,7 @@ impl ProtocolManager {
 
         Ok(Self {
             protocols_dir,
-            active_version: Arc::new(Mutex::new(None)),
+            active_version: Arc::new(Mutex::new(Some("2.3".to_string()))),
             versions: Arc::new(Mutex::new(HashMap::new())),
             current_protocol: Arc::new(Mutex::new(None)),
         })
@@ -92,8 +92,11 @@ impl ProtocolManager {
         versions.clear();
 
         if !self.protocols_dir.exists() {
+            log::warn!("Protocols directory does not exist: {:?}", self.protocols_dir);
             return Ok(());
         }
+
+        log::info!("Scanning protocols directory: {:?}", self.protocols_dir);
 
         for entry in fs::read_dir(&self.protocols_dir).map_err(|e| {
             AppError::ConfigError(format!("Failed to read protocols directory: {e}"))
@@ -131,9 +134,14 @@ impl ProtocolManager {
                                 .unwrap_or_default()
                                 .as_secs();
 
+                            let is_active = {
+                                let active = self.active_version.lock().unwrap();
+                                active.as_deref() == Some(&version)
+                            };
+
                             let protocol_version = ProtocolVersion {
                                 version: version.clone(),
-                                filename: filename_str,
+                                filename: filename_str.clone(),
                                 file_path: path.to_string_lossy().to_string(),
                                 description: format!("PSS Protocol Version {version}"),
                                 created_date: DateTime::from_timestamp(created_date as i64, 0)
@@ -142,12 +150,13 @@ impl ProtocolManager {
                                 last_modified: DateTime::from_timestamp(modified_date as i64, 0)
                                     .unwrap_or_default()
                                     .to_rfc3339(),
-                                is_active: false,
+                                is_active,
                                 file_size: metadata.len(),
                                 checksum: None,
                             };
 
-                            versions.insert(version, protocol_version);
+                            versions.insert(version.clone(), protocol_version);
+                            log::info!("Found protocol version: {} (File: {})", version, filename_str);
                         }
                     }
                 }

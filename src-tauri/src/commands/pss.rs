@@ -151,11 +151,14 @@ pub async fn store_pss_event_cmd(
 #[tauri::command]
 pub async fn protocol_get_versions(
     app: State<'_, Arc<App>>,
-) -> Result<Vec<crate::config::types::ProtocolVersion>, TauriError> {
+) -> Result<serde_json::Value, TauriError> {
     log::info!("Getting protocol versions");
-    // Use the dynamic protocol manager instead of static config
-    match app.protocol_manager().get_versions().await {
-        Ok(versions) => Ok(versions.into_iter().map(|v| crate::config::types::ProtocolVersion {
+    
+    let protocol_manager = app.protocol_manager();
+    
+    // Get versions
+    let versions = match protocol_manager.get_versions().await {
+        Ok(v) => v.into_iter().map(|v| crate::config::types::ProtocolVersion {
             version: v.version,
             filename: v.filename,
             file_path: v.file_path,
@@ -165,10 +168,30 @@ pub async fn protocol_get_versions(
             is_active: v.is_active,
             file_size: v.file_size,
             checksum: v.checksum,
-        }).collect()),
+        }).collect::<Vec<_>>(),
         Err(e) => {
             log::error!("Failed to get protocol versions: {e}");
-            Err(TauriError::from(anyhow::anyhow!("Failed to get protocol versions: {e}")))
+            return Ok(serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            }));
         }
-    }
+    };
+
+    // Get current protocol
+    let current_protocol = match protocol_manager.get_current_protocol().await {
+        Ok(p) => p,
+        Err(e) => {
+            log::warn!("Failed to get current protocol: {e}");
+            None
+        }
+    };
+
+    log::info!("Successfully retrieved {} protocol versions", versions.len());
+
+    Ok(serde_json::json!({
+        "success": true,
+        "versions": versions,
+        "current_protocol": current_protocol
+    }))
 }

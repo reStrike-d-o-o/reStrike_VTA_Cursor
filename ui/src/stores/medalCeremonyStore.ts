@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AnthemAsset, FlagAnimationAsset, MedalCeremonyAthleteOption, MedalCeremonyDetail, MedalCeremonyDivision, MedalCeremonyDivisionOption, MedalCeremonyMedalist, MedalCeremonyRecord, MedalCeremonySummary, MedalType } from '../types';
-import { medalCeremonyCommands } from '../utils/tauriCommands';
+import { FLAG_CONFIGS } from '../utils/flagUtils';
+import { isTauriAvailable, medalCeremonyCommands } from '../utils/tauriCommands';
 
 type DetailUpdater = (detail: MedalCeremonyDetail) => MedalCeremonyDetail;
 
@@ -52,6 +53,39 @@ export const createDraftCeremony = (): MedalCeremonyDetail => ({
   },
   divisions: [createEmptyDivision()],
 });
+
+const FALLBACK_CODES = Object.keys(FLAG_CONFIGS).sort();
+
+const getDisplayName = (ioc: string): string => {
+  const altText = FLAG_CONFIGS[ioc]?.altText ?? ioc;
+  return altText.replace(/\s+Flag$/i, '').trim() || ioc;
+};
+
+const buildBundledAnimations = (): FlagAnimationAsset[] =>
+  FALLBACK_CODES.map((ioc) => ({
+    id: undefined,
+    ioc_code: ioc,
+    file_name: `${ioc}.json`,
+    file_path: `ui/public/assets/animations/${ioc}.json`,
+    display_name: getDisplayName(ioc),
+    duration_ms: undefined,
+    is_default: true,
+    created_at: undefined,
+    updated_at: undefined,
+  }));
+
+const buildBundledAnthems = (): AnthemAsset[] =>
+  FALLBACK_CODES.map((ioc) => ({
+    id: undefined,
+    ioc_code: ioc,
+    file_name: `${ioc}.mp3`,
+    file_path: `ui/public/assets/anthems/${ioc}.mp3`,
+    display_name: getDisplayName(ioc),
+    duration_ms: undefined,
+    is_default: true,
+    created_at: undefined,
+    updated_at: undefined,
+  }));
 
 export interface MedalCeremonyStore {
   ceremonies: MedalCeremonySummary[];
@@ -316,19 +350,41 @@ export const useMedalCeremonyStore = create<MedalCeremonyStore>((set, get) => ({
     }
     set({ loading: true, error: null });
     try {
+      if (!isTauriAvailable()) {
+        const flagFallback = buildBundledAnimations();
+        const anthemFallback = buildBundledAnthems();
+        set({
+          flagAssets: flagFallback,
+          anthemAssets: anthemFallback,
+          assetsInitialized: true,
+        });
+        broadcastStateSnapshot(get());
+        return;
+      }
+
       const [flags, anthems] = await Promise.all([
         medalCeremonyCommands.listFlagAssets(),
         medalCeremonyCommands.listAnthemAssets(),
       ]);
+      const resolvedFlags = flags.length > 0 ? flags : buildBundledAnimations();
+      const resolvedAnthems = anthems.length > 0 ? anthems : buildBundledAnthems();
       set({
-        flagAssets: flags,
-        anthemAssets: anthems,
+        flagAssets: resolvedFlags,
+        anthemAssets: resolvedAnthems,
         assetsInitialized: true,
       });
       broadcastStateSnapshot(get());
     } catch (error) {
       console.error('Failed to load medal ceremony assets', error);
-      set({ error: error instanceof Error ? error.message : String(error) });
+      const flagFallback = buildBundledAnimations();
+      const anthemFallback = buildBundledAnthems();
+      set({
+        error: error instanceof Error ? error.message : String(error),
+        flagAssets: flagFallback,
+        anthemAssets: anthemFallback,
+        assetsInitialized: true,
+      });
+      broadcastStateSnapshot(get());
     } finally {
       set({ loading: false });
     }

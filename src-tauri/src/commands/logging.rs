@@ -3,6 +3,7 @@ use crate::logging::archival::{AutoArchiveConfig, ArchiveSchedule};
 use crate::types::TauriError;
 use std::sync::Arc;
 use tauri::State;
+use serde_json;
 
 #[tauri::command]
 pub async fn create_complete_log_archive(
@@ -27,6 +28,7 @@ pub async fn create_complete_log_archive(
         })),
     }
 }
+
 
 #[tauri::command]
 pub async fn create_and_upload_log_archive(
@@ -220,5 +222,42 @@ pub async fn delete_log_archive(
             "success": false,
             "error": format!("Failed to delete archive: {}", e)
         })),
+    }
+}
+
+#[tauri::command]
+pub async fn list_log_files(
+    subsystem: Option<String>,
+    app: State<'_, Arc<App>>,
+) -> Result<serde_json::Value, TauriError> {
+    log::info!("Listing log files (subsystem filter: {:?})", subsystem);
+
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.list_log_files(subsystem.as_deref()) {
+        Ok(files) => Ok(serde_json::json!({
+            "success": true,
+            "data": files
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to list log files: {}", e)
+        })),
+    }
+}
+
+#[tauri::command]
+pub async fn download_log_file(
+    filename: String,
+    app: State<'_, Arc<App>>,
+) -> Result<Vec<u8>, TauriError> {
+    log::info!("Downloading log file: {}", filename);
+
+    let log_manager = app.log_manager().lock().await;
+    match log_manager.read_log_file(&filename) {
+        Ok(content) => Ok(content),
+        Err(e) => {
+            log::error!("Failed to read log file {}: {}", filename, e);
+            Err(TauriError::Io(e))
+        }
     }
 }

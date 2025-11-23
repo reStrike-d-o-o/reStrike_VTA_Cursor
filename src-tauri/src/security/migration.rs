@@ -40,7 +40,7 @@ impl Default for MigrationConfig {
     }
 }
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Migration statistics
 #[derive(Debug, Clone, Default, Serialize)]

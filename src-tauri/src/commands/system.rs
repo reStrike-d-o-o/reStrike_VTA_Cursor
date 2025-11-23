@@ -337,3 +337,54 @@ pub async fn load_window_settings(app: State<'_, Arc<App>>) -> Result<serde_json
         "fullscreenHeight": 1080, // Default fullscreen height
     }))
 }
+
+// ============================================================================
+// CPU Monitoring Commands
+// ============================================================================
+
+/// Get CPU monitoring status
+#[tauri::command]
+pub async fn cpu_get_monitoring_status(app: State<'_, Arc<App>>) -> Result<bool, TauriError> {
+    app.cpu_monitor_plugin()
+        .is_monitoring_enabled()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to get monitoring status: {e}")))
+}
+
+/// Enable CPU monitoring
+#[tauri::command]
+pub async fn cpu_enable_monitoring(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+    app.cpu_monitor_plugin()
+        .enable_monitoring()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to enable monitoring: {e}")))
+}
+
+/// Disable CPU monitoring
+#[tauri::command]
+pub async fn cpu_disable_monitoring(app: State<'_, Arc<App>>) -> Result<(), TauriError> {
+    app.cpu_monitor_plugin()
+        .disable_monitoring()
+        .await
+        .map_err(|e| TauriError::from(anyhow::anyhow!("Failed to disable monitoring: {e}")))
+}
+
+/// Get process CPU data
+#[tauri::command]
+pub async fn cpu_get_process_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let processes = app.cpu_monitor_plugin().get_process_cpu_data().await;
+    Ok(serde_json::json!({
+        "success": true,
+        "processes": processes
+    }))
+}
+
+/// Get system CPU data
+#[tauri::command]
+pub async fn cpu_get_system_data(app: State<'_, Arc<App>>) -> Result<serde_json::Value, TauriError> {
+    let system = app.cpu_monitor_plugin().get_system_cpu_data().await;
+    Ok(serde_json::json!({
+        "success": true,
+        "system": system
+    }))
+}
