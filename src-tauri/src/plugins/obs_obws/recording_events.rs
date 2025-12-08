@@ -1,7 +1,7 @@
 use crate::core::app::App;
 use crate::database::operations::TournamentOperations;
 use crate::plugins::obs_obws::manager::ObsManager;
-use crate::plugins::obs_obws::types::{ObsConnectionStatus, ObsReplayBufferStatus};
+use crate::plugins::obs_obws::types::{ObsConnectionStatus, ObsReplayBufferStatus, ObsRecordingStatus};
 use crate::plugins::obs_obws::ObsPathGenerator;
 use crate::plugins::obs_obws::PathGeneratorConfig;
 use crate::pss::protocol::PssEvent;
@@ -751,70 +751,123 @@ impl ObsRecordingEventHandler {
                 if session.match_number.is_none() {
                     session.match_number = self.pending_match_number.lock().unwrap().clone();
                 }
-                let formatting = self.build_filename_formatting(&effective_template, &session);
-                if obs_ready {
-                    println!(
-                        " Sending to OBS '{connection_name}' filename formatting: {formatting}"
-                    );
-                    log::info!(
-                        "Sending to OBS '{connection_name}' filename formatting: {formatting}"
-                    );
-                    if let Err(e) = self
-                        .obs_manager
-                        .set_filename_formatting(&formatting, Some(&connection_name))
-                        .await
-                    {
-                        log::warn!("Failed to set filename formatting: {e}");
-                    } else {
-                        log::info!("Applied filename formatting to OBS: {formatting}");
-                        // Read-back verification
-                        match self
-                            .obs_manager
-                            .get_filename_formatting(Some(&connection_name))
-                            .await
-                        {
-                            Ok(current) => println!(" OBS current filename formatting='{current}'"),
-                            Err(err) => println!(" Failed to read back filename formatting: {err}"),
-                        }
-                    }
-                } else {
-                    log::info!(
-                        "Skipping filename formatting sync for '{connection_name}' because OBS is offline"
-                    );
-                    println!(
-                        " FightReady: OBS connection '{connection_name}' offline; skipping filename formatting sync"
-                    );
-                }
-            }
-
+                // formatting variable removed as it was unused here
             if obs_ready {
                 // Small delay to allow OBS to commit profile updates before starting outputs
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
-                // Ensure replay buffer is enabled and active before recording
+                // Stop Recording if active (required to change filename formatting)
+                match self
+                    .obs_manager
+                    .get_recording_status(Some(&connection_name))
+                    .await
+                {
+                    Ok(ObsRecordingStatus::Recording) => {
+                        log::info!("Stopping recording to apply new filename formatting...");
+                        println!(" Stopping recording to apply new filename formatting...");
+                        if let Err(e) = self
+                            .obs_manager
+                            .stop_recording(Some(&connection_name))
+                            .await
+                        {
+                            log::warn!("Failed to stop recording: {e}");
+                        } else {
+                            // Wait for state to settle to Stopped
+                            let mut attempts = 0;
+                            loop {
+                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                match self.obs_manager.get_recording_status(Some(&connection_name)).await {
+                                    Ok(ObsRecordingStatus::Stopped) => break,
+                                    Ok(status) => {
+                                        log::debug!("Waiting for Recording to stop... current: {:?}", status);
+                                    }
+                                    Err(e) => {
+                                        log::warn!("Failed to get Recording status while waiting for stop: {e}");
+                                    }
+                                }
+                                attempts += 1;
+                                if attempts >= 10 { // 5 seconds timeout
+                                    log::warn!("Timed out waiting for Recording to stop");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                // Stop Replay Buffer if active (required to change filename formatting and apply to buffer)
                 match self
                     .obs_manager
                     .get_replay_buffer_status(Some(&connection_name))
                     .await
                 {
                     Ok(ObsReplayBufferStatus::Active) => {
-                        log::info!("Replay buffer already active");
-                        println!(" Replay buffer already active");
-                    }
-                    _ => {
-                        log::info!("Starting replay buffer before recording...");
-                        println!(" Starting replay buffer before recording...");
+                        log::info!("Stopping replay buffer to apply new filename formatting...");
+                        println!(" Stopping replay buffer to apply new filename formatting...");
                         if let Err(e) = self
                             .obs_manager
-                            .start_replay_buffer(Some(&connection_name))
+                            .stop_replay_buffer(Some(&connection_name))
                             .await
                         {
-                            log::warn!("Failed to start replay buffer: {e}");
-                            println!("Failed to start replay buffer: {e}");
+                            log::warn!("Failed to stop replay buffer: {e}");
                         } else {
-                            log::info!("Replay buffer started to satisfy recording invariant");
-                            println!(" Replay buffer started to satisfy recording invariant");
+                            // Wait for state to settle to Stopped
+                            let mut attempts = 0;
+                            loop {
+                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                match self.obs_manager.get_replay_buffer_status(Some(&connection_name)).await {
+                                    Ok(ObsReplayBufferStatus::Stopped) => break,
+                                    Ok(status) => {
+                                        log::debug!("Waiting for Replay Buffer to stop... current: {:?}", status);
+                                    }
+                                    Err(e) => {
+                                        log::warn!("Failed to get RB status while waiting for stop: {e}");
+                                    }
+                                }
+                                attempts += 1;
+                                if attempts >= 10 { // 5 seconds timeout
+                                    log::warn!("Timed out waiting for Replay Buffer to stop");
+                                    break;
+                                }
+                            }
                         }
+                    }
+                    _ => {}
+                }
+
+                // Now that we are stopped, apply filename formatting
+                let formatting = self.build_filename_formatting(&effective_template, &session);
+                println!(
+                    " Sending to OBS '{connection_name}' filename formatting: {formatting}"
+                );
+                log::info!(
+                    "Sending to OBS '{connection_name}' filename formatting: {formatting}"
+                );
+                if let Err(e) = self
+                    .obs_manager
+                    .set_filename_formatting(&formatting, Some(&connection_name))
+                    .await
+                {
+                    log::warn!("Failed to set filename formatting: {e}");
+                } else {
+                    log::info!("Applied filename formatting to OBS: {formatting}");
+                }
+
+                // Start Replay Buffer if configured (or if it was active before? No, config dictates)
+                if config.include_replay_buffer {
+                    log::info!("Starting replay buffer...");
+                    println!(" Starting replay buffer...");
+                    if let Err(e) = self
+                        .obs_manager
+                        .start_replay_buffer(Some(&connection_name))
+                        .await
+                    {
+                        log::warn!("Failed to start replay buffer: {e}");
+                        println!("Failed to start replay buffer: {e}");
+                    } else {
+                        log::info!("Replay buffer started");
+                        println!(" Replay buffer started");
                     }
                 }
 
@@ -886,6 +939,7 @@ impl ObsRecordingEventHandler {
                 log::info!(
                     "FightReady: OBS connection '{connection_name}' offline; skipping replay buffer and recording triggers"
                 );
+            }
             }
         } else {
             log::warn!("FightReady: empty connection name resolved; skipping start");
@@ -2002,50 +2056,7 @@ impl ObsRecordingEventHandler {
     }
 
     fn build_filename_formatting(&self, template: &str, session: &RecordingSession) -> String {
-        // Replace variables with concrete values and ensure "VS" is between players
-        let p1 = session.player1_name.clone().unwrap_or_default();
-        let p2 = session.player2_name.clone().unwrap_or_default();
-        let c1 = session.player1_flag.clone().unwrap_or_default();
-        let c2 = session.player2_flag.clone().unwrap_or_default();
-        if !p1.is_empty() && !p2.is_empty() {
-            // Insert VS into a local copy for replacement convenience
-            // We will map {player1} -> p1, {player2} -> p2 and let template include VS, but also patch common templates
-        }
-
-        let mut fmt = template.to_string();
-        if let Some(ref n) = session.match_number {
-            // Replace both {matchNumber}_{player1} and stand-alone {matchNumber}
-            fmt = fmt.replace("{matchNumber}_{player1}", &format!("{n} {p1}"));
-            fmt = fmt.replace("{matchNumber}", n);
-        }
-        if let Some(ref f1) = session.player1_flag {
-            fmt = fmt.replace("{player1Flag}", f1);
-        }
-        if let Some(ref f2) = session.player2_flag {
-            fmt = fmt.replace("{player2Flag}", f2);
-        }
-        fmt = fmt.replace("{player1}", &p1);
-        fmt = fmt.replace("{player2}", &p2);
-        // New country placeholders
-        fmt = fmt.replace("{country1}", &c1);
-        fmt = fmt.replace("{country2}", &c2);
-
-        // If template lacked VS, inject a sane default pattern
-        if !fmt.contains("VS") && fmt.contains(&p1) && fmt.contains(&p2) {
-            // Try to place VS between players when pattern is exactly p1 _ p2 or similar
-            // Simple heuristic: if pattern contains "_" between players, replace first "_" between them with " VS "
-            let combined = format!("{p1}_{p2}");
-            if fmt.contains(&combined) {
-                fmt = fmt.replace(&combined, &format!("{p1} VS {p2}"));
-            }
-        }
-
-        // Map app placeholders to OBS placeholders
-        fmt = fmt.replace("{date} - {time}", "%DD-%MM-%CCYY %hh-%mm-%ss");
-        fmt = fmt.replace("{date}_{time}", "%DD-%MM-%CCYY_%hh-%mm-%ss");
-        fmt = fmt.replace("{date}", "%DD-%MM-%CCYY");
-        fmt = fmt.replace("{time}", "%hh-%mm-%ss");
-        fmt
+        crate::utils::filename_utils::format_filename(template, session)
     }
 
     /// Get current match ID from UDP context

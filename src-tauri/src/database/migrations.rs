@@ -3279,6 +3279,7 @@ impl MigrationManager {
             Box::new(Migration44), // Extend round configs with golden and kyeshi durations
             Box::new(Migration45),
             Box::new(Migration46), // Tournament schema expansion (rankings, octagons, athletes)
+            Box::new(Migration47), // Fix trigger recursion on obs_recording_sessions
         ];
 
         Self { migrations }
@@ -6784,6 +6785,37 @@ impl Migration for Migration46 {
     }
 
     fn up(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
+
+    fn down(&self, _conn: &Connection) -> SqliteResult<()> {
+        Ok(())
+    }
+}
+
+/// Migration 47: Fix trigger recursion on obs_recording_sessions by dropping legacy triggers
+pub struct Migration47;
+
+impl Migration for Migration47 {
+    fn version(&self) -> u32 {
+        47
+    }
+
+    fn description(&self) -> &str {
+        "Drop recursive triggers on obs_recording_sessions/obs_recording_session"
+    }
+
+    fn up(&self, conn: &Connection) -> SqliteResult<()> {
+        // Drop potential recursive triggers on singular table name
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_session_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_session_updated_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_session_updated_at", []);
+        
+        // Drop potential recursive triggers on plural table name
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_created_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_updated_int", []);
+        let _ = conn.execute("DROP TRIGGER IF EXISTS trg_obs_recording_sessions_updated_at", []);
+
         Ok(())
     }
 

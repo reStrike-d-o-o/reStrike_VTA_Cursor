@@ -1,6 +1,7 @@
 pub mod logger;
 pub mod network;
 pub mod simulation_env;
+pub mod filename_utils;
 
 pub use network::*;
 
